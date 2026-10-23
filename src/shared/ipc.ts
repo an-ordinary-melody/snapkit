@@ -53,6 +53,7 @@ export interface PixelsPayload {
 export interface PinImagePayload {
   png: Uint8Array
   theme: string
+  accent: string
 }
 
 /** What a pin window shows in its HUD and menus. */

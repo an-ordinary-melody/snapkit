@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxFromDrag, commit, emptyHistory, isMeaningful, moveShape, openArrowHead, redo, remove, snap45, stepNumbers, undo, upsert, type Shape } from './model'
+import { boxFromDrag, commit, emptyHistory, isMeaningful, moveShape, openArrowHead, redo, remove, snap45, snapBox, stepNumbers, undo, upsert, type Shape } from './model'
 
 const step = (id: string): Shape => ({ id, type: 'step', x: 0, y: 0, size: 20, color: 'red' })
 const rect = (id: string, x = 0): Shape => ({ id, type: 'rect', x, y: 0, w: 10, h: 10, color: 'red', width: 2 })
@@ -90,5 +90,23 @@ describe('shapes', () => {
     const line: Shape = { id: 'l', type: 'arrow', points: [0, 0, 10, 10], color: '', width: 1 }
     expect((moveShape(line, 5, -5) as typeof line).points).toEqual([5, -5, 15, 5])
     expect((moveShape(rect('a'), 3, 4) as { x: number; y: number }).y).toBe(4)
+  })
+})
+
+describe('snapBox', () => {
+  const target = { x: 100, y: 100, w: 100, h: 50 }
+
+  it('snaps left edges and centers within the threshold, with guides', () => {
+    const r = snapBox({ x: 104, y: 300, w: 40, h: 20 }, [target], 6)
+    expect(r.dx).toBe(-4)
+    expect(r.dy).toBe(0)
+    expect(r.guides).toEqual([{ dir: 'v', at: 100, from: 100, to: 320 }])
+    const c = snapBox({ x: 127, y: 117, w: 46, h: 20 }, [target], 6) // centers 150 / 127 vs 125
+    expect(c.dx).toBe(0)
+    expect(c.dy).toBe(-2)
+  })
+
+  it('leaves the box alone when nothing is close', () => {
+    expect(snapBox({ x: 400, y: 400, w: 10, h: 10 }, [target], 6)).toEqual({ dx: 0, dy: 0, guides: [] })
   })
 })

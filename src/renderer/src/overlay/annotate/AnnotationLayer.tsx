@@ -4,8 +4,8 @@ import { flushSync } from 'react-dom'
 import { Arrow, Circle, Ellipse, Group, Image as KImage, Label, Layer, Line, Rect as KRect, Stage, Tag, Text, Transformer } from 'react-konva'
 import type { Rect } from '../layout'
 import {
-  boxFromDrag, isMeaningful, moveShape, newId, openArrowHead, remove, snap45, stepNumbers, upsert,
-  type BlurShape, type LineShape, type Shape, type Style, type TextShape, type ToolId
+  boxFromDrag, isMeaningful, moveShape, newId, openArrowHead, remove, snap45, snapBox, stepNumbers, upsert,
+  type BlurShape, type Guide, type LineShape, type Shape, type Style, type TextShape, type ToolId
 } from './model'
 import { readableOn } from './color'
 import { obscure } from './obscure'
@@ -33,7 +33,7 @@ interface Props {
   variant: string | null
   style: Style
   strokeWidths: [number, number, number]
-  highlighter: { color: string; width: number }
+  highlighter: { width: number }
   stepSize: number
   /** Number color on step badges; '' = black or white, whichever reads better. */
   stepTextColor: string
@@ -46,11 +46,12 @@ interface Props {
   scale: number
 }
 
-/** "Add pin" cursor for the numbered-step tool: a map pin with a plus, tip at the bottom. */
+/** Push-pin cursor for the numbered-step tool; the hot spot is the pin's point. */
 const STEP_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M19.5 10c0 5.2-6 10.6-7.1 11.6a.6.6 0 0 1-.8 0C10.5 20.6 4.5 15.2 4.5 10a7.5 7.5 0 0 1 15 0"/>' +
-    '<path d="M12 7v6M9 10h6"/></svg>'
+    '<path d="M12 17v5" fill="none"/>' +
+    '<path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>' +
+    '</svg>'
 )}") 14 26, copy`
 
 const TEXT_PAD = 6
@@ -167,12 +168,16 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     const make = (x: number, y: number, shift: boolean): Shape => {
       switch (kind) {
         case 'pen':
-        case 'highlighter':
-          return draftRef.current && draftRef.current.type === kind
-            ? { ...draftRef.current, points: [...draftRef.current.points, x, y] }
-            : kind === 'pen'
+        case 'highlighter': {
+          const base: Shape =
+            kind === 'pen'
               ? { id, type: 'pen', points: [x0, y0, x, y], color: style.color, width: strokeWidth }
-              : { id, type: 'highlighter', points: [x0, y0, x, y], color: props.highlighter.color, width: props.highlighter.width }
+              : { id, type: 'highlighter', points: [x0, y0, x, y], color: style.highlighterColor, width: props.highlighter.width }
+          // Shift: a straight stroke from where you started.
+          if (shift) return base
+          const d = draftRef.current
+          return d && d.type === kind ? { ...d, points: [...d.points, x, y] } : base
+        }
         case 'line':
         case 'arrow': {
           const [dx, dy] = shift ? snap45(x - x0, y - y0) : [x - x0, y - y0]
@@ -243,9 +248,24 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     onDblClick: () => s.type === 'text' && startEditing(s),
     onMouseEnter: () => setCursor('move'),
     onMouseLeave: () => setCursor(null),
-    // Blur areas re-render what's under them while being moved or resized.
     onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
-      if (s.type === 'blur') setLive({ id: s.id, rect: { x: s.x + e.target.x(), y: s.y + e.target.y(), w: s.w, h: s.h } })
+      const g = e.target
+      // Smart snap: line edges and centers up with other shapes and the capture area. Hold ⌘ to place freely.
+      if (!e.evt.metaKey) {
+        const layer = g.getLayer()!
+        const stage = g.getStage()!
+        const box = g.getClientRect({ relativeTo: layer, skipShadow: true })
+        const others = shapesRef.current
+          .filter((o) => o.id !== s.id)
+          .map((o) => stage.findOne('#' + o.id)?.getClientRect({ relativeTo: layer, skipShadow: true }))
+          .filter((b): b is NonNullable<typeof b> => !!b)
+          .map((b) => ({ x: b.x, y: b.y, w: b.width, h: b.height }))
+        const r = snapBox({ x: box.x, y: box.y, w: box.width, h: box.height }, [...others, sel], 6 / zoom())
+        g.position({ x: g.x() + r.dx, y: g.y() + r.dy })
+        setGuides(r.guides)
+      } else setGuides([])
+      // Blur areas re-render what's under them while being moved.
+      if (s.type === 'blur') setLive({ id: s.id, rect: { x: s.x + g.x(), y: s.y + g.y(), w: s.w, h: s.h } })
     },
     onTransform: (e: Konva.KonvaEventObject<Event>) => {
       const g = e.target
@@ -257,6 +277,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       const dy = g.y()
       g.position({ x: 0, y: 0 })
       setLive(null)
+      setGuides([])
       commitShape(moveShape(s, dx, dy))
     },
     onTransformEnd: (e: Konva.KonvaEventObject<Event>) => {
@@ -278,6 +299,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
 
   const [cursor, setCursor] = useState<string | null>(null)
   const [live, setLive] = useState<{ id: string; rect: Rect } | null>(null)
+  const [guides, setGuides] = useState<Guide[]>([])
 
   // ---- render ------------------------------------------------------------------
   const renderShape = (s: Shape, isDraft = false) => {
@@ -392,12 +414,22 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
               borderStroke="#3b82f6"
               borderDash={[4, 3]}
               anchorStroke="#3b82f6"
-              anchorSize={8}
-              anchorCornerRadius={2}
+              anchorSize={12}
+              anchorCornerRadius={3}
               padding={6}
               shouldOverdrawWholeArea
             />
             {lineSel && <LineEnds shape={lineSel} onCommit={commitShape} />}
+            {guides.map((gd, i) => (
+              <Line
+                key={i}
+                points={gd.dir === 'v' ? [gd.at, gd.from - 8, gd.at, gd.to + 8] : [gd.from - 8, gd.at, gd.to + 8, gd.at]}
+                stroke="#ff2d95"
+                strokeWidth={1}
+                dash={[4, 3]}
+                listening={false}
+              />
+            ))}
           </Layer>
         </Stage>
       </div>
@@ -492,7 +524,7 @@ function LineEnds({ shape, onCommit }: { shape: LineShape; onCommit(s: Shape): v
     <Circle
       x={pts[i]}
       y={pts[i + 1]}
-      radius={6}
+      radius={7.5}
       fill="#fff"
       stroke="#3b82f6"
       strokeWidth={2}

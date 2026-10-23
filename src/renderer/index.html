@@ -7,6 +7,17 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Liquid Glass refraction: content behind a glass panel bends at its rim.
+      The map is neutral in the middle and ramps at the edges, so only the
+      edges act like a lens. Used by backdrop-filter in the glass theme.
+    -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <filter id="liquid-glass" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%20preserveAspectRatio%3D%27none%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27r%27%20x1%3D%270%27%20x2%3D%271%27%20y1%3D%270%27%20y2%3D%270%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23000%27/%3E%3Cstop%20offset%3D%27.14%27%20stop-color%3D%27%23800000%27/%3E%3Cstop%20offset%3D%27.86%27%20stop-color%3D%27%23800000%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23f00%27/%3E%3C/linearGradient%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20x2%3D%270%27%20y1%3D%270%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23000%27/%3E%3Cstop%20offset%3D%27.22%27%20stop-color%3D%27%23008000%27/%3E%3Cstop%20offset%3D%27.78%27%20stop-color%3D%27%23008000%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230f0%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20fill%3D%27url%28%23r%29%27/%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20fill%3D%27url%28%23g%29%27%20style%3D%27mix-blend-mode%3Ascreen%27/%3E%3C/svg%3E" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale="22" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

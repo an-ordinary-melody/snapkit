@@ -120,7 +120,7 @@ try {
   await m.click(350, 250); await wait(150)
   const styleBar = await win.$('.style-bar')
   console.log('style bar shown for selected arrow:', !!styleBar)
-  await win.click('.style-bar button[data-tip="#22c55e"]')
+  await win.click('.style-bar button[data-tip="#3b82f6"]')
   await win.click('.style-bar button[data-tip="Thick"]')
   // Custom color: open the picker, type a hex value.
   await win.click('.style-bar button[data-tip="Custom color"]')

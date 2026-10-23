@@ -51,6 +51,8 @@ export interface Settings {
     /** Index into strokeWidths used at the start. */
     strokeWidth: number
     highlighterColor: string
+    /** Colors offered for the highlighter. */
+    highlighterPalette: string[]
     highlighterWidth: number
     /** 'pixelate' or 'blur'. */
     blurMode: 'pixelate' | 'blur'
@@ -81,6 +83,8 @@ export interface Settings {
   appearance: {
     /** 'glass': Liquid Glass (light frosted panels). 'dark': solid dark panels. */
     theme: 'glass' | 'dark'
+    /** Highlight color for the selected tool, switches and primary buttons; '' = the theme's (white in glass, gray in dark). */
+    accent: string
   }
   /** Background, padding, corner radius and shadow around the output image. */
   beautify: {
@@ -115,14 +119,15 @@ export const DEFAULT_SETTINGS: Settings = {
     onSave: true
   },
   annotate: {
-    palette: ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#111111', '#ffffff'],
+    palette: ['#ef4444', '#facc15', '#3b82f6', '#111111', '#ffffff'],
     strokeWidths: [3, 5, 8],
     strokeWidth: 0,
     highlighterColor: '#fde047',
+    highlighterPalette: ['#fde047', '#86efac', '#f9a8d4', '#93c5fd', '#fdba74'],
     highlighterWidth: 18,
     blurMode: 'blur',
     blurStrength: 12,
-    stepSize: 28,
+    stepSize: 34,
     stepTextColor: '',
     text: {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
@@ -138,7 +143,8 @@ export const DEFAULT_SETTINGS: Settings = {
     afterCopy: false
   },
   appearance: {
-    theme: 'glass'
+    theme: 'glass',
+    accent: ''
   },
   beautify: {
     applyOnCopy: false,

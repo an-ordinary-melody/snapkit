@@ -31,20 +31,23 @@ export interface FeatureDef {
   variants?: FeatureVariant[]
   /** Tooltip hint for the right-click menu, e.g. "Right-click for arrow styles". */
   variantsHint?: string
+  /** Extra tooltip line, e.g. a modifier key tip. */
+  tipNote?: string
   /** Whether the feature is on for a fresh install. */
   defaultEnabled: boolean
 }
 
 export const FEATURES: FeatureDef[] = [
   // Annotation tools (vertical bar)
-  { id: 'pen', drawing: true, label: 'Pencil', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true },
+  { id: 'pen', drawing: true, label: 'Pencil', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true, tipNote: 'Hold Shift for a straight line' },
   {
     id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true,
     variants: [
       { id: 'arrow-open', label: 'Arrow' },
       { id: 'arrow', label: 'Filled arrow' }
     ],
-    variantsHint: 'Right-click for arrow styles'
+    variantsHint: 'Right-click for arrow styles',
+    tipNote: 'Hold Shift to snap to 45°'
   },
   {
     id: 'rect', drawing: true, label: 'Rectangle', kind: 'tool', hint: 'R', implemented: true, defaultEnabled: true,
@@ -55,7 +58,8 @@ export const FEATURES: FeatureDef[] = [
       { id: 'ellipse-filled', label: 'Filled ellipse' },
       { id: 'line', label: 'Line' }
     ],
-    variantsHint: 'Right-click for more shapes'
+    variantsHint: 'Right-click for more shapes',
+    tipNote: 'Hold Shift for a square'
   },
   // Also the last shape in the rectangle tool's menu, so off by default.
   { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: false },
@@ -67,7 +71,7 @@ export const FEATURES: FeatureDef[] = [
     ],
     variantsHint: 'Right-click for more shapes'
   },
-  { id: 'highlighter', drawing: true, label: 'Highlighter', kind: 'tool', hint: 'H', implemented: true, defaultEnabled: true },
+  { id: 'highlighter', drawing: true, label: 'Highlighter', kind: 'tool', hint: 'H', implemented: true, defaultEnabled: true, tipNote: 'Hold Shift for a straight line' },
   { id: 'text', drawing: true, label: 'Text', kind: 'tool', hint: 'T', implemented: true, defaultEnabled: true },
   { id: 'step', drawing: true, label: 'Numbered step', kind: 'tool', hint: 'N', implemented: true, defaultEnabled: true },
   { id: 'blur', drawing: true, label: 'Blur', kind: 'tool', hint: 'B', implemented: true, defaultEnabled: true },

@@ -5,21 +5,29 @@
  * Picked in settings (appearance.theme); set as data-theme on <html>.
  */
 :root {
-  --ui-bg: rgba(255,255,255,.46);
-  --ui-bg-strong: rgba(250,250,252,.72);
-  --ui-blur: blur(24px) saturate(1.9);
+  /* Glass: clear at the top, a touch milkier at the bottom; the backdrop bends at the rim (#liquid-glass in index.html). */
+  --ui-bg: linear-gradient(180deg, rgba(255,255,255,.52), rgba(255,255,255,.30));
+  --ui-bg-strong: linear-gradient(180deg, rgba(252,252,254,.80), rgba(244,244,248,.66));
+  --ui-blur: url(#liquid-glass) blur(10px) saturate(1.9) brightness(1.06);
   --ui-fg: #1c1c1e;
   --ui-fg-dim: #5d5d66;
   --ui-fg-faint: #8a8a93;
   --ui-hover: rgba(0,0,0,.07);
   --ui-field: rgba(0,0,0,.06);
   --ui-sep: rgba(0,0,0,.12);
-  --ui-rim: inset 0 0 0 .5px rgba(255,255,255,.75), inset 0 1px 0 rgba(255,255,255,.9), 0 0 0 .5px rgba(0,0,0,.14);
-  --ui-shadow: 0 10px 34px rgba(0,0,0,.2);
-  --ui-radius: 14px;
-  --ui-btn-radius: 9px;
-  --ui-accent: #0a84ff;
-  --ui-accent-hover: #0077ed;
+  /* Specular highlight on the top edge, softer light on the bottom edge, a faint inner glow, a hairline outside. */
+  --ui-rim: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(255,255,255,.4), inset 0 0 0 .5px rgba(255,255,255,.7),
+    inset 0 0 14px rgba(255,255,255,.28), 0 0 0 .5px rgba(0,0,0,.14);
+  --ui-shadow: 0 12px 36px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+  --ui-radius: 18px;
+  --ui-btn-radius: 12px;
+  /* Selected tool: a white pill (glass) / gray (dark). */
+  --ui-active-bg: #fff;
+  --ui-active-fg: #1c1c1e;
+  --ui-active-shadow: 0 1px 4px rgba(0,0,0,.16), 0 0 0 .5px rgba(0,0,0,.08);
+  /* Switches and primary buttons: monochrome ink. appearance.accent overrides it. */
+  --ui-accent: #1c1c1e;
+  --ui-accent-hover: #000;
   --ui-on-accent: #fff;
   --ui-ring: #1c1c1e;
   --ui-swatch-edge: rgba(0,0,0,.18);
@@ -51,9 +59,12 @@
   --ui-shadow: 0 6px 24px rgba(0,0,0,.35);
   --ui-radius: 9px;
   --ui-btn-radius: 6px;
-  --ui-accent: #3b82f6;
-  --ui-accent-hover: #2f74e8;
-  --ui-on-accent: #fff;
+  --ui-active-bg: rgba(255,255,255,.22);
+  --ui-active-fg: #fff;
+  --ui-active-shadow: none;
+  --ui-accent: #f4f4f5;
+  --ui-accent-hover: #fff;
+  --ui-on-accent: #111;
   --ui-ring: #fff;
   --ui-swatch-edge: rgba(255,255,255,.25);
   --ui-track: #71717a;
@@ -101,16 +112,16 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
 
 .handles { position: absolute; pointer-events: none; }
 .handles .handle {
-  position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
-  background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.35); pointer-events: auto;
+  position: absolute; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px;
+  background: #fff; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,.35); pointer-events: auto;
 }
 .annotations { position: absolute; }
 
-.toolbar button.active { background: var(--ui-accent); color: var(--ui-on-accent); }
-.toolbar button.active:hover:not(.off) { background: var(--ui-accent-hover); }
+.toolbar button.active { background: var(--ui-active-bg); color: var(--ui-active-fg); box-shadow: var(--ui-active-shadow); }
+.toolbar button.active:hover:not(.off) { background: var(--ui-active-bg); filter: brightness(.98); }
 .toolbar button { position: relative; }
 .toolbar .color-box { width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--ui-swatch-edge); }
-.toolbar button.active .color-box { box-shadow: 0 0 0 1.5px #fff; }
+.toolbar button.active .color-box { box-shadow: 0 0 0 1.5px var(--ui-active-fg); }
 /* Small corner mark: this button has a right-click menu. */
 .toolbar .more-mark { position: absolute; right: 3px; bottom: 3px; width: 0; height: 0; border-left: 4px solid transparent; border-bottom: 4px solid currentColor; opacity: .55; }
 .variant-menu {
@@ -123,7 +134,7 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
   display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 10px; border: 0; border-radius: 6px;
   background: transparent; color: var(--ui-fg); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer;
 }
-.variant-menu button:hover { background: var(--ui-accent); color: var(--ui-on-accent); }
+.variant-menu button:hover { background: var(--ui-active-bg); color: var(--ui-active-fg); box-shadow: var(--ui-active-shadow); }
 .variant-menu button span { flex: 1; }
 .variant-menu .check { opacity: .9; }
 
@@ -177,7 +188,7 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
 .color-picker .sv-dot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; box-shadow: 0 0 0 2px #fff, 0 0 2px 2px rgba(0,0,0,.4); pointer-events: none; }
 .color-picker .hue { width: 100%; margin: 0; }
 .color-picker .hue::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
-.color-picker .hue::-webkit-slider-thumb { margin-top: -4px; }
+.color-picker .hue::-webkit-slider-thumb { margin-top: -3.5px; }
 .color-picker .hex-row { display: flex; align-items: center; gap: 8px; }
 .color-picker .preview { width: 24px; height: 24px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--ui-swatch-edge); }
 .color-picker .hex {
@@ -278,13 +289,20 @@ input.slider::-webkit-slider-runnable-track {
   height: 3px; border-radius: 1.5px;
   background: linear-gradient(to right, var(--ui-track-fill) 0 var(--pct, 0%), var(--ui-track) var(--pct, 0%) 100%);
 }
+/* Knob: a white capsule like macOS; while held it turns to glass and grows. */
 input.slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px; border-radius: 50%;
-  background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.45);
+  -webkit-appearance: none; width: 24px; height: 15px; margin-top: -6px; border-radius: 8px;
+  background: #fff; box-shadow: 0 0 0 .5px rgba(0,0,0,.28), 0 1px 4px rgba(0,0,0,.3);
+  transition: transform .15s, background .15s, box-shadow .15s;
 }
-input.slider:hover::-webkit-slider-thumb { transform: scale(1.1); }
+input.slider:active::-webkit-slider-thumb {
+  transform: scale(1.35);
+  background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.18));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 1px rgba(255,255,255,.5), inset 0 0 0 .5px rgba(255,255,255,.8),
+    0 0 0 .5px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.22);
+}
 input.slider:focus-visible { outline: none; }
-input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px rgba(0,0,0,.55), 0 0 0 4px rgba(255,255,255,.45); }
+input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0,0,0,.28), 0 0 0 3px var(--ui-track-fill); }
 
 /* Toolbars docked in the background editor: static and horizontal. */
 .toolbar.docked { position: static; animation: none; align-items: center; }
@@ -323,7 +341,7 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px rgba(0,
 /* Small pins: only the close button; tiny ones: nothing. */
 @media (max-width: 300px), (max-height: 90px) { .pin-bar { display: none; } }
 @media (max-width: 70px), (max-height: 50px) { .pin-close { display: none; } }
-.be-row .hue::-webkit-slider-thumb { margin-top: -5px; }
+.be-row .hue::-webkit-slider-thumb { margin-top: -4.5px; }
 
 /* ---- Floating preview after copy ---- */
 .thumb { position: fixed; inset: 0; overflow: hidden; border-radius: 10px; background: #111; cursor: grab; }

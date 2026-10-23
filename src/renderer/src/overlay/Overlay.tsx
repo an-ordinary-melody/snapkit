@@ -10,6 +10,7 @@ import { BackgroundEditor } from './beautify/BackgroundEditor'
 import { backgroundOf, stateFromPreset, type BeautifyState } from './beautify/layout'
 import { renderBeautified } from './beautify/render'
 import { moveRect, rectFromPoints, resizeRect, type Handle, type Point, type Rect } from './layout'
+import { applyTheme } from '../theme'
 import { Toolbars } from './Toolbars'
 
 const api = window.snapkit
@@ -64,6 +65,7 @@ function initialStyle(s: Settings): Style {
   return {
     color: a.palette[0] ?? '#ef4444',
     textColor: a.palette[0] ?? '#ef4444',
+    highlighterColor: a.highlighterColor,
     widthIndex: a.strokeWidth,
     blurMode: a.blurMode,
     blurStrength: a.blurStrength,
@@ -89,6 +91,8 @@ function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
       return { ...s, color: patch.color ?? s.color, width: patch.widthIndex !== undefined ? widths[patch.widthIndex] : s.width }
     case 'step':
       return { ...s, color: patch.color ?? s.color }
+    case 'highlighter':
+      return { ...s, color: patch.highlighterColor ?? s.color }
     case 'text':
       return {
         ...s,
@@ -127,7 +131,8 @@ export function Overlay() {
   const [tool, setTool] = useState<ToolId | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [style, setStyle] = useState<Style | null>(null)
-  const [styleOpen, setStyleOpen] = useState(true)
+  /** Bumped by the color button: the style bar opens its color picker. */
+  const [pickerRequest, setPickerRequest] = useState(0)
   const [variants, setVariants] = useState<Record<string, string>>(lastVariants)
   const [beautify, setBeautify] = useState<BeautifyState | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -150,7 +155,7 @@ export function Overlay() {
       busy.current = false
       painted.current = deferred()
       // Commit the dim to the DOM before telling main to show the window.
-      document.documentElement.dataset.theme = p.settings.appearance.theme
+      applyTheme(p.settings.appearance.theme, p.settings.appearance.accent)
       const doc = p.edit
       const scale = doc ? doc.scale : p.width / window.innerWidth
       flushSync(() => {
@@ -272,7 +277,7 @@ export function Overlay() {
         setTool((t) => (t === id ? null : (id as ToolId)))
         return
       }
-      if (id === 'color') return setStyleOpen((o) => !o)
+      if (id === 'color') return setPickerRequest((n) => n + 1)
       if (id === 'beautify') return setBeautify((b) => b && (lastBeautify = { ...b, on: !b.on }))
       if (id === 'beautifyEdit') {
         annRef.current?.finishEditing()
@@ -450,13 +455,13 @@ export function Overlay() {
   const toolVariant = tool ? (variants[tool] ?? null) : null
   const filled = selectedShape ? 'filled' in selectedShape && !!selectedShape.filled : !!toolVariant?.endsWith('-filled')
   const styleBar =
-    cap && style && styleOpen && styleTarget && hasStyleOptions(styleTarget) && s?.features.color !== false ? (
-      <StyleBar target={styleTarget} filled={filled} style={style} palette={cap.settings.annotate.palette} onChange={onStyleChange} />
+    cap && style && styleTarget && hasStyleOptions(styleTarget) ? (
+      <StyleBar pickerRequest={pickerRequest} highlighterPalette={cap.settings.annotate.highlighterPalette} target={styleTarget} filled={filled} style={style} palette={cap.settings.annotate.palette} onChange={onStyleChange} />
     ) : null
   const unavailable = new Set<string>()
   if (!history.past.length) unavailable.add('undo')
   if (!history.future.length) unavailable.add('redo')
-  const pressed = new Set<string>(styleOpen ? ['color'] : [])
+  const pressed = new Set<string>()
   const lit = new Set<string>(beautify?.on ? ['beautify'] : [])
   if (beautify?.on) pressed.add('beautify') // highlighted like an active tool, plus the dot
   if (floating) {
@@ -496,7 +501,7 @@ export function Overlay() {
       variant={toolVariant}
       style={style}
       strokeWidths={cap.settings.annotate.strokeWidths}
-      highlighter={{ color: cap.settings.annotate.highlighterColor, width: cap.settings.annotate.highlighterWidth }}
+      highlighter={{ width: cap.settings.annotate.highlighterWidth }}
       stepSize={cap.settings.annotate.stepSize}
       stepTextColor={cap.settings.annotate.stepTextColor}
       selectedId={selectedId}
@@ -513,7 +518,13 @@ export function Overlay() {
         screen={screen}
         settings={cap.settings}
         activeTool={tool}
-        color={tool === 'text' || selectedShape?.type === 'text' ? style.textColor : style.color}
+        color={
+          tool === 'text' || selectedShape?.type === 'text'
+            ? style.textColor
+            : tool === 'highlighter' || selectedShape?.type === 'highlighter'
+              ? style.highlighterColor
+              : style.color
+        }
         pressed={pressed}
         unavailable={unavailable}
         styleBar={styleBar}

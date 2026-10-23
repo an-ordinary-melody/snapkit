@@ -99,6 +99,8 @@ export interface Style {
   color: string
   /** Text has its own color, so a text background style can pick a readable one without changing the other tools. */
   textColor: string
+  /** The highlighter has its own (light) colors too. */
+  highlighterColor: string
   /** Index into the stroke width presets. */
   widthIndex: number
   blurMode: 'pixelate' | 'blur'
@@ -215,3 +217,44 @@ export const upsert = (shapes: Shape[], s: Shape) =>
   shapes.some((x) => x.id === s.id) ? shapes.map((x) => (x.id === s.id ? s : x)) : [...shapes, s]
 
 export const remove = (shapes: Shape[], id: string) => shapes.filter((x) => x.id !== id)
+
+// ---- smart snapping ------------------------------------------------------------
+
+export interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** A guide line to show while snapped: vertical at x (from y1 to y2), or horizontal at y. */
+export type Guide = { dir: 'v'; at: number; from: number; to: number } | { dir: 'h'; at: number; from: number; to: number }
+
+/**
+ * Snap a moving box so its left/center/right (and top/middle/bottom) line up
+ * with another box's, when within `threshold`. Returns the nudge and the
+ * guides to draw.
+ */
+export function snapBox(box: Box, targets: Box[], threshold: number): { dx: number; dy: number; guides: Guide[] } {
+  const xs = (b: Box) => [b.x, b.x + b.w / 2, b.x + b.w]
+  const ys = (b: Box) => [b.y, b.y + b.h / 2, b.y + b.h]
+  let best = { dx: Infinity, x: 0, t: null as Box | null }
+  let bestY = { dy: Infinity, y: 0, t: null as Box | null }
+  for (const t of targets) {
+    for (const tx of xs(t)) for (const bx of xs(box)) if (Math.abs(tx - bx) < Math.abs(best.dx)) best = { dx: tx - bx, x: tx, t }
+    for (const ty of ys(t)) for (const by of ys(box)) if (Math.abs(ty - by) < Math.abs(bestY.dy)) bestY = { dy: ty - by, y: ty, t }
+  }
+  const dx = Math.abs(best.dx) <= threshold ? best.dx : 0
+  const dy = Math.abs(bestY.dy) <= threshold ? bestY.dy : 0
+  const moved = { ...box, x: box.x + dx, y: box.y + dy }
+  const guides: Guide[] = []
+  if (dx || (best.t && Math.abs(best.dx) <= threshold)) {
+    const t = best.t!
+    guides.push({ dir: 'v', at: best.x, from: Math.min(moved.y, t.y), to: Math.max(moved.y + moved.h, t.y + t.h) })
+  }
+  if (dy || (bestY.t && Math.abs(bestY.dy) <= threshold)) {
+    const t = bestY.t!
+    guides.push({ dir: 'h', at: bestY.y, from: Math.min(moved.x, t.x), to: Math.max(moved.x + moved.w, t.x + t.w) })
+  }
+  return { dx, dy, guides }
+}

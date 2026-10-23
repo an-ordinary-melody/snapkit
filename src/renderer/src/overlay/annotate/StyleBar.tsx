@@ -1,5 +1,5 @@
 import { Grid3x3, Minus, Plus, Waves } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Slider } from '../Slider'
 import { isLight, parseHex, readableOn } from './color'
 import { ColorPicker } from './ColorPicker'
@@ -9,7 +9,7 @@ import type { Shape, Style, ToolId } from './model'
 export type StyleTarget = ToolId | Shape['type']
 
 const STROKED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse'])
-const COLORED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse', 'text', 'step'])
+const COLORED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse', 'text', 'step', 'highlighter'])
 
 /** Nothing to show for this target. */
 export const hasStyleOptions = (t: StyleTarget) => COLORED.has(t) || t === 'blur'
@@ -55,6 +55,10 @@ let recentCustom: string[] = []
 
 interface Props {
   target: StyleTarget
+  /** Colors offered for the highlighter (it has its own, lighter set). */
+  highlighterPalette: string[]
+  /** Changes when the tool bar's color button is clicked. */
+  pickerRequest: number
   /** The target is a filled shape (no stroke width to choose). */
   filled: boolean
   style: Style
@@ -63,14 +67,20 @@ interface Props {
   onChange(patch: Partial<Style>, continuous?: boolean): void
 }
 
-export function StyleBar({ target, filled, style, palette, onChange }: Props) {
+export function StyleBar({ target, filled, style, palette: mainPalette, highlighterPalette, onChange, pickerRequest }: Props) {
+  const palette = target === 'highlighter' ? highlighterPalette : mainPalette
   const [picking, setPicking] = useState<false | 'color' | 'textExtra'>(false)
+  // The color button in the tool bar opens the color picker here.
+  const firstRequest = useRef(pickerRequest)
+  useEffect(() => {
+    if (pickerRequest !== firstRequest.current && COLORED.has(target)) setPicking('color')
+  }, [pickerRequest]) // eslint-disable-line react-hooks/exhaustive-deps
   const look = textLook(style)
   const sep = <div className="sep" />
   const lower = palette.map((c) => c.toLowerCase())
   const customs = recentCustom.filter((c) => !lower.includes(c))
   // Text keeps its own color.
-  const colorKey = target === 'text' ? 'textColor' : 'color'
+  const colorKey = target === 'text' ? 'textColor' : target === 'highlighter' ? 'highlighterColor' : 'color'
   const currentColor = style[colorKey]
   const current = currentColor.toLowerCase()
   // A custom color in use that isn't in the list yet still gets a swatch.

@@ -1,5 +1,6 @@
 import { Copy, Move, PencilLine, Pin, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { applyTheme } from '../theme'
 
 const api = window.snapkit
 
@@ -13,9 +14,9 @@ export function Thumb() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    api.onPinImage(({ png, theme }) =>
+    api.onPinImage(({ png, theme, accent }) =>
       setSrc((old) => {
-        document.documentElement.dataset.theme = theme
+        applyTheme(theme, accent)
         if (old) URL.revokeObjectURL(old)
         return URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' }))
       })

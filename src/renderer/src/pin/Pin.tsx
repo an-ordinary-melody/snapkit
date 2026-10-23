@@ -2,6 +2,7 @@ import { Copy, GripVertical, Minus, Plus, Save, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { PinState } from '@shared/ipc'
 import { Slider } from '../overlay/Slider'
+import { applyTheme } from '../theme'
 
 const api = window.snapkit
 
@@ -20,8 +21,8 @@ export function Pin() {
   const hudTimer = useRef<number>()
 
   useEffect(() => {
-    api.onPinImage(({ png, theme }) => {
-      document.documentElement.dataset.theme = theme
+    api.onPinImage(({ png, theme, accent }) => {
+      applyTheme(theme, accent)
       setSrc(URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' })))
     })
     api.onPinState(setState)

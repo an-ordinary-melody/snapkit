@@ -117,7 +117,10 @@ export function Toolbars(props: Props) {
         data-id={f.id}
         data-tip={f.implemented ? label : `${label} (coming soon)`}
         data-hint={f.implemented ? f.hint : undefined}
-        data-sub={tips[f.id]?.sub ?? (f.variants ? (f.variantsHint ?? 'Right-click for more options') : undefined)}
+        data-sub={
+          tips[f.id]?.sub ??
+          ([f.tipNote, f.variants && (f.variantsHint ?? 'Right-click for more options')].filter(Boolean).join(' · ') || undefined)
+        }
         aria-disabled={off}
         className={cls}
         onClick={() => !off && onAction(f.id)}
