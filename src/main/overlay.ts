@@ -81,6 +81,15 @@ function endCapture() {
   }
 }
 
+/**
+ * macOS: give focus back to the app the user was in. Otherwise Snapkit stays
+ * the frontmost app with no visible window after a copy, and the next capture
+ * is slow or seems to do nothing until the user clicks elsewhere.
+ */
+function releaseFocus() {
+  if (isMac) app.hide()
+}
+
 export async function startCapture(t0 = Date.now()) {
   if (active) return
   active = true
@@ -101,6 +110,8 @@ export async function startCapture(t0 = Date.now()) {
 
   // Displays may have changed since the overlays were built.
   if (grabs.some((g) => !overlays.has(g.display.id))) rebuildOverlays()
+
+  if (isMac) app.show() // undo releaseFocus() so the overlays can appear
 
   const cursor = screen.getCursorScreenPoint()
   const focusDisplay = screen.getDisplayNearestPoint(cursor)
@@ -166,15 +177,21 @@ export function registerOverlayIpc() {
       if (!win.isDestroyed() && win.webContents !== e.sender) win.webContents.send(IPC.clearSelection)
     }
   })
-  ipcMain.on(IPC.cancel, (_e, s: number) => valid(s) && endCapture())
+  ipcMain.on(IPC.cancel, (_e, s: number) => {
+    if (!valid(s)) return
+    endCapture()
+    releaseFocus()
+  })
   ipcMain.on(IPC.copy, (_e, s: number, png: ArrayBuffer) => {
     if (!valid(s)) return
     endCapture()
     copyPng(Buffer.from(png))
+    releaseFocus()
   })
   ipcMain.on(IPC.save, async (_e, s: number, png: ArrayBuffer) => {
     if (!valid(s)) return
     endCapture() // hide first so the save dialog isn't covered by the overlay
     await savePng(Buffer.from(png))
+    releaseFocus()
   })
 }

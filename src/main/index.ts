@@ -1,5 +1,6 @@
 import { app, dialog, globalShortcut, screen } from 'electron'
 import { warmUpCapture } from './capture'
+import { log } from './log'
 import { ensureScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { getSettings } from './settings'
@@ -15,6 +16,7 @@ if (!app.requestSingleInstanceLock()) {
 async function capture() {
   const t0 = Date.now()
   if (!(await ensureScreenPermission())) return
+  log(`hotkey → permission checked in ${Date.now() - t0}ms`)
   await startCapture(t0)
 }
 

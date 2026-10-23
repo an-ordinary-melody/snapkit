@@ -23,6 +23,7 @@ mac:
   identity: null # no Apple Developer account: ad-hoc signed in afterPack instead
   extendInfo:
     LSUIElement: true
+    LSAppNapIsDisabled: true # App Nap made idle captures take seconds to start
     NSScreenCaptureUsageDescription: Snapkit needs to record the screen to take screenshots.
 dmg:
   artifactName: ${productName}-${version}-mac-${arch}.${ext}

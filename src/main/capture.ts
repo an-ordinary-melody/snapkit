@@ -1,4 +1,5 @@
 import { desktopCapturer, screen, type Display } from 'electron'
+import { log } from './log'
 
 export interface ScreenGrab {
   display: Display
@@ -23,7 +24,7 @@ function loadNative() {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     native = require('node-screenshots')
   } catch (err) {
-    console.warn('[capture] node-screenshots unavailable, falling back to desktopCapturer', err)
+    log('[capture] node-screenshots unavailable, falling back to desktopCapturer', err)
     native = null
   }
   return native
@@ -54,12 +55,16 @@ function matchMonitor(display: Display, monitors: NativeMonitor[]): NativeMonito
 async function grabNative(displays: Display[]): Promise<ScreenGrab[] | null> {
   const lib = loadNative()
   if (!lib) return null
+  const t0 = Date.now()
   const monitors = lib.Monitor.all()
+  const tList = Date.now() - t0
   const grabs = await Promise.all(
     displays.map(async (display) => {
       const m = matchMonitor(display, monitors)
       if (!m) throw new Error(`no native monitor for display ${display.id}`)
+      const t1 = Date.now()
       const img = await m.captureImage()
+      log(`[capture] display ${display.id}: list monitors ${tList}ms, native grab ${Date.now() - t1}ms`)
       const pixels = async () => {
         const raw = await img.toRaw()
         return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength)
@@ -103,13 +108,13 @@ export async function grabAllScreens(): Promise<ScreenGrab[]> {
   try {
     const grabs = await grabNative(displays)
     if (grabs) {
-      console.log(`[capture] native grab of ${grabs.length} display(s) in ${Date.now() - t0}ms`)
+      log(`[capture] native grab of ${grabs.length} display(s) in ${Date.now() - t0}ms`)
       return grabs
     }
   } catch (err) {
-    console.warn('[capture] native grab failed, falling back', err)
+    log('[capture] native grab failed, falling back', err)
   }
   const grabs = await grabElectron(displays)
-  console.log(`[capture] electron grab of ${grabs.length} display(s) in ${Date.now() - t0}ms`)
+  log(`[capture] electron grab of ${grabs.length} display(s) in ${Date.now() - t0}ms`)
   return grabs
 }
