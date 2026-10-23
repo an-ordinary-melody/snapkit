@@ -23,6 +23,10 @@ export interface Settings {
   hotkeys: {
     capture: string
   }
+  /** Tool id -> letter key in capture mode. Missing ids use the tool's built-in letter. */
+  toolKeys: Record<string, string>
+  /** Tool id -> variant used at the start (e.g. arrow: 'arrow' for a filled head). Missing ids use the first variant. */
+  toolVariants: Record<string, string>
   capture: {
     /** 0–1 darkness of the area outside the selection. */
     dimOpacity: number
@@ -104,6 +108,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
     capture: 'CommandOrControl+Shift+2'
   },
+  toolKeys: {},
+  toolVariants: {},
   capture: {
     dimOpacity: 0.6,
     showSizeLabel: true,
@@ -185,4 +191,21 @@ export function visibleFeatures(settings: Settings, kind: 'tool' | 'action') {
     .map((id) => FEATURES.find((f) => f.id === id))
     .filter((f): f is (typeof FEATURES)[number] => !!f && f.kind === kind)
     .filter((f) => settings.features[f.id] ?? f.defaultEnabled)
+}
+
+/** A partial settings object: any nested field may be left out. Arrays are replaced whole. */
+export type SettingsPatch = { [K in keyof Settings]?: DeepPartial<Settings[K]> }
+type DeepPartial<T> = T extends unknown[] ? T : T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T
+
+/**
+ * Merge `patch` into the stored overrides (`saved`): objects merge key by key
+ * at any depth; arrays and plain values replace. Returns a new object.
+ */
+export function applyPatch(saved: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...saved }
+  for (const [k, v] of Object.entries(patch)) {
+    const prev = out[k]
+    out[k] = isObj(v) && isObj(prev) ? applyPatch(prev, v) : v
+  }
+  return out
 }

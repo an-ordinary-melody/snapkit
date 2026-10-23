@@ -1,7 +1,6 @@
 import { app, clipboard, dialog, nativeImage, Notification, shell } from 'electron'
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
-import type { Settings } from '@shared/settings'
 import { getSettings, updateSettings } from './settings'
 
 function notify(title: string, body: string, onClick?: () => void) {
@@ -43,7 +42,7 @@ export async function savePng(png: Buffer) {
     })
     if (res.canceled || !res.filePath) return
     target = res.filePath
-    if (dirname(target) !== last) updateSettings({ save: { lastFolder: dirname(target) } as Settings['save'] })
+    if (dirname(target) !== last) updateSettings({ save: { lastFolder: dirname(target) } })
   } else {
     mkdirSync(folder, { recursive: true })
   }

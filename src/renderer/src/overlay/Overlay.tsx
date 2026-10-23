@@ -51,6 +51,8 @@ let lastStyle: Style | null = null
 let lastVariants: Record<string, string> = {}
 /** Beautify preset and tweaks; whether it's on resets to the setting each capture. */
 let lastBeautify: BeautifyState | null = null
+/** Settings the remembered picks above were made under; when they change, the picks reset. */
+let lastDefaults = ''
 
 function initialBeautify(s: Settings): BeautifyState {
   const presets = s.beautify.presets
@@ -177,6 +179,14 @@ export function Overlay() {
       painted.current = deferred()
       // Commit the dim to the DOM before telling main to show the window.
       applyTheme(p.settings.appearance.theme, p.settings.appearance.accent)
+      const defaults = JSON.stringify([p.settings.annotate, p.settings.beautify, p.settings.toolVariants])
+      if (defaults !== lastDefaults) {
+        // New defaults from the settings window win over this session's picks.
+        lastDefaults = defaults
+        lastStyle = null
+        lastBeautify = null
+        lastVariants = {}
+      }
       const doc = p.edit
       const scale = doc ? doc.scale : p.width / window.innerWidth
       flushSync(() => {
@@ -191,6 +201,8 @@ export function Overlay() {
         setStyle(lastStyle ?? initialStyle(p.settings))
         setBeautify(doc ? (doc.beautify as BeautifyState) : initialBeautify(p.settings))
         setFloating(doc ? true : p.settings.pin.afterCopy)
+        // Default shape/arrow styles from settings; picks made this session win.
+        setVariants({ ...p.settings.toolVariants, ...lastVariants })
         setEditorOpen(!!doc)
       })
       if (doc) {
@@ -336,7 +348,11 @@ export function Overlay() {
   /** Letter -> drawing tool, for the tools that are switched on. */
   const toolKeys = useMemo(() => {
     const m = new Map<string, string>()
-    if (cap) for (const f of visibleFeatures(cap.settings, 'tool')) if (f.drawing && f.hint) m.set(f.hint.toLowerCase(), f.id)
+    if (cap)
+      for (const f of visibleFeatures(cap.settings, 'tool')) {
+        const key = cap.settings.toolKeys[f.id] ?? f.hint
+        if (f.drawing && key) m.set(key.toLowerCase(), f.id)
+      }
     return m
   }, [cap])
 
@@ -379,6 +395,10 @@ export function Overlay() {
       } else if (!mod && !e.altKey && sel && toolKeys.has(key)) {
         e.preventDefault()
         void runAction(toolKeys.get(key)!)
+      } else if (mod && e.key === ',') {
+        e.preventDefault()
+        api.openSettings()
+        api.cancel(cap.session)
       } else if (mod && key === 'c') {
         e.preventDefault()
         void runAction('copy')

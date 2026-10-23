@@ -1,4 +1,4 @@
-import type { Settings } from './settings'
+import type { Settings, SettingsPatch } from './settings'
 
 /**
  * Capture mode starts in two steps so the dim appears instantly:
@@ -92,8 +92,26 @@ export const IPC = {
   pinDragOut: 'pin:drag-out',
   pinMenu: 'pin:menu',
   thumbEdit: 'thumb:edit',
-  thumbPin: 'thumb:pin'
+  thumbPin: 'thumb:pin',
+  // settings window
+  openSettings: 'settings:open',
+  settingsGet: 'settings:get',
+  settingsUpdate: 'settings:update',
+  settingsReset: 'settings:reset',
+  settingsChanged: 'settings:changed',
+  settingsSetHotkey: 'settings:set-hotkey',
+  settingsChooseFolder: 'settings:choose-folder',
+  settingsReveal: 'settings:reveal'
 } as const
+
+/** What the settings window gets on load and after every change. */
+export interface SettingsSnapshot {
+  settings: Settings
+  defaults: Settings
+  version: string
+  /** Where captures are saved when no folder is set. */
+  defaultSaveFolder: string
+}
 
 /** API exposed to renderers by the preload script (window.snapkit). */
 export interface SnapkitApi {
@@ -133,4 +151,18 @@ export interface SnapkitApi {
   /** Floating preview: open it in the editor / turn it into a full-size pin. */
   thumbEdit(): void
   thumbPin(): void
+
+  // Settings window
+  openSettings(): void
+  settingsGet(): Promise<SettingsSnapshot>
+  settingsUpdate(patch: SettingsPatch): Promise<SettingsSnapshot>
+  /** Back to the defaults for these sections (all if none). */
+  settingsReset(sections?: (keyof Settings)[]): Promise<SettingsSnapshot>
+  onSettingsChanged(cb: (s: SettingsSnapshot) => void): void
+  /** Change the capture hotkey; resolves to an error message if it can't be used. */
+  settingsSetHotkey(accelerator: string): Promise<string | null>
+  /** Pick a folder; null if cancelled. */
+  settingsChooseFolder(): Promise<string | null>
+  /** Show the log folder or the settings file in Finder / Explorer. */
+  settingsReveal(what: 'logs' | 'settings'): void
 }

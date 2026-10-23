@@ -15,7 +15,7 @@ in settings.
 | 4 | Background, padding, radius presets + apply-on-copy | ✅ |
 | 5 | Pin to screen | ✅ |
 | 6 | Capture history (floating panel, copy back) | ⏳ |
-| 7 | Settings UI + full customization | ⏳ |
+| 7 | Settings UI + full customization | ✅ |
 | 8 | Launch at login, update notifications | ⏳ |
 
 ## Using it
@@ -75,6 +75,8 @@ Annotation test (macOS or Linux, uses its own profile and briefly shows the capt
 
 Pin test: `npm run build && node e2e/pin.mjs /tmp/snapkit-pin`
 
+Settings test: `npm run build && node e2e/settings.mjs /tmp/snapkit-settings`
+
 Install a build on this Mac without waiting for GitHub: `./scripts/update-mac.sh --local "message"`
 
 ### Layout
@@ -85,6 +87,8 @@ Install a build on this Mac without waiting for GitHub: `./scripts/update-mac.sh
 - `src/renderer/src/overlay/`: capture-mode UI. `layout.ts` holds the toolbar placement algorithm and has unit tests.
 - `src/renderer/src/overlay/annotate/`: annotations. `model.ts` is the plain-data shape model and undo history (unit tested); `AnnotationLayer.tsx` draws and edits shapes with Konva; `StyleBar.tsx` is the color/width/text options bar. Per-tool defaults live under `annotate` in settings.
 - `src/renderer/src/overlay/beautify/`: background/padding/radius/shadow. `layout.ts` is the geometry (unit tested), `render.ts` draws it, `BackgroundEditor.tsx` is the full editor. Presets live under `beautify.presets` in settings; a preset background can be `solid`, `gradient` or `image` (a local file path).
+
+**Settings window:** menu-bar menu → Settings… (`⌘,`, also from capture mode). Sections: General (floating preview and background defaults, saving, notifications), Shortcuts (capture hotkey, a letter per tool), Appearance (Liquid Glass / Dark, highlight color, dim, selection color, size label), Toolbar (show/hide and drag to reorder each tool and action, with a preview), Tools (colors, line widths, arrow and shape defaults, text, steps, blur, highlighter), Background (presets: add, edit, duplicate, delete, default) and About (version, logs, settings file, reset all). Changes save and apply immediately; each section can be reset on its own.
 
 Theme: `appearance.theme` is `glass` (Liquid Glass, the default) or `dark`. `appearance.accent` sets a highlight color (default: white in glass, gray in dark).
 

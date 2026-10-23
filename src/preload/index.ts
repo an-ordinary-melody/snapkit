@@ -29,7 +29,16 @@ const api: SnapkitApi = {
   pinDragOut: () => ipcRenderer.send(IPC.pinDragOut),
   pinMenu: () => ipcRenderer.send(IPC.pinMenu),
   thumbEdit: () => ipcRenderer.send(IPC.thumbEdit),
-  thumbPin: () => ipcRenderer.send(IPC.thumbPin)
+  thumbPin: () => ipcRenderer.send(IPC.thumbPin),
+
+  openSettings: () => ipcRenderer.send(IPC.openSettings),
+  settingsGet: () => ipcRenderer.invoke(IPC.settingsGet),
+  settingsUpdate: (patch) => ipcRenderer.invoke(IPC.settingsUpdate, patch),
+  settingsReset: (sections) => ipcRenderer.invoke(IPC.settingsReset, sections),
+  onSettingsChanged: (cb) => ipcRenderer.on(IPC.settingsChanged, (_e, s) => cb(s)),
+  settingsSetHotkey: (acc) => ipcRenderer.invoke(IPC.settingsSetHotkey, acc),
+  settingsChooseFolder: () => ipcRenderer.invoke(IPC.settingsChooseFolder),
+  settingsReveal: (what) => ipcRenderer.send(IPC.settingsReveal, what)
 }
 
 contextBridge.exposeInMainWorld('snapkit', api)

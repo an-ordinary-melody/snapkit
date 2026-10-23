@@ -3,8 +3,9 @@ import { warmUpCapture } from './capture'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { registerPinIpc } from './pin'
-import { getSettings } from './settings'
-import { createTray } from './tray'
+import { getSettings, onSettingsChange, updateSettings } from './settings'
+import { openSettingsWindow, registerSettingsIpc } from './settingsWindow'
+import { createTray, refreshTrayMenu } from './tray'
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -39,6 +40,25 @@ function registerHotkey() {
   }
 }
 
+/** Switch the capture hotkey from the settings window. Keeps the old one if the new one can't be used. */
+function setHotkey(accelerator: string): string | null {
+  const old = getSettings().hotkeys.capture
+  if (accelerator === old) return null
+  globalShortcut.unregister(old)
+  let ok = false
+  try {
+    ok = globalShortcut.register(accelerator, capture)
+  } catch {
+    ok = false // not a valid accelerator
+  }
+  if (!ok) {
+    globalShortcut.register(old, capture)
+    return `${accelerator.replace('CommandOrControl', process.platform === 'darwin' ? '⌘' : 'Ctrl')} can't be used. It may be taken by another app or by the system.`
+  }
+  updateSettings({ hotkeys: { capture: accelerator } })
+  return null
+}
+
 function init() {
   if (process.platform === 'darwin') app.dock?.hide() // menu-bar app, no Dock icon
 
@@ -46,8 +66,14 @@ function init() {
   registerOverlayIpc()
   registerPinIpc()
   rebuildOverlays()
-  createTray(capture)
+  createTray(capture, openSettingsWindow)
   registerHotkey()
+  registerSettingsIpc(setHotkey)
+  // The menu shows the hotkey; reset-to-defaults can change it too.
+  onSettingsChange((s, prev) => {
+    if (s.hotkeys.capture !== prev.hotkeys.capture) registerHotkey()
+    refreshTrayMenu()
+  })
 
   let rebuildTimer: NodeJS.Timeout | undefined
   const scheduleRebuild = () => {

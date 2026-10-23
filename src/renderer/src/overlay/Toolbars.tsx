@@ -42,7 +42,7 @@ function BackgroundIcon({ size }: { size: number }) {
   )
 }
 
-function FeatureIcon({ id, size = 17 }: { id: string; size?: number }) {
+export function FeatureIcon({ id, size = 17 }: { id: string; size?: number }) {
   if (id === 'arrow' || id === 'arrow-open') return <ArrowIcon size={size} open={id === 'arrow-open'} />
   if (id === 'beautify') return <BackgroundIcon size={size} />
   const v = VARIANT_ICONS[id]
@@ -116,7 +116,7 @@ export function Toolbars(props: Props) {
         key={f.id}
         data-id={f.id}
         data-tip={f.implemented ? label : `${label} (coming soon)`}
-        data-hint={f.implemented ? f.hint : undefined}
+        data-hint={f.implemented ? (settings.toolKeys[f.id]?.toUpperCase() ?? f.hint) : undefined}
         data-sub={
           tips[f.id]?.sub ??
           ([f.tipNote, f.variants && (f.variantsHint ?? 'Right-click for more options')].filter(Boolean).join(' · ') || undefined)

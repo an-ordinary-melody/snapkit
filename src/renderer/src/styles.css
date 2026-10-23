@@ -207,7 +207,7 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
 .switch { position: relative; width: 34px; height: 20px; padding: 0; border: 0; border-radius: 10px; background: var(--ui-track); cursor: pointer; transition: background .15s; }
 .switch span { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
 .switch.on { background: var(--ui-accent); }
-.switch.on span { transform: translateX(14px); }
+.switch.on span { transform: translateX(14px); background: var(--ui-on-accent); }
 
 /* Green "on" dot, like an online indicator. */
 .toolbar .on-dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 1.5px #fff; }
