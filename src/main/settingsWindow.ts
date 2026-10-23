@@ -1,8 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, nativeTheme, shell } from 'electron'
 import { join } from 'path'
 import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from '@shared/settings'
 import { IPC, type SettingsSnapshot } from '@shared/ipc'
+import { engineInfo } from './capture'
 import { defaultSaveFolder } from './output'
+import { ipcHandle, ipcOn } from './security'
 import { getSettings, onSettingsChange, resetSettings, settingsFile, updateSettings } from './settings'
 
 const isMac = process.platform === 'darwin'
@@ -12,7 +14,8 @@ const snapshot = (): SettingsSnapshot => ({
   settings: getSettings(),
   defaults: DEFAULT_SETTINGS,
   version: app.getVersion(),
-  defaultSaveFolder: defaultSaveFolder()
+  defaultSaveFolder: defaultSaveFolder(),
+  engines: engineInfo()
 })
 
 /** Open (or bring forward) the settings window. */
@@ -36,7 +39,7 @@ export function openSettingsWindow() {
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 18 }, vibrancy: glass ? ('sidebar' as const) : undefined, visualEffectState: 'active' as const }
       : { backgroundMaterial: 'mica' as const, autoHideMenuBar: true }),
     backgroundColor: '#00000000', // the page paints its own background when glass is off
-    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true }
   })
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL + '#settings')
   else win.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'settings' })
@@ -51,22 +54,22 @@ export function openSettingsWindow() {
  * shortcut can't be registered (the old one is kept then).
  */
 export function registerSettingsIpc(setHotkey: (accelerator: string) => string | null) {
-  ipcMain.on(IPC.openSettings, () => openSettingsWindow())
-  ipcMain.handle(IPC.settingsGet, () => snapshot())
-  ipcMain.handle(IPC.settingsUpdate, (_e, patch: SettingsPatch) => {
+  ipcOn(IPC.openSettings, () => openSettingsWindow())
+  ipcHandle(IPC.settingsGet, () => snapshot())
+  ipcHandle(IPC.settingsUpdate, (_e, patch: SettingsPatch) => {
     updateSettings(patch)
     return snapshot()
   })
-  ipcMain.handle(IPC.settingsReset, (_e, sections?: (keyof Settings)[]) => {
+  ipcHandle(IPC.settingsReset, (_e, sections?: (keyof Settings)[]) => {
     resetSettings(sections)
     return snapshot()
   })
-  ipcMain.handle(IPC.settingsSetHotkey, (_e, accelerator: string) => setHotkey(accelerator))
-  ipcMain.handle(IPC.settingsChooseFolder, async () => {
+  ipcHandle(IPC.settingsSetHotkey, (_e, accelerator: string) => setHotkey(accelerator))
+  ipcHandle(IPC.settingsChooseFolder, async () => {
     const res = await dialog.showOpenDialog(win ?? undefined!, { properties: ['openDirectory', 'createDirectory'], defaultPath: defaultSaveFolder() })
     return res.canceled ? null : (res.filePaths[0] ?? null)
   })
-  ipcMain.on(IPC.settingsReveal, (_e, what: 'logs' | 'settings') => {
+  ipcOn(IPC.settingsReveal, (_e, what: 'logs' | 'settings') => {
     if (what === 'logs') void shell.openPath(app.getPath('logs'))
     else shell.showItemInFolder(settingsFile())
   })

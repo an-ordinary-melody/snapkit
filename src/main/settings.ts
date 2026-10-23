@@ -35,15 +35,33 @@ export function onSettingsChange(fn: (s: Settings, prev: Settings) => void) {
   return () => listeners.delete(fn)
 }
 
+let flushTimer: NodeJS.Timeout | null = null
+let dirty = false
+
+/** Write the stored overrides to disk now (atomically, so a crash never leaves a half-written file). */
+export function flushSettings() {
+  if (flushTimer) clearTimeout(flushTimer)
+  flushTimer = null
+  if (!saved || !dirty) return
+  dirty = false
+  const path = settingsFile()
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path + '.tmp', JSON.stringify(saved, null, 2))
+  renameSync(path + '.tmp', path)
+}
+
+/**
+ * Apply a change in memory right away and write it to disk shortly after:
+ * dragging a slider makes many changes a second, and each one would
+ * otherwise rewrite the file.
+ */
 function write(next: Record<string, unknown>) {
   const prev = getSettings()
   saved = next
   current = mergeSettings(DEFAULT_SETTINGS, next)
-  const path = settingsFile()
-  mkdirSync(dirname(path), { recursive: true })
-  // Write atomically so a crash never leaves a half-written settings file.
-  writeFileSync(path + '.tmp', JSON.stringify(next, null, 2))
-  renameSync(path + '.tmp', path)
+  dirty = true
+  if (flushTimer) clearTimeout(flushTimer)
+  flushTimer = setTimeout(flushSettings, 100)
   for (const fn of listeners) fn(current, prev)
   return current
 }

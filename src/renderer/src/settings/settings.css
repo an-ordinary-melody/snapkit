@@ -172,3 +172,19 @@
   position: absolute; right: -3px; top: -3px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%;
   background: var(--ui-switch-on, #0a84ff); color: #fff; box-shadow: 0 0 0 1.5px var(--st-card);
 }
+
+/* File name builder: fields side by side, then a labeled preview. */
+.st-namer { flex-wrap: wrap; align-items: flex-start; }
+.st-namer > .st-label { flex: 1 0 100%; }
+.st-namer-fields { display: flex; flex-wrap: wrap; gap: 14px; width: 100%; }
+.st-field { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: var(--ui-fg-dim); }
+.st-field .st-input { width: 170px; }
+.st-namer-preview {
+  width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 10px; border-radius: 8px;
+  background: var(--ui-field); font-size: 12.5px; font-variant-numeric: tabular-nums;
+}
+.st-part { padding: 2px 7px; border-radius: 5px; }
+.st-part.text { background: rgba(10,132,255,.16); color: var(--ui-fg); }
+.st-part.date { background: rgba(52,199,89,.18); color: var(--ui-fg); }
+.st-part.number { background: rgba(255,159,10,.2); color: var(--ui-fg); }
+.st-ext { color: var(--ui-fg-faint); }

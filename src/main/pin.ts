@@ -1,8 +1,9 @@
-import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, screen, type Rectangle } from 'electron'
+import { app, BrowserWindow, clipboard, Menu, nativeImage, screen, type Rectangle } from 'electron'
 import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { IPC, type CaptureDoc, type PinState } from '@shared/ipc'
 import { log } from './log'
+import { ipcOn } from './security'
 import { savePng, timestampName } from './output'
 import { getSettings } from './settings'
 import { startEdit } from './overlay'
@@ -60,7 +61,7 @@ function floatingWindow(bounds: Rectangle) {
     acceptFirstMouse: true,
     // A panel floats over full-screen apps on macOS.
     ...(isMac ? { type: 'panel' as const } : {}),
-    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true }
   })
   win.setAlwaysOnTop(true, 'floating')
   if (isMac) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
@@ -201,14 +202,14 @@ function showMenu(p: Pin) {
 export function registerPinIpc() {
   const of = (e: Electron.IpcMainEvent) => pins.get(e.sender.id)
 
-  ipcMain.on(IPC.pinReady, (e) => {
+  ipcOn(IPC.pinReady, (e) => {
     const p = of(e)
     if (!p) return
     p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(p.png), appearance: getSettings().appearance })
     sendState(p)
     p.win.showInactive() // don't take focus from the app the user is in
   })
-  ipcMain.on(IPC.pinMoveBy, (e, dx: number, dy: number) => {
+  ipcOn(IPC.pinMoveBy, (e, dx: number, dy: number) => {
     const p = of(e)
     if (!p) return
     const [x, y] = p.win.getPosition()
@@ -218,39 +219,39 @@ export function registerPinIpc() {
       layoutThumbs(p.displayId) // the others close the gap
     }
   })
-  ipcMain.on(IPC.pinZoom, (e, z: number, ax: number, ay: number) => {
+  ipcOn(IPC.pinZoom, (e, z: number, ax: number, ay: number) => {
     const p = of(e)
     if (p) setZoom(p, z, ax, ay)
   })
-  ipcMain.on(IPC.pinOpacity, (e, o: number) => {
+  ipcOn(IPC.pinOpacity, (e, o: number) => {
     const p = of(e)
     if (p) setOpacity(p, o)
   })
-  ipcMain.on(IPC.pinCopy, (e) => {
+  ipcOn(IPC.pinCopy, (e) => {
     const p = of(e)
     if (p) clipboard.writeImage(nativeImage.createFromBuffer(p.png))
   })
-  ipcMain.on(IPC.pinSave, (e) => {
+  ipcOn(IPC.pinSave, (e) => {
     const p = of(e)
     if (p) void savePng(p.png)
   })
-  ipcMain.on(IPC.pinClose, (e) => of(e)?.win.close())
-  ipcMain.on(IPC.pinMenu, (e) => {
+  ipcOn(IPC.pinClose, (e) => of(e)?.win.close())
+  ipcOn(IPC.pinMenu, (e) => {
     const p = of(e)
     if (p?.kind === 'pin') showMenu(p)
   })
-  ipcMain.on(IPC.thumbEdit, (e) => {
+  ipcOn(IPC.thumbEdit, (e) => {
     const p = of(e)
     if (p?.doc) void startEdit(p.doc, (png, doc) => !p.win.isDestroyed() && updateThumb(p, png, doc))
   })
-  ipcMain.on(IPC.thumbPin, (e) => {
+  ipcOn(IPC.thumbPin, (e) => {
     const p = of(e)
     if (!p?.rect) return
     createPin(p.png, p.rect)
     p.win.close()
   })
   // Drag the image into another app as a PNG file.
-  ipcMain.on(IPC.pinDragOut, (e) => {
+  ipcOn(IPC.pinDragOut, (e) => {
     const p = of(e)
     if (!p) return
     const icon = nativeImage.createFromBuffer(p.png).resize({ width: Math.min(160, p.base.w) })

@@ -34,6 +34,8 @@ export interface Settings {
     showSizeLabel: boolean
     /** Selection outline color. */
     accentColor: string
+    /** Screen capture engine: 'auto' (the fastest that works on this OS) or an engine id. */
+    engine: string
   }
   save: {
     /** Empty string = default folder (Pictures/Snapkit). */
@@ -128,7 +130,8 @@ export const DEFAULT_SETTINGS: Settings = {
   capture: {
     dimOpacity: 0.6,
     showSizeLabel: true,
-    accentColor: '#3b82f6'
+    accentColor: '#3b82f6',
+    engine: 'auto'
   },
   save: {
     folder: '',

@@ -6,6 +6,7 @@ import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import { copyPng, savePng } from './output'
 import { log } from './log'
+import { ipcHandle, ipcOn } from './security'
 import { createThumb, hasPins } from './pin'
 
 const isMac = process.platform === 'darwin'
@@ -49,7 +50,7 @@ function createOverlay(display: Display): BrowserWindow {
     ...(isMac ? { type: 'panel' as const } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true,
       backgroundThrottling: false
     }
@@ -217,7 +218,7 @@ function waitFor(channel: string, win: BrowserWindow, session: number | null, ti
       ipcMain.off(channel, onMsg)
       resolve()
     }
-    ipcMain.on(channel, onMsg)
+    ipcOn(channel, onMsg)
   })
 }
 
@@ -226,9 +227,11 @@ const IMAGE_TYPES = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '
 export function registerOverlayIpc() {
   const valid = (s: number) => active && s === session
 
-  // Image backgrounds for beautify: only image files, and not huge ones.
-  ipcMain.handle(IPC.readImage, async (_e, path: unknown) => {
+  // Image backgrounds for beautify: only image files a background setting points at, and not huge ones.
+  ipcHandle(IPC.readImage, async (_e, path: unknown) => {
     if (typeof path !== 'string' || !IMAGE_TYPES.has(extname(path).toLowerCase())) return null
+    const allowed = getSettings().beautify.presets.some((p) => p.background.type === 'image' && p.background.path === path)
+    if (!allowed) return null
     try {
       if ((await stat(path)).size > 40 * 1024 * 1024) return null
       return new Uint8Array(await readFile(path))
@@ -238,18 +241,18 @@ export function registerOverlayIpc() {
     }
   })
 
-  ipcMain.on(IPC.selectionStarted, (e, s: number) => {
+  ipcOn(IPC.selectionStarted, (e, s: number) => {
     if (!valid(s)) return
     for (const win of overlays.values()) {
       if (!win.isDestroyed() && win.webContents !== e.sender) win.webContents.send(IPC.clearSelection)
     }
   })
-  ipcMain.on(IPC.cancel, (_e, s: number) => {
+  ipcOn(IPC.cancel, (_e, s: number) => {
     if (!valid(s)) return
     endCapture()
     releaseFocus()
   })
-  ipcMain.on(IPC.copy, (e, s: number, png: ArrayBuffer, extra?: CopyExtra) => {
+  ipcOn(IPC.copy, (e, s: number, png: ArrayBuffer, extra?: CopyExtra) => {
     if (!valid(s)) return
     const target = editTarget
     const origin = BrowserWindow.fromWebContents(e.sender)?.getBounds() ?? { x: 0, y: 0 }
@@ -263,13 +266,13 @@ export function registerOverlayIpc() {
     }
     releaseFocus()
   })
-  ipcMain.on(IPC.editDone, (_e, s: number, png: ArrayBuffer, doc: CaptureDoc) => {
+  ipcOn(IPC.editDone, (_e, s: number, png: ArrayBuffer, doc: CaptureDoc) => {
     if (!valid(s)) return
     editTarget?.(Buffer.from(png), doc)
     endCapture()
     releaseFocus()
   })
-  ipcMain.on(IPC.save, async (_e, s: number, png: ArrayBuffer) => {
+  ipcOn(IPC.save, async (_e, s: number, png: ArrayBuffer) => {
     if (!valid(s)) return
     endCapture() // hide first so the save dialog isn't covered by the overlay
     await savePng(Buffer.from(png))

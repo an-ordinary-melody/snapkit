@@ -1,6 +1,6 @@
 import { FolderOpen, RotateCcw } from 'lucide-react'
 import { FEATURES } from '@shared/features'
-import { fileName } from '@shared/naming'
+import { dateStamp, fileName, type NameRule } from '@shared/naming'
 import { ColorField, Group, HotkeyField, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
 import type { SectionProps } from './Settings'
 
@@ -23,45 +23,7 @@ export function General({ snap, set }: SectionProps) {
         <Row label="Ask where to save" desc="Off: save straight to the folder below.">
           <Toggle label="Ask where to save" value={s.save.askLocation} onChange={(v) => set({ save: { askLocation: v } })} />
         </Row>
-        <Row label="File name" desc={`Example: ${fileName(s.save.name, new Date(), s.save.nextNumber)}`}>
-          <input
-            className="st-input wide"
-            aria-label="File name text"
-            placeholder="Text"
-            value={s.save.name.text}
-            onChange={(e) => set({ save: { name: { text: e.target.value } } })}
-          />
-        </Row>
-        <Row label="Date and time" desc="Like 2026-10-24 at 05.30.12.">
-          <Segmented
-            label="Date position"
-            value={s.save.name.date}
-            options={[
-              { value: 'none', label: 'None' },
-              { value: 'before', label: 'Before' },
-              { value: 'after', label: 'After' }
-            ]}
-            onChange={(date) => set({ save: { name: { date } } })}
-          />
-        </Row>
-        <Row label="Number" desc="Counts up with each save.">
-          <Segmented
-            label="Number position"
-            value={s.save.name.number}
-            options={[
-              { value: 'none', label: 'None' },
-              { value: 'before', label: 'Before' },
-              { value: 'after', label: 'After' }
-            ]}
-            onChange={(number) => set({ save: { name: { number } } })}
-          />
-        </Row>
-        {s.save.name.number !== 'none' && (
-          <Row label="Next number" desc="Digits: how many places, padded with zeros.">
-            <NumberField label="Next number" min={0} max={99999999} value={s.save.nextNumber} onChange={(nextNumber) => set({ save: { nextNumber } })} />
-            <NumberField label="Digits" min={1} max={8} value={s.save.name.digits} unit="digits" onChange={(digits) => set({ save: { name: { digits } } })} />
-          </Row>
-        )}
+        <NameBuilder rule={s.save.name} next={s.save.nextNumber} set={set} />
         <Row label="Screenshots folder" desc={s.save.folder || `${snap.defaultSaveFolder} (default)`}>
           <button
             className="st-btn"
@@ -204,13 +166,26 @@ export function Appearance({ snap, set }: SectionProps) {
   )
 }
 
-export function About({ snap }: SectionProps) {
+export function About({ snap, set }: SectionProps) {
   return (
     <>
       <div className="st-about">
         <div className="st-app">Snapkit</div>
         <div className="st-muted">Version {snap.version}</div>
       </div>
+      <Group title="Advanced">
+        <Row label="Capture engine" desc="How screens are grabbed. Auto uses the fastest one that works and falls back if it fails.">
+          <select className="st-select" aria-label="Capture engine" value={snap.settings.capture.engine} onChange={(e) => set({ capture: { engine: e.target.value } })}>
+            <option value="auto">Auto</option>
+            {snap.engines.map((e) => (
+              <option key={e.id} value={e.id} disabled={!e.available}>
+                {e.label}
+                {e.available ? '' : ' (not available)'}
+              </option>
+            ))}
+          </select>
+        </Row>
+      </Group>
       <Group>
         <Row label="Check for updates" desc="In a later update." disabled>
           <button className="st-btn" disabled>
@@ -239,5 +214,69 @@ export function About({ snap }: SectionProps) {
         </Row>
       </Group>
     </>
+  )
+}
+
+/**
+ * File name, all in one place: the text, the date and the number side by
+ * side, and a preview with each part labeled in the order it will appear.
+ */
+function NameBuilder({ rule, next, set }: { rule: NameRule; next: number; set: SectionProps['set'] }) {
+  const now = new Date()
+  const where = [
+    { value: 'none' as const, label: 'Off' },
+    { value: 'before' as const, label: 'Before' },
+    { value: 'after' as const, label: 'After' }
+  ]
+  const num = String(next).padStart(rule.digits, '0')
+  const parts: { kind: string; text: string }[] = [
+    rule.number === 'before' && { kind: 'number', text: num },
+    rule.date === 'before' && { kind: 'date', text: dateStamp(now) },
+    rule.text.trim() && { kind: 'text', text: rule.text.trim() },
+    rule.date === 'after' && { kind: 'date', text: dateStamp(now) },
+    rule.number === 'after' && { kind: 'number', text: num }
+  ].filter(Boolean) as { kind: string; text: string }[]
+  return (
+    <div className="st-row st-namer">
+      <div className="st-label">
+        <span>File name</span>
+        <small>Text, plus the date and time and/or a number that counts up with each save.</small>
+      </div>
+      <div className="st-namer-fields">
+        <label className="st-field">
+          <span>Text</span>
+          <input className="st-input" aria-label="File name text" placeholder="Snapkit" value={rule.text} onChange={(e) => set({ save: { name: { text: e.target.value } } })} />
+        </label>
+        <div className="st-field">
+          <span>Date and time</span>
+          <Segmented label="Date position" value={rule.date} options={where} onChange={(date) => set({ save: { name: { date } } })} />
+        </div>
+        <div className="st-field">
+          <span>Number</span>
+          <Segmented label="Number position" value={rule.number} options={where} onChange={(number) => set({ save: { name: { number } } })} />
+        </div>
+        {rule.number !== 'none' && (
+          <div className="st-field">
+            <span>Next · digits</span>
+            <span className="st-control">
+              <NumberField label="Next number" min={0} max={99999999} value={next} onChange={(nextNumber) => set({ save: { nextNumber } })} />
+              <NumberField label="Digits" min={1} max={8} value={rule.digits} onChange={(digits) => set({ save: { name: { digits } } })} />
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="st-namer-preview" aria-label={`Example: ${fileName(rule, now, next)}`}>
+        {parts.length ? (
+          parts.map((p, i) => (
+            <span key={i} className={`st-part ${p.kind}`} title={p.kind === 'text' ? 'Text' : p.kind === 'date' ? 'Date and time' : 'Number'}>
+              {p.text}
+            </span>
+          ))
+        ) : (
+          <span className="st-part date">{dateStamp(now)}</span>
+        )}
+        <span className="st-ext">.png</span>
+      </div>
+    </div>
   )
 }

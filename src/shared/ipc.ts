@@ -110,6 +110,8 @@ export interface SettingsSnapshot {
   version: string
   /** Where captures are saved when no folder is set. */
   defaultSaveFolder: string
+  /** Screen capture engines for this OS, in the order Auto tries them. */
+  engines: { id: string; label: string; available: boolean }[]
 }
 
 /** API exposed to renderers by the preload script (window.snapkit). */

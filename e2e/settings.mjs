@@ -18,7 +18,8 @@ const windowFor = (view) => app.windows().find((w) => w.url().endsWith('#' + vie
 
 try {
   await wait(2500)
-  await app.evaluate(({ ipcMain }) => ipcMain.emit('settings:open', {}))
+  // As if the overlay sent it (IPC is only accepted from Snapkit's own pages).
+  await app.evaluate(({ ipcMain }) => ipcMain.emit('settings:open', { senderFrame: { url: 'file:///app/out/renderer/index.html#overlay' } }))
   await wait(1500)
   const st = windowFor('settings')
   const errors = []
@@ -42,10 +43,10 @@ try {
   await st.click('button[aria-label="Notify when copied"]')
   // File naming: "Bug" + number after.
   await st.fill('input[aria-label="File name text"]', 'Bug')
-  await st.click('.st-seg[aria-label="Date position"] button:has-text("None")')
+  await st.click('.st-seg[aria-label="Date position"] button:has-text("Off")')
   await st.click('.st-seg[aria-label="Number position"] button:has-text("After")')
   await wait(200)
-  console.log('name example:', await st.$eval('.st-row:has-text("File name") small', (e) => e.textContent))
+  console.log('name preview:', await st.$eval('.st-namer-preview', (e) => e.getAttribute('aria-label')))
 
   // Shortcuts: record a new capture hotkey, change a tool letter.
   await section('Shortcuts')

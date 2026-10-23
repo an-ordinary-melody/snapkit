@@ -1,15 +1,19 @@
 import { app, dialog, globalShortcut, screen } from 'electron'
-import { warmUpCapture } from './capture'
+import { rmSync } from 'fs'
+import { join } from 'path'
+import { setPreferredEngine, warmUpCapture } from './capture'
+import { lockDownWebContents } from './security'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { registerPinIpc } from './pin'
-import { getSettings, onSettingsChange, updateSettings } from './settings'
+import { flushSettings, getSettings, onSettingsChange, updateSettings } from './settings'
 import { openSettingsWindow, registerSettingsIpc } from './settingsWindow'
 import { createTray, refreshTrayMenu } from './tray'
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
+  lockDownWebContents()
   app.on('second-instance', capture)
   app.whenReady().then(init)
 }
@@ -62,6 +66,9 @@ function setHotkey(accelerator: string): string | null {
 function init() {
   if (process.platform === 'darwin') app.dock?.hide() // menu-bar app, no Dock icon
 
+  // Drag-out files left by a previous run (pins are gone, so are their files).
+  rmSync(join(app.getPath('temp'), 'Snapkit'), { recursive: true, force: true })
+  setPreferredEngine(getSettings().capture.engine)
   warmUpCapture()
   registerOverlayIpc()
   registerPinIpc()
@@ -72,6 +79,7 @@ function init() {
   // The menu shows the hotkey; reset-to-defaults can change it too.
   onSettingsChange((s, prev) => {
     if (s.hotkeys.capture !== prev.hotkeys.capture) registerHotkey()
+    if (s.capture.engine !== prev.capture.engine) setPreferredEngine(s.capture.engine)
     refreshTrayMenu()
   })
 
@@ -87,4 +95,7 @@ function init() {
 
 // Keep running in the tray when windows close.
 app.on('window-all-closed', () => {})
-app.on('will-quit', () => globalShortcut.unregisterAll())
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
+  flushSettings() // a change made just before quitting still gets saved
+})

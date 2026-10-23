@@ -83,7 +83,10 @@ Install a build on this Mac without waiting for GitHub: `./scripts/update-mac.sh
 
 - `src/shared/features.ts`: **feature registry**. Every tool and action is declared here, and the toolbars render from it filtered by settings.
 - `src/shared/settings.ts`: settings schema, defaults and merge logic.
-- `src/main/`: tray, hotkey, screen capture (`node-screenshots` with a `desktopCapturer` fallback), overlay window manager, copy/save.
+- `src/main/`: tray, hotkey, overlay window manager, pins, settings window, copy/save.
+- `src/main/capture/`: swappable screen capture engines. Each engine implements `CaptureEngine` (`types.ts`); `order.ts` sets the order per OS (fastest first, always-available last) with automatic fallback, and Settings → About → Capture engine can force one. Today: `node-screenshots` (native) and Electron's `desktopCapturer`. A new engine (e.g. ScreenCaptureKit or DXGI) is one file plus a line in `index.ts`.
+- `src/main/security.ts`: IPC is only accepted from Snapkit's own pages; windows can't navigate, open windows or embed webviews. All windows run sandboxed with context isolation; the packaged app has Electron fuses set (no run-as-Node, no Node debug flags, code only from app.asar).
+- `docs/history.md`: the plan for capture history (what's kept, limits and clearing).
 - `src/renderer/src/overlay/`: capture-mode UI. `layout.ts` holds the toolbar placement algorithm and has unit tests.
 - `src/renderer/src/overlay/annotate/`: annotations. `model.ts` is the plain-data shape model and undo history (unit tested); `AnnotationLayer.tsx` draws and edits shapes with Konva; `StyleBar.tsx` is the color/width/text options bar. Per-tool defaults live under `annotate` in settings.
 - `src/renderer/src/overlay/beautify/`: background/padding/radius/shadow. `layout.ts` is the geometry (unit tested), `render.ts` draws it, `BackgroundEditor.tsx` is the full editor. Presets live under `beautify.presets` in settings; a preset background can be `solid`, `gradient` or `image` (a local file path).
