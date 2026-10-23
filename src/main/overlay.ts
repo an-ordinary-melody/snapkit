@@ -6,6 +6,7 @@ import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import { copyPng, savePng } from './output'
 import { log } from './log'
+import { createPin, hasPins } from './pin'
 
 const isMac = process.platform === 'darwin'
 
@@ -99,7 +100,10 @@ function endCapture() {
  * is slow or seems to do nothing until the user clicks elsewhere.
  */
 function releaseFocus() {
-  if (isMac) app.hide()
+  if (!isMac) return
+  app.hide()
+  // Hiding the app hides pins too: bring them back without taking focus.
+  if (hasPins()) app.show()
 }
 
 export async function startCapture(t0 = Date.now()) {
@@ -219,6 +223,15 @@ export function registerOverlayIpc() {
     if (!valid(s)) return
     endCapture()
     copyPng(Buffer.from(png))
+    releaseFocus()
+  })
+  ipcMain.on(IPC.pin, (e, s: number, png: ArrayBuffer, rect: { x: number; y: number; w: number; h: number }) => {
+    if (!valid(s)) return
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const origin = win?.getBounds() ?? { x: 0, y: 0 }
+    endCapture()
+    // Create the pin first, so handing focus back keeps it on screen.
+    createPin(Buffer.from(png), { x: origin.x + rect.x, y: origin.y + rect.y, width: rect.w, height: rect.h })
     releaseFocus()
   })
   ipcMain.on(IPC.save, async (_e, s: number, png: ArrayBuffer) => {

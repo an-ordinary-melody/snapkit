@@ -1,6 +1,7 @@
 import { app, Menu, nativeImage, shell, Tray } from 'electron'
 import { join } from 'path'
 import { defaultSaveFolder } from './output'
+import { closeAllPins } from './pin'
 import { getSettings } from './settings'
 
 let tray: Tray | null = null
@@ -27,6 +28,7 @@ export function refreshTrayMenu(onCapture: () => void) {
       { label: 'Capture Area', accelerator: hotkey, click: onCapture },
       { type: 'separator' },
       { label: 'Open Screenshots Folder', click: () => shell.openPath(defaultSaveFolder()) },
+      { label: 'Close All Pins', click: closeAllPins },
       { label: 'Settings… (coming soon)', enabled: false },
       { type: 'separator' },
       { label: `Snapkit ${app.getVersion()}`, enabled: false },

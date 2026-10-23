@@ -16,7 +16,7 @@ export function copyPng(png: Buffer) {
   if (getSettings().notifications.onCopy) notify('Copied', 'Screenshot copied to clipboard')
 }
 
-function timestampName() {
+export function timestampName() {
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, '0')
   return `Snapkit ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} at ${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}.png`

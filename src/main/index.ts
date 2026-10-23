@@ -2,6 +2,7 @@ import { app, dialog, globalShortcut, screen } from 'electron'
 import { warmUpCapture } from './capture'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
+import { registerPinIpc } from './pin'
 import { getSettings } from './settings'
 import { createTray } from './tray'
 
@@ -43,6 +44,7 @@ function init() {
 
   warmUpCapture()
   registerOverlayIpc()
+  registerPinIpc()
   rebuildOverlays()
   createTray(capture)
   registerHotkey()

@@ -14,7 +14,20 @@ const api: SnapkitApi = {
   copy: (s, png) => ipcRenderer.send(IPC.copy, s, png),
   save: (s, png) => ipcRenderer.send(IPC.save, s, png),
   cancel: (s) => ipcRenderer.send(IPC.cancel, s),
-  readImage: (path) => ipcRenderer.invoke(IPC.readImage, path)
+  pin: (s, png, rect) => ipcRenderer.send(IPC.pin, s, png, rect),
+  readImage: (path) => ipcRenderer.invoke(IPC.readImage, path),
+
+  onPinImage: (cb) => ipcRenderer.on(IPC.pinImage, (_e, p) => cb(p)),
+  onPinState: (cb) => ipcRenderer.on(IPC.pinState, (_e, p) => cb(p)),
+  pinReady: () => ipcRenderer.send(IPC.pinReady),
+  pinMoveBy: (dx, dy) => ipcRenderer.send(IPC.pinMoveBy, dx, dy),
+  pinZoom: (z, ax, ay) => ipcRenderer.send(IPC.pinZoom, z, ax, ay),
+  pinOpacity: (o) => ipcRenderer.send(IPC.pinOpacity, o),
+  pinCopy: () => ipcRenderer.send(IPC.pinCopy),
+  pinSave: () => ipcRenderer.send(IPC.pinSave),
+  pinClose: () => ipcRenderer.send(IPC.pinClose),
+  pinDragOut: () => ipcRenderer.send(IPC.pinDragOut),
+  pinMenu: () => ipcRenderer.send(IPC.pinMenu)
 }
 
 contextBridge.exposeInMainWorld('snapkit', api)

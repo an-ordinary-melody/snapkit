@@ -13,7 +13,7 @@ in settings.
 | 2 | Smart toolbars (auto-placed outside or inside the selection) | ✅ |
 | 3 | Annotations (pen, arrow, shapes, text, blur, steps, undo) | ✅ |
 | 4 | Background, padding, radius presets + apply-on-copy | ✅ |
-| 5 | Pin to screen | ⏳ |
+| 5 | Pin to screen | ✅ |
 | 6 | Capture history (floating panel, copy back) | ⏳ |
 | 7 | Settings UI + full customization | ⏳ |
 | 8 | Launch at login, update notifications | ⏳ |
@@ -31,6 +31,7 @@ in settings.
 - **Style bar:** colors (the rainbow swatch opens a custom color picker; custom colors are remembered until Snapkit quits), stroke width, text options, and blur (default) / pixelate with a strength slider. A blur area updates live while you move or resize it. The palette button shows or hides it.
 - **Undo / redo:** `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`).
 - Hover any button for its name and shortcut.
+- **Pin to screen:** the pin button turns the result (with drawings, and the background if it's on) into a floating window right where you captured it. It stays on top of everything, on every Space and over full-screen apps. Drag to move, scroll to zoom (around the cursor), ⌥ + scroll for opacity, ⌥-drag the image (or the grip in its hover bar) to drop it into another app as a PNG. The hover bar has zoom, opacity, copy and save; right-click for the menu; `Esc` or × closes it. You can have several pins; "Close All Pins" is in the menu-bar menu.
 - **Background (beautify):** the image button in the action bar turns the background on or off for this capture; it's highlighted with a green dot while on. While it's on, copy and save include it. It starts on or off according to `beautify.applyOnCopy`.
 - **Edit background:** the magic-wand button opens a full editor with a live preview and all the drawing tools, so you can finish the image there. Choose Gradient or Color (Image comes later): the colors in use are shown with editable hex values, a random button and a hue slider, above 32 gradient or 32 color presets. Also: settings presets, output size (Auto, 1:1, 16:9, 4:3, 9:16 or custom px), padding / corners / shadow. The switch at the top previews with or without the background. Esc steps back one level (stops typing, then deselects, then leaves the editor); Copy, Save or Done.
 
@@ -70,6 +71,10 @@ npm run build:mac  # or build:win (run on that OS)
 Linux smoke test (Xvfb): `npm run build && xvfb-run -a node e2e/smoke.mjs`
 
 Annotation test (macOS or Linux, uses its own profile and briefly shows the capture overlay): `npm run build && node e2e/annotate.mjs /tmp/snapkit-e2e`
+
+Pin test: `npm run build && node e2e/pin.mjs /tmp/snapkit-pin`
+
+Install a build on this Mac without waiting for GitHub: `./scripts/update-mac.sh --local "message"`
 
 ### Layout
 

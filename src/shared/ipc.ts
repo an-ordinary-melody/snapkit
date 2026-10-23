@@ -24,6 +24,17 @@ export interface PixelsPayload {
   height: number
 }
 
+/** Sent to a pin window once it has loaded. */
+export interface PinImagePayload {
+  png: Uint8Array
+}
+
+/** What a pin window shows in its HUD and menus. */
+export interface PinState {
+  zoom: number
+  opacity: number
+}
+
 export const IPC = {
   // main -> overlay
   arm: 'capture:arm',
@@ -38,7 +49,21 @@ export const IPC = {
   copy: 'capture:copy',
   save: 'capture:save',
   cancel: 'capture:cancel',
-  readImage: 'beautify:read-image'
+  pin: 'capture:pin',
+  readImage: 'beautify:read-image',
+  // main -> pin
+  pinImage: 'pin:image',
+  pinState: 'pin:state',
+  // pin -> main
+  pinReady: 'pin:ready',
+  pinMoveBy: 'pin:move-by',
+  pinZoom: 'pin:zoom',
+  pinOpacity: 'pin:opacity',
+  pinCopy: 'pin:copy',
+  pinSave: 'pin:save',
+  pinClose: 'pin:close',
+  pinDragOut: 'pin:drag-out',
+  pinMenu: 'pin:menu'
 } as const
 
 /** API exposed to renderers by the preload script (window.snapkit). */
@@ -55,6 +80,24 @@ export interface SnapkitApi {
   copy(session: number, png: ArrayBuffer): void
   save(session: number, png: ArrayBuffer): void
   cancel(session: number): void
+  /** Turn the output into a pin at `rect` (overlay CSS px). */
+  pin(session: number, png: ArrayBuffer, rect: { x: number; y: number; w: number; h: number }): void
   /** Bytes of a local image file (for image backgrounds), or null if it can't be read. */
   readImage(path: string): Promise<Uint8Array | null>
+
+  // Pin windows
+  onPinImage(cb: (p: PinImagePayload) => void): void
+  onPinState(cb: (s: PinState) => void): void
+  pinReady(): void
+  /** Move the pin window by (dx, dy) screen px. */
+  pinMoveBy(dx: number, dy: number): void
+  /** Set the zoom (1 = 100%), keeping the point at (ax, ay) — fractions of the window — still. */
+  pinZoom(zoom: number, ax: number, ay: number): void
+  pinOpacity(opacity: number): void
+  pinCopy(): void
+  pinSave(): void
+  pinClose(): void
+  /** Start dragging the image out as a file (call from a dragstart handler). */
+  pinDragOut(): void
+  pinMenu(): void
 }

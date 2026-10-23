@@ -233,12 +233,13 @@ export function Overlay() {
         return
       }
       if (!sel) return
-      if (id === 'copy' || id === 'save') {
+      if (id === 'copy' || id === 'save' || id === 'pin') {
         busy.current = true
         try {
           flushSync(() => setSelectedId(null))
           const png = await cropToPng(sel)
           if (id === 'copy') api.copy(cap.session, png)
+          else if (id === 'pin') api.pin(cap.session, png, sel)
           else api.save(cap.session, png)
         } catch (err) {
           console.error(`${id} failed:`, err instanceof Error ? err.stack : err) // shows up in main.log

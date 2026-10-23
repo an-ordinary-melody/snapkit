@@ -1,10 +1,12 @@
 import { createRoot } from 'react-dom/client'
 import { Overlay } from './overlay/Overlay'
+import { Pin } from './pin/Pin'
 import './styles.css'
 
 // One renderer bundle, several views selected by the URL hash.
 const views: Record<string, () => JSX.Element> = {
-  overlay: () => <Overlay />
+  overlay: () => <Overlay />,
+  pin: () => <Pin />
 }
 
 const view = views[location.hash.slice(1)] ?? views.overlay
