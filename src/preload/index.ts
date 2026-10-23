@@ -41,6 +41,12 @@ const api: SnapkitApi = {
   historyReveal: () => ipcRenderer.send(IPC.historyReveal),
   historyClose: () => ipcRenderer.send(IPC.historyClose),
 
+  loginItemGet: () => ipcRenderer.invoke(IPC.loginItemGet),
+  loginItemSet: (enabled) => ipcRenderer.invoke(IPC.loginItemSet, enabled),
+  updatesCheck: () => ipcRenderer.invoke(IPC.updatesCheck),
+  updatesLast: () => ipcRenderer.invoke(IPC.updatesLast),
+  openUrl: (which) => ipcRenderer.send(IPC.openUrl, which),
+
   openSettings: () => ipcRenderer.send(IPC.openSettings),
   settingsGet: () => ipcRenderer.invoke(IPC.settingsGet),
   settingsUpdate: (patch) => ipcRenderer.invoke(IPC.settingsUpdate, patch),

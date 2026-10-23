@@ -2,7 +2,7 @@ import { FolderOpen, RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { FEATURES } from '@shared/features'
 import { HISTORY_LIMITS } from '@shared/history'
-import type { HistoryUsage } from '@shared/ipc'
+import type { HistoryUsage, LoginItemState, UpdateCheck } from '@shared/ipc'
 import { dateStamp, fileName, type NameRule } from '@shared/naming'
 import { ColorField, formatAccelerator, Group, HotkeyField, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
 import type { SectionProps } from './Settings'
@@ -55,14 +55,36 @@ export function General({ snap, set }: SectionProps) {
         </Row>
       </Group>
 
-      <Group title="Coming later">
-        <Row label="Launch at login" desc="In a later update." disabled>
-          <Toggle label="Launch at login" value={false} onChange={() => {}} disabled />
-        </Row>
-      </Group>
+      <LaunchAtLogin />
 
       <HistorySettings snap={snap} set={set} />
     </>
+  )
+}
+
+/** Read from the OS (it can also be changed in System Settings), so it isn't a stored setting. */
+function LaunchAtLogin() {
+  const [state, setState] = useState<LoginItemState | null>(null)
+  useEffect(() => {
+    void api.loginItemGet().then(setState)
+    const again = () => void api.loginItemGet().then(setState)
+    window.addEventListener('focus', again) // back from System Settings
+    return () => window.removeEventListener('focus', again)
+  }, [])
+  return (
+    <Group title="Startup">
+      <Row
+        label="Launch at login"
+        desc={state?.needsApproval ? 'Waiting for your OK in System Settings → General → Login Items.' : 'Start Snapkit in the menu bar when you log in.'}
+      >
+        {state?.needsApproval && (
+          <button className="st-btn" onClick={() => api.openUrl('login-items')}>
+            Open Login Items
+          </button>
+        )}
+        <Toggle label="Launch at login" value={!!state?.enabled} onChange={(v) => void api.loginItemSet(v).then(setState)} disabled={!state} />
+      </Row>
+    </Group>
   )
 }
 
@@ -255,11 +277,7 @@ export function About({ snap, set }: SectionProps) {
         </Row>
       </Group>
       <Group>
-        <Row label="Check for updates" desc="In a later update." disabled>
-          <button className="st-btn" disabled>
-            Check now
-          </button>
-        </Row>
+        <UpdatesRows snap={snap} set={set} />
         <Row label="Logs" desc="Timing and errors, for troubleshooting.">
           <button className="st-btn" onClick={() => api.settingsReveal('logs')}>
             Open log folder
@@ -346,5 +364,51 @@ function NameBuilder({ rule, next, set }: { rule: NameRule; next: number; set: S
         <span className="st-ext">.png</span>
       </div>
     </div>
+  )
+}
+
+/** Update checks: notify and download (nothing installs by itself). */
+function UpdatesRows({ snap, set }: SectionProps) {
+  const u = snap.settings.updates
+  const [check, setCheck] = useState<UpdateCheck | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => void api.updatesLast().then(setCheck), [])
+  const text = !check
+    ? u.lastCheck
+      ? `Last checked ${new Date(u.lastCheck).toLocaleString()}.`
+      : 'Not checked yet.'
+    : check.status === 'available'
+      ? `Snapkit ${check.version} is available (you have ${check.current}).`
+      : check.status === 'latest'
+        ? `You have the latest version (${check.current}).`
+        : check.message ?? 'Could not check.'
+  return (
+    <>
+      <Row label="Check for updates" desc={text}>
+        {check?.status === 'available' && (
+          <>
+            <button className="st-btn subtle" onClick={() => api.openUrl('release')}>
+              What's new
+            </button>
+            <button className="st-btn primary-ish" onClick={() => api.openUrl('update')}>
+              Download {check.version}
+            </button>
+          </>
+        )}
+        <button
+          className="st-btn"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true)
+            void api.updatesCheck().then((r) => (setCheck(r), setBusy(false)))
+          }}
+        >
+          {busy ? 'Checking…' : 'Check now'}
+        </button>
+      </Row>
+      <Row label="Check automatically" desc="Once a day; a notification when there's a new version. Nothing installs by itself.">
+        <Toggle label="Check for updates automatically" value={u.autoCheck} onChange={(autoCheck) => set({ updates: { autoCheck } })} />
+      </Row>
+    </>
   )
 }

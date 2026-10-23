@@ -26,6 +26,16 @@ export interface Settings {
     /** Opens the history panel. '' = none. */
     history: string
   }
+  /** Update checks: notify and download; nothing installs by itself. */
+  updates: {
+    autoCheck: boolean
+    /** GitHub "owner/repo" whose (public) releases are checked. */
+    repo: string
+    /** Set by Snapkit. */
+    lastCheck: number
+    /** Last version a notification was shown for, so each new version notifies once. */
+    notified: string
+  }
   /** Past captures (see docs/history.md). Limits are capped by HISTORY_LIMITS. */
   history: {
     /** How many to keep (starred ones don't count); 0 = keep none. */
@@ -138,6 +148,12 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
     capture: 'CommandOrControl+Shift+2',
     history: 'CommandOrControl+Shift+1'
+  },
+  updates: {
+    autoCheck: true,
+    repo: 'sonbq-fsc/snapkit',
+    lastCheck: 0,
+    notified: ''
   },
   history: {
     maxCount: 5,

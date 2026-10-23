@@ -16,7 +16,7 @@ in settings.
 | 5 | Pin to screen | ✅ |
 | 6 | Capture history (floating panel, copy back) | ✅ |
 | 7 | Settings UI + full customization | ✅ |
-| 8 | Launch at login, update notifications | ⏳ |
+| 8 | Launch at login, update notifications | ✅ |
 
 ## Using it
 
@@ -39,10 +39,16 @@ in settings.
 
 ## Installing the builds
 
-Every push to `main` builds both installers. Open the **Actions** tab, select
-the latest run, and download from the **Artifacts** section. Tagging a
-version (`git tag v0.1.0 && git push --tags`) also creates a Release with the
-installers attached.
+Download the latest installer from the [Releases](https://github.com/sonbq-fsc/snapkit/releases) page.
+Every push to `main` also builds both installers (the **Actions** tab → latest run →
+**Artifacts**). Tagging a version (`git tag v0.2.0 && git push --tags`) creates a
+Release with the installers attached.
+
+**Updates:** Snapkit checks the latest GitHub release once a day (Settings → About)
+and shows a notification and an "Update available" item in the menu-bar menu.
+It downloads the new installer for you to open; nothing installs by itself.
+**Launch at login** is in Settings → General; on macOS 13+ you may need to allow
+it in System Settings → General → Login Items.
 
 ### macOS (unsigned)
 
@@ -99,3 +105,7 @@ Install a build on this Mac without waiting for GitHub: `./scripts/update-mac.sh
 Theme: `appearance.mode` is `system` (default), `light` or `dark`; `appearance.glass` turns Liquid Glass on (default) or off. `appearance.accent` sets a highlight color (default: white in glass, gray in dark).
 
 Settings are stored in `settings.json` in the app's data folder (`~/Library/Application Support/Snapkit` on macOS). Only values you change are written there; everything else follows the defaults in `src/shared/settings.ts`.
+
+## License
+
+[MIT](LICENSE)

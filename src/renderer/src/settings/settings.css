@@ -188,3 +188,5 @@
 .st-part.date { background: rgba(52,199,89,.18); color: var(--ui-fg); }
 .st-part.number { background: rgba(255,159,10,.2); color: var(--ui-fg); }
 .st-ext { color: var(--ui-fg-faint); }
+.st-btn.primary-ish { background: var(--ui-switch-on, #0a84ff); color: #fff; box-shadow: none; }
+.st-btn.primary-ish:hover:not(:disabled) { background: var(--ui-switch-on, #0a84ff); filter: brightness(1.08); }

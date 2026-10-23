@@ -3,6 +3,7 @@ import { rmSync } from 'fs'
 import { join } from 'path'
 import { setPreferredEngine, warmUpCapture } from './capture'
 import { lockDownWebContents } from './security'
+import { onUpdateCheck, registerSystemIpc, scheduleUpdateChecks } from './system'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { registerPinIpc } from './pin'
@@ -98,6 +99,9 @@ function init() {
   createTray(capture, openSettingsWindow, toggleHistoryPanel)
   registerHotkey()
   registerSettingsIpc(setHotkey)
+  registerSystemIpc()
+  scheduleUpdateChecks()
+  onUpdateCheck(() => refreshTrayMenu()) // shows "Update available" in the menu
   // The menu shows the hotkey; reset-to-defaults can change it too.
   onSettingsChange((s, prev) => {
     if (s.hotkeys.capture !== prev.hotkeys.capture || s.hotkeys.history !== prev.hotkeys.history) registerHotkey()

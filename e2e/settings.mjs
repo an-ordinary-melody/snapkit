@@ -143,6 +143,14 @@ try {
   await wait(1200)
   console.log('saved files:', readdirSync(saves).sort(), '| next number:', saved().save.nextNumber)
 
+  // Update check (real request to GitHub) and launch at login (read only: don't change the login items).
+  await section('About')
+  await st.click('.st-btn:has-text("Check now")')
+  await st.waitForSelector('.st-btn:has-text("Check now"):not([disabled])', { timeout: 15000 })
+  console.log('update check:', await st.$eval('.st-row:has-text("Check for updates") small', (e) => e.textContent))
+  await section('General')
+  console.log('launch at login row:', await st.$eval('.st-row:has-text("Launch at login") small', (e) => e.textContent))
+
   // Reset a section.
   await section('Appearance')
   await st.click('.st-header button:has-text("Reset section")')

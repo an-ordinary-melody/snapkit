@@ -44,6 +44,22 @@ export interface HistoryItem {
   starred: boolean
 }
 
+export interface LoginItemState {
+  enabled: boolean
+  /** macOS: turned on, but waiting for approval in System Settings → Login Items. */
+  needsApproval: boolean
+}
+
+export interface UpdateCheck {
+  status: 'available' | 'latest' | 'unavailable' | 'error'
+  current: string
+  version?: string
+  /** The installer for this OS (or the release page). */
+  url?: string
+  page?: string
+  message?: string
+}
+
 export interface HistoryUsage {
   count: number
   bytes: number
@@ -130,6 +146,12 @@ export const IPC = {
   historyUsage: 'history:usage',
   historyReveal: 'history:reveal',
   historyClose: 'history:close',
+  // system
+  loginItemGet: 'system:login-item-get',
+  loginItemSet: 'system:login-item-set',
+  updatesCheck: 'system:updates-check',
+  updatesLast: 'system:updates-last',
+  openUrl: 'system:open-url',
   // settings window
   openSettings: 'settings:open',
   settingsGet: 'settings:get',
@@ -203,6 +225,14 @@ export interface SnapkitApi {
   historyReveal(): void
   /** Close the history panel. */
   historyClose(): void
+
+  // System
+  loginItemGet(): Promise<LoginItemState>
+  loginItemSet(enabled: boolean): Promise<LoginItemState>
+  updatesCheck(): Promise<UpdateCheck>
+  updatesLast(): Promise<UpdateCheck | null>
+  /** Open one of Snapkit's own links: the update download, its release page, or macOS Login Items settings. */
+  openUrl(which: 'update' | 'release' | 'login-items'): void
 
   // Settings window
   openSettings(): void

@@ -2,6 +2,7 @@ import { app, Menu, nativeImage, shell, Tray } from 'electron'
 import { join } from 'path'
 import { defaultSaveFolder } from './output'
 import { closeAllPins } from './pin'
+import { lastUpdateCheck } from './system'
 import { getSettings, updateSettings } from './settings'
 
 let tray: Tray | null = null
@@ -27,6 +28,7 @@ export function refreshTrayMenu() {
   const { capture: onCapture, settings: onSettings, history: onHistory } = actions
   const { history: historyKey } = getSettings().hotkeys
   const paused = getSettings().history.paused
+  const update = lastUpdateCheck()
   const hotkey = getSettings().hotkeys.capture
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -39,7 +41,9 @@ export function refreshTrayMenu() {
       { label: 'Close All Pins', click: closeAllPins },
       { label: 'Settings…', accelerator: 'CommandOrControl+,', click: onSettings },
       { type: 'separator' },
-      { label: `Snapkit ${app.getVersion()}`, enabled: false },
+      ...(update?.status === 'available'
+        ? [{ label: `Update available: ${update.version}…`, click: () => void shell.openExternal(update.url!) }]
+        : [{ label: `Snapkit ${app.getVersion()}`, enabled: false }]),
       { label: 'Quit Snapkit', accelerator: 'CommandOrControl+Q', click: () => app.quit() }
     ])
   )
