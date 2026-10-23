@@ -2,14 +2,18 @@ import { desktopCapturer, dialog, shell, systemPreferences } from 'electron'
 
 let requested = false
 
+/** Synchronous so the hotkey path can start capturing without awaiting anything. */
+export function hasScreenPermission(): boolean {
+  return process.platform !== 'darwin' || systemPreferences.getMediaAccessStatus('screen') === 'granted'
+}
+
 /**
  * macOS only: Screen Recording permission. Without it captures contain only
  * the wallpaper, so we stop and explain how to grant it instead.
  * Returns true when it's OK to capture.
  */
 export async function ensureScreenPermission(): Promise<boolean> {
-  if (process.platform !== 'darwin') return true
-  if (systemPreferences.getMediaAccessStatus('screen') === 'granted') return true
+  if (hasScreenPermission()) return true
 
   // Asking for a capture once makes macOS list Snapkit in System Settings
   // (and shows the system prompt the very first time).

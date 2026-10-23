@@ -1,7 +1,6 @@
 import { app, dialog, globalShortcut, screen } from 'electron'
 import { warmUpCapture } from './capture'
-import { log } from './log'
-import { ensureScreenPermission } from './permissions'
+import { ensureScreenPermission, hasScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { getSettings } from './settings'
 import { createTray } from './tray'
@@ -9,21 +8,31 @@ import { createTray } from './tray'
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => capture())
+  app.on('second-instance', capture)
   app.whenReady().then(init)
 }
 
-async function capture() {
+/**
+ * Keep this synchronous until the screen grab has started. A promise
+ * continuation queued inside a native hotkey or tray callback can stall until
+ * the next OS event (a mouse move or click), which made captures take seconds
+ * to start, especially right after ⌘C.
+ */
+function capture() {
   const t0 = Date.now()
-  if (!(await ensureScreenPermission())) return
-  log(`hotkey → permission checked in ${Date.now() - t0}ms`)
-  await startCapture(t0)
+  if (hasScreenPermission()) {
+    void startCapture(t0)
+    return
+  }
+  void ensureScreenPermission().then((ok) => {
+    if (ok) void startCapture(t0)
+  })
 }
 
 function registerHotkey() {
   const key = getSettings().hotkeys.capture
   globalShortcut.unregisterAll()
-  const ok = globalShortcut.register(key, () => void capture())
+  const ok = globalShortcut.register(key, capture)
   if (!ok) {
     dialog.showErrorBox('Snapkit', `The shortcut ${key} is already used by another app. Snapkit is still running in the menu bar / tray.`)
   }
@@ -35,7 +44,7 @@ function init() {
   warmUpCapture()
   registerOverlayIpc()
   rebuildOverlays()
-  createTray(() => void capture())
+  createTray(capture)
   registerHotkey()
 
   let rebuildTimer: NodeJS.Timeout | undefined
