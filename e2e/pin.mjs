@@ -73,6 +73,15 @@ try {
   await thumb.hover('.thumb')
   writeFileSync(join(out, '3-thumb-after-edit.png'), await thumb.screenshot())
 
+  // Move handle moves the preview (out of the corner stack).
+  const before = (await floating('thumb'))[0].bounds
+  const mh = await thumb.$eval('.thumb-move', (e) => e.getBoundingClientRect().toJSON())
+  await thumb.hover('.thumb')
+  await drag(thumb.mouse, mh.x + mh.width / 2, mh.y + mh.height / 2, mh.x + mh.width / 2 - 120, mh.y + mh.height / 2 - 80)
+  await wait(200)
+  const after = (await floating('thumb'))[0].bounds
+  console.log('move handle moved the preview by', after.x - before.x, after.y - before.y)
+
   // Pin: turns the preview into a full-size pin where it was captured.
   await thumb.click('.thumb-pin')
   await wait(1000)

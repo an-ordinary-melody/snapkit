@@ -61,9 +61,15 @@ export interface Settings {
     text: {
       fontFamily: string
       fontSize: number
-      shadow: boolean
-      /** Fill behind the text, or '' for none. */
+      /** Starting style: 'plain', 'stroke' (outline), or 'background'. */
+      style: 'plain' | 'stroke' | 'background'
+      /** Outline around the letters. */
+      strokeColor: string
+      strokeWidth: number
+      /** Fill behind the text in the 'background' style. */
       background: string
+      /** A subtle drop shadow under all text (settings only). */
+      shadow: boolean
     }
   }
   pin: {
@@ -114,8 +120,11 @@ export const DEFAULT_SETTINGS: Settings = {
     text: {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       fontSize: 20,
-      shadow: false,
-      background: ''
+      style: 'stroke',
+      strokeColor: '#ffffff',
+      strokeWidth: 3,
+      background: '#ffffff',
+      shadow: false
     }
   },
   pin: {

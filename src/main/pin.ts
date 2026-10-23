@@ -17,6 +17,8 @@ interface Pin {
   doc?: CaptureDoc
   rect?: Rectangle
   displayId?: number
+  /** Thumbs: moved by hand, so it's no longer part of the corner stack. */
+  moved?: boolean
   /** Size at 100% zoom, in screen points. */
   base: { w: number; h: number }
   zoom: number
@@ -124,7 +126,7 @@ function layoutThumbs(displayId?: number) {
   const display = screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
   const area = display.workArea
   let bottom = area.y + area.height - THUMB_MARGIN
-  const mine = [...pins.values()].filter((p) => p.kind === 'thumb' && p.displayId === displayId && !p.win.isDestroyed())
+  const mine = [...pins.values()].filter((p) => p.kind === 'thumb' && !p.moved && p.displayId === displayId && !p.win.isDestroyed())
   for (const p of mine.reverse()) {
     const { w, h } = p.base
     p.win.setBounds({ x: area.x + area.width - THUMB_MARGIN - w, y: bottom - h, width: w, height: h })
@@ -149,7 +151,8 @@ function updateThumb(p: Pin, png: Buffer, doc: CaptureDoc) {
   rmSync(p.file, { force: true })
   p.file = tempFile(png, p.win.webContents.id)
   p.base = thumbSize(png)
-  layoutThumbs(p.displayId)
+  if (p.moved) p.win.setSize(p.base.w, p.base.h)
+  else layoutThumbs(p.displayId)
   p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(png) })
 }
 
@@ -209,6 +212,10 @@ export function registerPinIpc() {
     if (!p) return
     const [x, y] = p.win.getPosition()
     p.win.setPosition(Math.round(x + dx), Math.round(y + dy))
+    if (p.kind === 'thumb' && !p.moved) {
+      p.moved = true
+      layoutThumbs(p.displayId) // the others close the gap
+    }
   })
   ipcMain.on(IPC.pinZoom, (e, z: number, ax: number, ay: number) => {
     const p = of(e)

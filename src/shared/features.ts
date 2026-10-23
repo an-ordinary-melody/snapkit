@@ -37,12 +37,12 @@ export interface FeatureDef {
 
 export const FEATURES: FeatureDef[] = [
   // Annotation tools (vertical bar)
-  { id: 'pen', drawing: true, label: 'Pen', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true },
+  { id: 'pen', drawing: true, label: 'Pencil', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true },
   {
     id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true,
     variants: [
-      { id: 'arrow', label: 'Arrow' },
-      { id: 'arrow-open', label: 'Open arrow' }
+      { id: 'arrow-open', label: 'Arrow' },
+      { id: 'arrow', label: 'Filled arrow' }
     ],
     variantsHint: 'Right-click for arrow styles'
   },

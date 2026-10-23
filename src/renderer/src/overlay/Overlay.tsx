@@ -70,7 +70,11 @@ function initialStyle(s: Settings): Style {
     fontSize: a.text.fontSize,
     fontFamily: a.text.fontFamily,
     shadow: a.text.shadow,
-    textBackground: a.text.background
+    textBackground: a.text.style === 'background' ? a.text.background : '',
+    textStroke: a.text.style === 'stroke' ? a.text.strokeColor : '',
+    textStrokeColor: a.text.strokeColor,
+    textBgColor: a.text.background || '#ffffff',
+    textStrokeWidth: a.text.strokeWidth
   }
 }
 
@@ -91,7 +95,8 @@ function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
         color: patch.textColor ?? s.color,
         fontSize: patch.fontSize ?? s.fontSize,
         shadow: patch.shadow ?? s.shadow,
-        background: patch.textBackground ?? s.background
+        background: patch.textBackground ?? s.background,
+        stroke: patch.textStroke ?? s.stroke
       }
     case 'blur':
       return { ...s, mode: patch.blurMode ?? s.mode, strength: patch.blurStrength ?? s.strength }

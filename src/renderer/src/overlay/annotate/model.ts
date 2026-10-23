@@ -85,6 +85,9 @@ export interface TextShape extends Base {
   shadow: boolean
   /** Fill behind the text, or '' for none. */
   background: string
+  /** Outline around the letters, or '' for none. */
+  stroke?: string
+  strokeWidth?: number
 }
 
 export type Shape = StrokeShape | LineShape | BoxShape | BlurShape | StepShape | TextShape
@@ -102,7 +105,13 @@ export interface Style {
   fontSize: number
   fontFamily: string
   shadow: boolean
+  /** Text fill behind the letters ('' = none) and outline ('' = none). Only one is used at a time. */
   textBackground: string
+  textStroke: string
+  /** Remembered choices, used when switching the text style back to them. */
+  textStrokeColor: string
+  textBgColor: string
+  textStrokeWidth: number
 }
 
 let counter = 0

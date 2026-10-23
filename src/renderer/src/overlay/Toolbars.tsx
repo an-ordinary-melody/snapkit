@@ -1,5 +1,5 @@
 import {
-  Check, Circle, Copy, Droplets, Hash, Highlighter, Image, Pencil, Pin, Redo2, Save, Slash, Square, Type, Undo2, WandSparkles, X,
+  Check, Circle, Copy, Droplets, Hash, Highlighter, Pencil, Pin, Redo2, Save, Slash, Square, Type, Undo2, WandSparkles, X,
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
@@ -9,7 +9,7 @@ import { placeStyleBar, placeToolbars, type Rect, type Size } from './layout'
 
 const ICONS: Record<string, LucideIcon> = {
   pen: Pencil, line: Slash, rect: Square, ellipse: Circle, highlighter: Highlighter, text: Type,
-  step: Hash, blur: Droplets, undo: Undo2, redo: Redo2, beautify: Image, beautifyEdit: WandSparkles, pin: Pin, save: Save, copy: Copy, close: X
+  step: Hash, blur: Droplets, undo: Undo2, redo: Redo2, beautifyEdit: WandSparkles, pin: Pin, save: Save, copy: Copy, close: X
 }
 
 /** Icon for a tool variant: the base shape, outlined or filled. */
@@ -30,8 +30,19 @@ function ArrowIcon({ size, open }: { size: number; open: boolean }) {
   )
 }
 
+/** Background: the screenshot as a layer over a faint filled layer, both tilted in perspective. */
+function BackgroundIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round">
+      <path d="M12 10.5 L21.5 15 L12 19.5 L2.5 15 Z" fill="currentColor" fillOpacity={0.4} stroke="none" />
+      <path d="M12 4 L21 8.5 L12 13 L3 8.5 Z" fill="currentColor" fillOpacity={0.1} />
+    </svg>
+  )
+}
+
 function FeatureIcon({ id, size = 17 }: { id: string; size?: number }) {
   if (id === 'arrow' || id === 'arrow-open') return <ArrowIcon size={size} open={id === 'arrow-open'} />
+  if (id === 'beautify') return <BackgroundIcon size={size} />
   const v = VARIANT_ICONS[id]
   const Icon = v?.Icon ?? ICONS[id] ?? Square
   return <Icon size={size} strokeWidth={2} fill={v?.filled ? 'currentColor' : 'none'} />

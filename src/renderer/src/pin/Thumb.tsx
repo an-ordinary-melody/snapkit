@@ -1,11 +1,12 @@
-import { Copy, PencilLine, Pin, X } from 'lucide-react'
+import { Copy, Move, PencilLine, Pin, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 const api = window.snapkit
 
 /**
- * Floating preview left in the corner after a copy. Drag it into another app;
- * hover for copy / edit / pin / close; double-click to edit.
+ * Floating preview left in the corner after a copy. Drag the image into
+ * another app; drag the move handle to move the preview; hover for copy /
+ * edit / pin / close; double-click to edit.
  */
 export function Thumb() {
   const [src, setSrc] = useState<string | null>(null)
@@ -23,6 +24,26 @@ export function Thumb() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // The move handle moves the window; dragging the image itself drops it into other apps.
+  const move = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    const el = e.currentTarget
+    el.setPointerCapture(e.pointerId)
+    let last = { x: e.screenX, y: e.screenY }
+    const onMove = (ev: PointerEvent) => {
+      api.pinMoveBy(ev.screenX - last.x, ev.screenY - last.y)
+      last = { x: ev.screenX, y: ev.screenY }
+    }
+    const onUp = () => {
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+    }
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+  }
 
   const copy = () => {
     api.pinCopy()
@@ -53,6 +74,9 @@ export function Thumb() {
       </div>
       <button className="thumb-icon thumb-pin" aria-label="Pin to screen" title="Pin to screen (full size, always on top)" onClick={() => api.thumbPin()}>
         <Pin size={13} />
+      </button>
+      <button className="thumb-icon thumb-move" aria-label="Move" title="Drag to move (drag the image to drop it into another app)" onPointerDown={move}>
+        <Move size={13} />
       </button>
       <button className="thumb-icon thumb-close" aria-label="Close" title="Close (Esc)" onClick={() => api.pinClose()}>
         <X size={13} />

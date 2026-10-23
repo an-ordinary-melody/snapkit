@@ -49,7 +49,7 @@ try {
   await tool('Arrow'); await drag(250, 200, 450, 300)
   await tool('Rectangle'); await drag(500, 200, 700, 320)
   await tool('Ellipse'); await drag(500, 350, 650, 450)
-  await tool('Pen'); await drag(250, 400, 400, 500)
+  await tool('Pencil'); await drag(250, 400, 400, 500)
   await tool('Highlighter'); await drag(250, 550, 450, 550)
   await tool('Blur'); await drag(700, 450, 850, 600)
   await tool('Numbered step'); await m.click(300, 600); await m.click(340, 600); await wait(80)
@@ -78,10 +78,10 @@ try {
 
   // Text styles are one choice, Plain first; picking Shadow leaves only Shadow highlighted.
   await m.click(640, 520); await wait(150) // select "Hello Snapkit"
-  const order = await win.$$eval('.style-bar button[data-tip]', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Shadow|background/.test(t)))
-  await win.click('.style-bar button[data-tip="Shadow"]')
-  const active = await win.$$eval('.style-bar button.active', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Shadow|background/.test(t)))
-  console.log('text styles:', order.join(' | '), '→ active after Shadow:', active)
+  const order = await win.$$eval('.style-bar button[data-tip]', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Stroke|background/.test(t)))
+  await win.click('.style-bar button[data-tip="Stroke (outline)"]')
+  const active = await win.$$eval('.style-bar button.active', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Stroke|background/.test(t)))
+  console.log('text styles:', order.join(' | '), '→ active after Stroke:', active)
   await win.click('.style-bar button[data-tip="Dark background"]')
   console.log('dark background sets white text:', await win.$eval('.style-bar .swatch.active', (b) => b.dataset.tip).catch(() => 'none'))
   await win.click('.style-bar button[data-tip="Plain"]')
@@ -159,7 +159,7 @@ try {
   await win.click('.be-chip:has-text("Slide 16:9")')
   await wait(200)
   await win.click('.be-dock .toolbar button[data-tip="Arrow"]', { button: 'right' })
-  await win.click('.variant-menu button:has-text("Open arrow")')
+  await win.click('.variant-menu button:has-text("Filled arrow")')
   const host = await win.$eval('.be-ann .annotations', (e) => e.getBoundingClientRect().toJSON())
   await drag(host.x + host.width * 0.55, host.y + host.height * 0.75, host.x + host.width * 0.8, host.y + host.height * 0.55)
   await wait(200)

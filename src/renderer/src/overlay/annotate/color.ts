@@ -30,6 +30,18 @@ export function hexToHsv(hex: string): Hsv {
   return { h: (h * 60 + 360) % 360, s: max ? d / max : 0, v: max }
 }
 
+/** Black or white, whichever reads better on `hex`. */
+export function readableOn(hex: string) {
+  return isLight(hex) ? '#111111' : '#ffffff'
+}
+
+export function isLight(hex: string) {
+  const c = parseHex(hex)
+  if (!c) return false
+  const n = parseInt(c.slice(1), 16)
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 > 0.6
+}
+
 export function hsvToHex({ h, s, v }: Hsv): string {
   const f = (k: number) => {
     const x = (k + h / 60) % 6

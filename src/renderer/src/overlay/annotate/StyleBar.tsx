@@ -1,7 +1,7 @@
 import { Grid3x3, Minus, Plus, Waves } from 'lucide-react'
 import { useState } from 'react'
 import { Slider } from '../Slider'
-import { parseHex } from './color'
+import { isLight, parseHex, readableOn } from './color'
 import { ColorPicker } from './ColorPicker'
 import type { Shape, Style, ToolId } from './model'
 
@@ -14,13 +14,37 @@ const COLORED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse',
 /** Nothing to show for this target. */
 export const hasStyleOptions = (t: StyleTarget) => COLORED.has(t) || t === 'blur'
 
-/** One choice at a time; plain text first. Backgrounds come with a readable text color. */
-const TEXT_STYLES: { label: string; shadow: boolean; background: string; color?: string }[] = [
-  { label: 'Plain', shadow: false, background: '' },
-  { label: 'Shadow', shadow: true, background: '' },
-  { label: 'Light background', shadow: false, background: '#ffffff', color: '#111111' },
-  { label: 'Dark background', shadow: false, background: '#111111', color: '#ffffff' }
+type TextLook = 'plain' | 'stroke' | 'light' | 'dark'
+
+/** One look at a time, plain first. A background comes with readable (black/white) text. */
+const TEXT_LOOKS: { id: TextLook; label: string }[] = [
+  { id: 'plain', label: 'Plain' },
+  { id: 'stroke', label: 'Stroke (outline)' },
+  { id: 'light', label: 'Light background' },
+  { id: 'dark', label: 'Dark background' }
 ]
+
+function textLook(s: Style): TextLook {
+  if (s.textBackground) return isLight(s.textBackground) ? 'light' : 'dark'
+  return s.textStroke ? 'stroke' : 'plain'
+}
+
+function lookPatch(id: TextLook, s: Style): Partial<Style> {
+  switch (id) {
+    case 'plain':
+      return { textStroke: '', textBackground: '' }
+    case 'stroke':
+      return { textStroke: s.textStrokeColor, textBackground: '' }
+    case 'light': {
+      const bg = isLight(s.textBgColor) ? s.textBgColor : '#ffffff'
+      return { textStroke: '', textBackground: bg, textBgColor: bg, textColor: readableOn(bg) }
+    }
+    case 'dark': {
+      const bg = isLight(s.textBgColor) ? '#111111' : s.textBgColor
+      return { textStroke: '', textBackground: bg, textBgColor: bg, textColor: readableOn(bg) }
+    }
+  }
+}
 
 export const BLUR_RANGE = { min: 4, max: 40 }
 
@@ -38,7 +62,8 @@ interface Props {
 }
 
 export function StyleBar({ target, filled, style, palette, onChange }: Props) {
-  const [picking, setPicking] = useState(false)
+  const [picking, setPicking] = useState<false | 'color' | 'textExtra'>(false)
+  const look = textLook(style)
   const sep = <div className="sep" />
   const lower = palette.map((c) => c.toLowerCase())
   const customs = recentCustom.filter((c) => !lower.includes(c))
@@ -68,10 +93,10 @@ export function StyleBar({ target, filled, style, palette, onChange }: Props) {
           {palette.map(swatch)}
           {customs.map(swatch)}
           <div className="picker-anchor">
-            <button className={`swatch custom${picking ? ' active' : ''}`} data-tip="Custom color" onClick={() => (picking ? closePicker() : setPicking(true))}>
+            <button className={`swatch custom${picking === 'color' ? ' active' : ''}`} data-tip="Custom color" onClick={() => (picking === 'color' ? closePicker() : setPicking('color'))}>
               <span />
             </button>
-            {picking && <ColorPicker color={currentColor} onChange={(c) => onChange({ [colorKey]: c }, true)} onClose={closePicker} />}
+            {picking === 'color' && <ColorPicker color={currentColor} onChange={(c) => onChange({ [colorKey]: c }, true)} onClose={closePicker} />}
           </div>
         </>
       )}
@@ -98,17 +123,32 @@ export function StyleBar({ target, filled, style, palette, onChange }: Props) {
             <Plus size={15} />
           </button>
           {sep}
-          {TEXT_STYLES.map((t) => {
-            const on = style.shadow === t.shadow && style.textBackground === t.background
-            const glyph = t.background ? 'glyph boxed' : t.shadow ? 'glyph shadowed' : 'glyph'
-            return (
-              <button key={t.label} className={on ? 'active' : ''} data-tip={t.label} onClick={() => onChange({ shadow: t.shadow, textBackground: t.background, ...(t.color && { textColor: t.color }) })}>
-                <span className={glyph} style={t.background ? { background: t.background, color: t.background === '#ffffff' ? '#111' : '#fff' } : undefined}>
-                  A
-                </span>
+          {TEXT_LOOKS.map((t) => (
+            <button key={t.id} className={look === t.id ? 'active' : ''} data-tip={t.label} onClick={() => onChange(lookPatch(t.id, style))}>
+              <span className={`glyph ${t.id}`}>A</span>
+            </button>
+          ))}
+          {/* The stroke's or background's own color. */}
+          {(look === 'stroke' || look === 'light' || look === 'dark') && (
+            <div className="picker-anchor">
+              <button
+                className={`swatch${picking === 'textExtra' ? ' active' : ''}`}
+                data-tip={look === 'stroke' ? 'Stroke color' : 'Background color'}
+                onClick={() => setPicking(picking === 'textExtra' ? false : 'textExtra')}
+              >
+                <span style={{ background: look === 'stroke' ? style.textStroke : style.textBackground }} />
               </button>
-            )
-          })}
+              {picking === 'textExtra' && (
+                <ColorPicker
+                  color={look === 'stroke' ? style.textStroke : style.textBackground}
+                  onChange={(c) =>
+                    onChange(look === 'stroke' ? { textStroke: c, textStrokeColor: c } : { textBackground: c, textBgColor: c, textColor: readableOn(c) }, true)
+                  }
+                  onClose={() => setPicking(false)}
+                />
+              )}
+            </div>
+          )}
         </>
       )}
 

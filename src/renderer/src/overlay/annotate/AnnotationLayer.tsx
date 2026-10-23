@@ -7,6 +7,7 @@ import {
   boxFromDrag, isMeaningful, moveShape, newId, openArrowHead, remove, snap45, stepNumbers, upsert,
   type BlurShape, type LineShape, type Shape, type Style, type TextShape, type ToolId
 } from './model'
+import { readableOn } from './color'
 import { obscure } from './obscure'
 
 /**
@@ -115,7 +116,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     if (prevStyle.current === style) return
     prevStyle.current = style
     const t = editingRef.current
-    if (t) setEditing({ ...t, color: style.textColor, fontSize: style.fontSize, shadow: style.shadow, background: style.textBackground })
+    if (t) setEditing({ ...t, color: style.textColor, fontSize: style.fontSize, shadow: style.shadow, background: style.textBackground, stroke: style.textStroke })
   }, [style])
 
   // ---- selection handles -----------------------------------------------------
@@ -145,7 +146,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       // Click point = middle of the first line, so the caret lands where you clicked.
       setEditing({
         id, type: 'text', x: x0 - pad, y: y0 - (fontSize * LINE_HEIGHT) / 2 - pad, text: '', color: style.textColor,
-        fontSize, fontFamily: style.fontFamily, shadow: style.shadow, background: style.textBackground
+        fontSize, fontFamily: style.fontFamily, shadow: style.shadow, background: style.textBackground,
+        stroke: style.textStroke, strokeWidth: style.textStrokeWidth
       })
       onSelect(null)
       return true
@@ -163,7 +165,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
         case 'line':
         case 'arrow': {
           const [dx, dy] = shift ? snap45(x - x0, y - y0) : [x - x0, y - y0]
-          const head = tool === 'arrow' && props.variant === 'arrow-open' ? 'open' : undefined
+          // Open head unless the filled variant was picked (open is the default).
+          const head = tool === 'arrow' && props.variant !== 'arrow' ? 'open' : undefined
           return { id, type: tool, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth, head }
         }
         case 'rect':
@@ -412,14 +415,6 @@ function transformShape(s: Shape, gx: number, gy: number, sx: number, sy: number
   }
 }
 
-/** Black or white, whichever reads better on `hex`. */
-function readableOn(hex: string) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex)
-  if (!m) return '#fff'
-  const n = parseInt(m[1], 16)
-  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
-  return lum > 0.6 ? '#111' : '#fff'
-}
 
 /**
  * `live`: where the area is while it's being dragged or resized. The image is
@@ -462,11 +457,17 @@ function TextNode({ shape: s }: { shape: TextShape }) {
         lineHeight={LINE_HEIGHT}
         fill={s.color}
         padding={textPad(s)}
+        // Outline outside the letters: stroke twice as wide, then fill over it.
+        stroke={s.stroke || undefined}
+        strokeWidth={s.stroke ? (s.strokeWidth ?? 3) * 2 : 0}
+        fillAfterStrokeEnabled
+        lineJoin="round"
+        // Subtle shadow (a setting).
         shadowEnabled={s.shadow}
         shadowColor="#000"
-        shadowBlur={s.fontSize * 0.25}
-        shadowOffset={{ x: 0, y: Math.max(1, s.fontSize * 0.05) }}
-        shadowOpacity={0.6}
+        shadowBlur={s.fontSize * 0.12}
+        shadowOffset={{ x: 0, y: Math.max(1, s.fontSize * 0.04) }}
+        shadowOpacity={0.35}
       />
     </Label>
   )
@@ -553,7 +554,9 @@ function TextEditor(props: { shape: TextShape; zoom(): number; onChange(s: TextS
           color: s.color,
           background: s.background || 'transparent',
           borderRadius: s.background ? 6 : 0,
-          textShadow: s.shadow ? `0 ${Math.max(1, s.fontSize * 0.05)}px ${s.fontSize * 0.25}px rgba(0,0,0,.6)` : 'none',
+          textShadow: s.shadow ? `0 ${Math.max(1, s.fontSize * 0.04)}px ${s.fontSize * 0.12}px rgba(0,0,0,.35)` : 'none',
+          WebkitTextStroke: s.stroke ? `${(s.strokeWidth ?? 3) * 2}px ${s.stroke}` : undefined,
+          paintOrder: 'stroke fill',
           caretColor: s.color
         }}
         onChange={(e) => onChange({ ...s, text: e.target.value })}
