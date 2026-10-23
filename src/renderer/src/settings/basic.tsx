@@ -1,7 +1,10 @@
 import { FolderOpen, RotateCcw } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { FEATURES } from '@shared/features'
+import { HISTORY_LIMITS } from '@shared/history'
+import type { HistoryUsage } from '@shared/ipc'
 import { dateStamp, fileName, type NameRule } from '@shared/naming'
-import { ColorField, Group, HotkeyField, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
+import { ColorField, formatAccelerator, Group, HotkeyField, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
 import type { SectionProps } from './Settings'
 
 const api = window.snapkit
@@ -56,9 +59,67 @@ export function General({ snap, set }: SectionProps) {
         <Row label="Launch at login" desc="In a later update." disabled>
           <Toggle label="Launch at login" value={false} onChange={() => {}} disabled />
         </Row>
-        <Row label="Capture history" desc="How many captures to keep, and a size limit: with the history panel." disabled />
       </Group>
+
+      <HistorySettings snap={snap} set={set} />
     </>
+  )
+}
+
+/** History: limits (capped for speed), pause, where it's kept, and clearing. */
+function HistorySettings({ snap, set }: SectionProps) {
+  const h = snap.settings.history
+  const [use, setUse] = useState<HistoryUsage | null>(null)
+  useEffect(() => {
+    void api.historyUsage().then(setUse)
+    api.onHistoryChanged(() => void api.historyUsage().then(setUse))
+  }, [])
+  const mb = (b: number) => `${(b / 1024 / 1024).toFixed(b < 10 * 1024 * 1024 ? 1 : 0)} MB`
+  return (
+    <Group
+      title="History"
+      note={`Copied, saved and pinned captures are kept so you can copy them again: ${snap.settings.hotkeys.history ? formatAccelerator(snap.settings.hotkeys.history) + ' or ' : ''}History… in the menu bar. Starred ones are never removed by the limits.`}
+    >
+      <Row label="Keep" desc={`The most recent captures, up to ${HISTORY_LIMITS.maxCount}.`}>
+        <SliderField label="Captures to keep" min={1} max={HISTORY_LIMITS.maxCount} value={Math.min(h.maxCount, HISTORY_LIMITS.maxCount)} onChange={(maxCount) => set({ history: { maxCount } })} />
+      </Row>
+      <Row label="Size limit" desc={`Over it, the oldest go first. Up to ${HISTORY_LIMITS.maxMB / 1000} GB.`}>
+        <SliderField label="History size limit" min={50} max={HISTORY_LIMITS.maxMB} step={50} value={Math.min(h.maxMB, HISTORY_LIMITS.maxMB)} format={(n) => `${n} MB`} onChange={(maxMB) => set({ history: { maxMB } })} />
+      </Row>
+      <Row label="Keep for">
+        <select className="st-select" aria-label="Keep captures for" value={h.maxAgeDays} onChange={(e) => set({ history: { maxAgeDays: Number(e.target.value) } })}>
+          {[1, 7, 30, 90].map((d) => (
+            <option key={d} value={d}>
+              {d === 1 ? '1 day' : `${d} days`}
+            </option>
+          ))}
+          <option value={0}>Forever</option>
+        </select>
+      </Row>
+      <Row label="Pause history" desc="Record nothing while paused (also in the menu-bar menu).">
+        <Toggle label="Pause history" value={h.paused} onChange={(paused) => set({ history: { paused } })} />
+      </Row>
+      <Row label="Stored" desc={use ? use.folder : ''}>
+        <span className="st-muted">{use ? `${use.count} ${use.count === 1 ? 'capture' : 'captures'} · ${mb(use.bytes)}` : '…'}</span>
+        <button className="st-btn" onClick={() => api.historyReveal()}>
+          <FolderOpen size={14} /> Show folder
+        </button>
+      </Row>
+      <Row label="Clear history" desc="Deletes the stored captures for good. Files you saved elsewhere aren't touched.">
+        <button className="st-btn" disabled={!use?.count} onClick={() => void api.historyClear(true).then(setUse)}>
+          Clear, keep starred
+        </button>
+        <button
+          className="st-btn danger"
+          disabled={!use?.count}
+          onClick={() => {
+            if (window.confirm('Delete every capture in history, including starred ones?')) void api.historyClear(false).then(setUse)
+          }}
+        >
+          Clear all…
+        </button>
+      </Row>
+    </Group>
   )
 }
 
@@ -73,7 +134,14 @@ export function Shortcuts({ snap, set }: SectionProps) {
         <Row label="Capture area" desc="Works from any app.">
           <HotkeyField value={s.hotkeys.capture} onChange={(acc) => api.settingsSetHotkey(acc)} />
         </Row>
-        <Row label="Open history" desc="With the history panel, in a later update." disabled />
+        <Row label="Open history" desc="The panel of past captures.">
+          <HotkeyField value={s.hotkeys.history} onChange={(acc) => api.settingsSetHotkey(acc, 'history')} />
+          {s.hotkeys.history && (
+            <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'history')} title="No shortcut; use the menu bar">
+              Off
+            </button>
+          )}
+        </Row>
       </Group>
 
       <Group title="Tools in capture mode" note="One letter or digit each. Press a tool's key again to go back to moving the selection.">

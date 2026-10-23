@@ -174,7 +174,7 @@ export function HotkeyField({ value, onChange }: { value: string; onChange(acc: 
   return (
     <span className="st-hotkey-wrap">
       <button className={`st-hotkey${recording ? ' recording' : ''}`} onClick={() => (setError(null), setRecording(!recording))}>
-        {recording ? 'Press the new shortcut…' : formatAccelerator(value)}
+        {recording ? 'Press the new shortcut…' : value ? formatAccelerator(value) : 'None'}
       </button>
       {error && <small className="st-error">{error}</small>}
     </span>

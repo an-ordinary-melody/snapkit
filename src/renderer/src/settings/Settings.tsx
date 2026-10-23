@@ -17,7 +17,7 @@ export interface SectionProps {
 }
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon; keys: (keyof SettingsT)[]; view(p: SectionProps): JSX.Element }[] = [
-  { id: 'general', label: 'General', icon: SlidersHorizontal, keys: ['pin', 'save', 'notifications'], view: (p) => <General {...p} /> },
+  { id: 'general', label: 'General', icon: SlidersHorizontal, keys: ['pin', 'save', 'notifications', 'history'], view: (p) => <General {...p} /> },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard, keys: ['hotkeys', 'toolKeys'], view: (p) => <Shortcuts {...p} /> },
   { id: 'appearance', label: 'Appearance', icon: SunMoon, keys: ['appearance', 'capture'], view: (p) => <Appearance {...p} /> },
   { id: 'toolbar', label: 'Toolbar', icon: PanelsTopLeft, keys: ['features', 'toolbarOrder'], view: (p) => <ToolbarSection {...p} /> },

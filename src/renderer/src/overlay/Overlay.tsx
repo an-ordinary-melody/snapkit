@@ -27,8 +27,10 @@ interface Capture {
   /** Image px per overlay px. */
   scale: number
   settings: Settings
-  /** Editing a floating preview: the editor is all there is. */
+  /** Editing a floating preview or a history entry: the editor is all there is. */
   edit: boolean
+  /** Editing a history entry: outputs update it. */
+  historyId?: string
 }
 
 const HANDLES: { id: Handle; x: number; y: number; cursor: string }[] = [
@@ -133,6 +135,22 @@ function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
   }
 }
 
+function toBlob(canvas: HTMLCanvasElement, type: string, quality?: number) {
+  return new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('encode failed'))), type, quality))
+}
+
+/** A copy at most 320 px wide (or 240 px tall) for the history panel. */
+function thumbnail(src: HTMLCanvasElement) {
+  const k = Math.min(1, 320 / src.width, 240 / src.height)
+  const c = document.createElement('canvas')
+  c.width = Math.max(1, Math.round(src.width * k))
+  c.height = Math.max(1, Math.round(src.height * k))
+  const ctx = c.getContext('2d')!
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(src, 0, 0, c.width, c.height)
+  return c
+}
+
 function deferred() {
   let resolve!: () => void
   const promise = new Promise<void>((r) => (resolve = r))
@@ -195,7 +213,7 @@ export function Overlay() {
         // Editing: the stored crop becomes the whole "screen", selected.
         setSel(doc ? { x: 0, y: 0, w: doc.width / scale, h: doc.height / scale } : null)
         setDrag(null)
-        setCap({ session: p.session, width: p.width, height: p.height, scale, settings: p.settings, edit: !!doc })
+        setCap({ session: p.session, width: p.width, height: p.height, scale, settings: p.settings, edit: !!doc, historyId: doc?.historyId })
         setHistory(doc ? { past: [], present: doc.shapes as Shape[], future: [] } : emptyHistory())
         setTool(null)
         setSelectedId(null)
@@ -270,25 +288,33 @@ export function Overlay() {
   }, [])
 
   /** The capture as a reopenable document: plain crop + drawings (relative to it) + background. */
-  const makeDoc = useCallback(
-    async (r: Rect): Promise<CaptureDoc> => {
-      const scale = capRef.current!.scale
-      const plain = composeSelection(r, scale, false)
-      const blob = await new Promise<Blob>((res, rej) => plain.toBlob((x) => (x ? res(x) : rej(new Error('encode failed'))), 'image/png'))
-      return {
-        png: new Uint8Array(await blob.arrayBuffer()),
-        width: plain.width,
-        height: plain.height,
-        scale,
-        shapes: historyRef.current.present.map((sh) => moveShape(sh, -r.x, -r.y)),
-        beautify: beautifyRef.current
-      }
-    },
+  /**
+   * Everything needed to reopen this capture later, taken synchronously (the
+   * session's canvas is cleared soon after an output); encoding happens later.
+   */
+  const snapshotDoc = useCallback(
+    (r: Rect) => ({
+      plain: composeSelection(r, capRef.current!.scale, false),
+      scale: capRef.current!.scale,
+      shapes: historyRef.current.present.map((sh) => moveShape(sh, -r.x, -r.y)),
+      beautify: beautifyRef.current,
+      historyId: capRef.current!.historyId
+    }),
     [composeSelection]
   )
+  const encodeDoc = async (snap: ReturnType<typeof snapshotDoc>): Promise<CaptureDoc> => ({
+    png: new Uint8Array(await (await toBlob(snap.plain, 'image/png')).arrayBuffer()),
+    width: snap.plain.width,
+    height: snap.plain.height,
+    scale: snap.scale,
+    shapes: snap.shapes,
+    beautify: snap.beautify,
+    historyId: snap.historyId
+  })
 
-  const cropToPng = useCallback(
-    async (r: Rect): Promise<ArrayBuffer> => {
+  /** The output (drawings and background baked in) as a canvas and PNG. */
+  const renderOutput = useCallback(
+    async (r: Rect): Promise<{ canvas: HTMLCanvasElement; png: ArrayBuffer }> => {
       await painted.current.promise // the frozen image may still be arriving
       const scale = cap!.scale
       let out = composeSelection(r, scale)
@@ -303,8 +329,7 @@ export function Overlay() {
           void api.settingsUpdate({ beautify: { presets: set.presets.map((p) => (p.id === set.preset ? { ...p, ...look } : p)) } })
         }
       }
-      const blob = await new Promise<Blob>((res, rej) => out.toBlob((x) => (x ? res(x) : rej(new Error('encode failed'))), 'image/png'))
-      return blob.arrayBuffer()
+      return { canvas: out, png: await (await toBlob(out, 'image/png')).arrayBuffer() }
     },
     [composeSelection, cap]
   )
@@ -339,19 +364,29 @@ export function Overlay() {
         busy.current = true
         try {
           flushSync(() => setSelectedId(null))
-          const png = await cropToPng(sel)
-          // Keep what's needed to reopen this in the editor from the floating preview.
-          const keep = floating || cap.edit
-          if (id === 'copy') api.copy(cap.session, png, keep ? { doc: await makeDoc(sel), rect: sel } : undefined)
-          else if (id === 'editDone') api.editDone(cap.session, png, await makeDoc(sel))
+          const { canvas, png } = await renderOutput(sel)
+          const history = cap.settings.history
+          const toHistory = !history.paused && history.maxCount > 0
+          // Taken now: main clears this session's canvas right after the output.
+          const snap = snapshotDoc(sel)
+          const thumb = toHistory ? thumbnail(canvas) : null
+          // The floating preview (and edits of it) need the document with the output itself.
+          const doc = floating || cap.edit ? await encodeDoc(snap) : null
+          if (id === 'copy') api.copy(cap.session, png, doc ? { doc, rect: sel } : undefined)
+          else if (id === 'editDone') api.editDone(cap.session, png, doc!)
           else api.save(cap.session, png)
+          // History after the output, so the copy is never held up by it.
+          if (thumb) {
+            const [full, small] = await Promise.all([doc ?? encodeDoc(snap), toBlob(thumb, 'image/jpeg', 0.8)])
+            api.historyAdd({ session: cap.session, final: new Uint8Array(png), doc: full, thumb: new Uint8Array(await small.arrayBuffer()) })
+          }
         } catch (err) {
           console.error(`${id} failed:`, err instanceof Error ? err.stack : err) // shows up in main.log
           busy.current = false // let the user try again (or Esc)
         }
       }
     },
-    [cap, sel, cropToPng, floating, makeDoc]
+    [cap, sel, renderOutput, floating, snapshotDoc]
   )
 
   /** Letter -> drawing tool, for the tools that are switched on. */

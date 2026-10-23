@@ -6,6 +6,8 @@ import { lockDownWebContents } from './security'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { registerPinIpc } from './pin'
+import { loadHistory, prune, saveIndex } from './history'
+import { preloadHistoryPanel, registerHistoryIpc, toggleHistoryPanel } from './historyPanel'
 import { flushSettings, getSettings, onSettingsChange, updateSettings } from './settings'
 import { openSettingsWindow, registerSettingsIpc } from './settingsWindow'
 import { createTray, refreshTrayMenu } from './tray'
@@ -14,7 +16,8 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   lockDownWebContents()
-  app.on('second-instance', capture)
+  // Opening Snapkit again captures; with --history it opens the history panel.
+  app.on('second-instance', (_e, argv: string[] = []) => (argv.includes('--history') ? toggleHistoryPanel() : capture()))
   app.whenReady().then(init)
 }
 
@@ -35,31 +38,45 @@ function capture() {
   })
 }
 
+const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel() }
+type HotkeyName = keyof typeof HOTKEY_ACTIONS
+
 function registerHotkey() {
-  const key = getSettings().hotkeys.capture
+  const keys = getSettings().hotkeys
   globalShortcut.unregisterAll()
-  const ok = globalShortcut.register(key, capture)
-  if (!ok) {
-    dialog.showErrorBox('Snapkit', `The shortcut ${key} is already used by another app. Snapkit is still running in the menu bar / tray.`)
+  if (!globalShortcut.register(keys.capture, capture)) {
+    dialog.showErrorBox('Snapkit', `The shortcut ${keys.capture} is already used by another app. Snapkit is still running in the menu bar / tray.`)
+  }
+  // The history hotkey is optional: if it's taken, the menu-bar menu still opens history.
+  if (keys.history) {
+    try {
+      globalShortcut.register(keys.history, HOTKEY_ACTIONS.history)
+    } catch {
+      // invalid accelerator in settings
+    }
   }
 }
 
-/** Switch the capture hotkey from the settings window. Keeps the old one if the new one can't be used. */
-function setHotkey(accelerator: string): string | null {
-  const old = getSettings().hotkeys.capture
+/** Switch a hotkey from the settings window. Keeps the old one if the new one can't be used. '' turns it off (history only). */
+function setHotkey(name: HotkeyName, accelerator: string): string | null {
+  const old = getSettings().hotkeys[name]
   if (accelerator === old) return null
-  globalShortcut.unregister(old)
+  if (old) globalShortcut.unregister(old)
+  if (!accelerator && name === 'history') {
+    updateSettings({ hotkeys: { history: '' } })
+    return null
+  }
   let ok = false
   try {
-    ok = globalShortcut.register(accelerator, capture)
+    ok = globalShortcut.register(accelerator, HOTKEY_ACTIONS[name])
   } catch {
     ok = false // not a valid accelerator
   }
   if (!ok) {
-    globalShortcut.register(old, capture)
+    if (old) globalShortcut.register(old, HOTKEY_ACTIONS[name])
     return `${accelerator.replace('CommandOrControl', process.platform === 'darwin' ? '⌘' : 'Ctrl')} can't be used. It may be taken by another app or by the system.`
   }
-  updateSettings({ hotkeys: { capture: accelerator } })
+  updateSettings({ hotkeys: { [name]: accelerator } })
   return null
 }
 
@@ -73,12 +90,18 @@ function init() {
   registerOverlayIpc()
   registerPinIpc()
   rebuildOverlays()
-  createTray(capture, openSettingsWindow)
+  loadHistory()
+  // The age limit also applies while Snapkit stays open for days.
+  setInterval(() => void prune(), 6 * 60 * 60 * 1000).unref()
+  registerHistoryIpc()
+  preloadHistoryPanel()
+  createTray(capture, openSettingsWindow, toggleHistoryPanel)
   registerHotkey()
   registerSettingsIpc(setHotkey)
   // The menu shows the hotkey; reset-to-defaults can change it too.
   onSettingsChange((s, prev) => {
-    if (s.hotkeys.capture !== prev.hotkeys.capture) registerHotkey()
+    if (s.hotkeys.capture !== prev.hotkeys.capture || s.hotkeys.history !== prev.hotkeys.history) registerHotkey()
+    if (JSON.stringify(s.history) !== JSON.stringify(prev.history)) void prune() // new limits apply now
     if (s.capture.engine !== prev.capture.engine) setPreferredEngine(s.capture.engine)
     refreshTrayMenu()
   })
@@ -98,4 +121,5 @@ app.on('window-all-closed', () => {})
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   flushSettings() // a change made just before quitting still gets saved
+  saveIndex()
 })

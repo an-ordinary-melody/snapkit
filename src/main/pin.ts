@@ -136,12 +136,24 @@ function layoutThumbs(displayId?: number) {
   }
 }
 
+/** Floating previews by the capture session that made them, until history links them to an entry. */
+const thumbBySession = new Map<number, Pin>()
+
+/** The history entry for a preview's capture is known: editing the preview now updates that entry. */
+export function linkThumbToHistory(session: number, historyId: string) {
+  const p = thumbBySession.get(session)
+  thumbBySession.delete(session)
+  if (p?.doc && !p.win.isDestroyed()) p.doc = { ...p.doc, historyId }
+}
+
 /** After a copy: keep a small preview in the corner of the display it was captured on. */
-export function createThumb(png: Buffer, doc: CaptureDoc, rect: Rectangle) {
+export function createThumb(png: Buffer, doc: CaptureDoc, rect: Rectangle, session?: number) {
   const display = screen.getDisplayMatching(rect)
   const size = thumbSize(png)
   const win = floatingWindow({ x: display.workArea.x, y: display.workArea.y, width: size.w, height: size.h })
-  track({ kind: 'thumb', win, png, doc, rect, displayId: display.id, base: size, zoom: 1, opacity: 1, file: tempFile(png, win.webContents.id) })
+  const pin: Pin = { kind: 'thumb', win, png, doc, rect, displayId: display.id, base: size, zoom: 1, opacity: 1, file: tempFile(png, win.webContents.id) }
+  track(pin)
+  if (session !== undefined && !doc.historyId) thumbBySession.set(session, pin)
   layoutThumbs(display.id)
   load(win, 'thumb')
 }

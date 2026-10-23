@@ -1,13 +1,14 @@
 import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron'
 import { readFile, stat } from 'fs/promises'
 import { extname, join } from 'path'
-import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type PixelsPayload } from '@shared/ipc'
+import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
 import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import { copyPng, savePng } from './output'
 import { log } from './log'
 import { ipcHandle, ipcOn } from './security'
-import { createThumb, hasPins } from './pin'
+import { createThumb, hasPins, linkThumbToHistory } from './pin'
+import { addToHistory } from './history'
 
 const isMac = process.platform === 'darwin'
 
@@ -104,6 +105,12 @@ function endCapture() {
  * is slow or seems to do nothing until the user clicks elsewhere.
  */
 function releaseFocus() {
+  if (!isMac) return
+  returnFocus()
+}
+
+/** Give focus back to the app the user was in (keeping pins on screen). */
+export function returnFocus() {
   if (!isMac) return
   app.hide()
   // Hiding the app hides pins too: bring them back without taking focus.
@@ -262,9 +269,13 @@ export function registerOverlayIpc() {
     if (extra && target) target(buf, extra.doc) // editing a floating preview: update it
     else if (extra) {
       const r = extra.rect
-      createThumb(buf, extra.doc, { x: origin.x + r.x, y: origin.y + r.y, width: r.w, height: r.h })
+      createThumb(buf, extra.doc, { x: origin.x + r.x, y: origin.y + r.y, width: r.w, height: r.h }, s)
     }
     releaseFocus()
+  })
+  // Sent right after an output; the session has usually ended by then.
+  ipcOn(IPC.historyAdd, (_e, r: HistoryRecord) => {
+    void addToHistory(r).then((id) => id && linkThumbToHistory(r.session, id))
   })
   ipcOn(IPC.editDone, (_e, s: number, png: ArrayBuffer, doc: CaptureDoc) => {
     if (!valid(s)) return

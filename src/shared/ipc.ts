@@ -20,6 +20,34 @@ export interface CaptureDoc {
   scale: number
   shapes: unknown[]
   beautify: unknown
+  /** Set when this came from history: outputs update that entry instead of adding one. */
+  historyId?: string
+}
+
+/** Everything history keeps for one output (sent after the copy/save, so it never delays it). */
+export interface HistoryRecord {
+  session: number
+  /** The output as copied/saved (drawings and background baked in). */
+  final: Uint8Array
+  doc: CaptureDoc
+  /** Small JPEG for the panel. */
+  thumb: Uint8Array
+}
+
+/** What the history panel lists. */
+export interface HistoryItem {
+  id: string
+  updatedAt: number
+  width: number
+  height: number
+  bytes: number
+  starred: boolean
+}
+
+export interface HistoryUsage {
+  count: number
+  bytes: number
+  folder: string
 }
 
 /** Sent with a copy when a floating preview should stay afterwards. */
@@ -92,6 +120,16 @@ export const IPC = {
   pinMenu: 'pin:menu',
   thumbEdit: 'thumb:edit',
   thumbPin: 'thumb:pin',
+  // history
+  historyAdd: 'history:add',
+  historyList: 'history:list',
+  historyChanged: 'history:changed',
+  historyThumb: 'history:thumb',
+  historyAction: 'history:action',
+  historyClear: 'history:clear',
+  historyUsage: 'history:usage',
+  historyReveal: 'history:reveal',
+  historyClose: 'history:close',
   // settings window
   openSettings: 'settings:open',
   settingsGet: 'settings:get',
@@ -153,6 +191,19 @@ export interface SnapkitApi {
   thumbEdit(): void
   thumbPin(): void
 
+  // History
+  /** After a copy/save/pin: keep this output in history. */
+  historyAdd(record: HistoryRecord): void
+  historyList(): Promise<HistoryItem[]>
+  onHistoryChanged(cb: (items: HistoryItem[]) => void): void
+  historyThumb(id: string): Promise<Uint8Array | null>
+  historyAction(id: string, action: 'copy' | 'edit' | 'pin' | 'save' | 'delete' | 'star' | 'unstar'): void
+  historyClear(keepStarred: boolean): Promise<HistoryUsage>
+  historyUsage(): Promise<HistoryUsage>
+  historyReveal(): void
+  /** Close the history panel. */
+  historyClose(): void
+
   // Settings window
   openSettings(): void
   settingsGet(): Promise<SettingsSnapshot>
@@ -160,8 +211,8 @@ export interface SnapkitApi {
   /** Back to the defaults for these sections (all if none). */
   settingsReset(sections?: (keyof Settings)[]): Promise<SettingsSnapshot>
   onSettingsChanged(cb: (s: SettingsSnapshot) => void): void
-  /** Change the capture hotkey; resolves to an error message if it can't be used. */
-  settingsSetHotkey(accelerator: string): Promise<string | null>
+  /** Change a hotkey; resolves to an error message if it can't be used. '' turns the history hotkey off. */
+  settingsSetHotkey(accelerator: string, name?: 'capture' | 'history'): Promise<string | null>
   /** Pick a folder; null if cancelled. */
   settingsChooseFolder(): Promise<string | null>
   /** Show the log folder or the settings file in Finder / Explorer. */

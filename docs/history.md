@@ -1,6 +1,6 @@
 # Capture history: strategy
 
-Phase 6. A floating panel (like a clipboard manager) of past captures: click to
+Phase 6 (built). A floating panel (like a clipboard manager) of past captures: click to
 copy again, or re-edit, pin, save, delete. This is the plan for what is kept,
 where, and how it's cleaned up.
 
@@ -43,10 +43,10 @@ leave a `.tmp` folder, which startup removes.
 ## Limits and clearing
 
 Settings (General → History), applied in this order after every new entry, at
-startup, and once a day while idle:
+startup, when the settings change, and every 6 hours:
 
-1. **Keep at most N captures**: default 50 (5–500; 0 turns history off).
-2. **Size limit**: default 500 MB. While over it, delete the oldest.
+1. **Keep at most N captures**: default 5 (1–100; a hard ceiling of 100 applies whatever the settings say, to keep the panel and disk use fast).
+2. **Size limit**: default 300 MB (50 MB–2 GB, also a hard ceiling). While over it, delete the oldest.
 3. **Keep for**: default 30 days (or forever). Older entries are deleted.
 
 **Starred** entries are skipped by all three, so you can keep favorites
@@ -68,11 +68,13 @@ temporary drag-out files are cleaned up at startup too.
   loads thumbnails lazily as they scroll into view. 50 entries is about 1.3 MB.
 - `final.png` is read only for copy, pin or save; `source.png` + `doc.json` only
   for edit.
-- Targets: recording blocks the main process for under 50 ms; the panel opens
-  in under 150 ms with 50 entries.
+- Targets: recording blocks the main process for under 50 ms (measured: 2–4 ms
+  of async writes per capture); the panel opens instantly (it's preloaded).
 
-## Panel (UX to decide later)
+## Panel
 
-A hotkey (suggested ⌘⇧H) opens a floating panel with the newest capture first.
+⌘⇧1 (changeable in Settings → Shortcuts), the menu bar's History…, or
+`Snapkit --history` opens a floating panel with the newest capture first.
 Arrows move, Enter copies, E edits, P pins, S saves, Delete deletes, Esc closes.
-Hover shows the same actions.
+Hover shows the same actions. F stars. Settings → General → History has the
+limits, Pause, the folder (Show folder) and Clear (keep starred, or all).

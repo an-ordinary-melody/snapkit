@@ -14,7 +14,7 @@ in settings.
 | 3 | Annotations (pen, arrow, shapes, text, blur, steps, undo) | ✅ |
 | 4 | Background, padding, radius presets + apply-on-copy | ✅ |
 | 5 | Pin to screen | ✅ |
-| 6 | Capture history (floating panel, copy back) | ⏳ |
+| 6 | Capture history (floating panel, copy back) | ✅ |
 | 7 | Settings UI + full customization | ✅ |
 | 8 | Launch at login, update notifications | ⏳ |
 
@@ -32,6 +32,7 @@ in settings.
 - **Highlighter:** has its own light colors (`annotate.highlighterPalette`).
 - **Undo / redo:** `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`).
 - Hover any button for its name and shortcut.
+- **History:** `⌘⇧1` (or History… in the menu bar) opens a panel of your recent copies, saves and pins. Click or Enter copies one again; E edits it (drawings and background still editable), P pins, S saves, F stars, Delete removes, Esc closes. It keeps the last 5 by default, with a size limit and an age limit (Settings → General → History; up to 100 captures / 2 GB). Starred ones are never removed by the limits. The same section shows the folder and clears history. Pause History is in the menu-bar menu. Plan and details: [docs/history.md](docs/history.md).
 - **Floating preview (pin):** the pin button in the action bar turns it on for this capture (green dot); `pin.afterCopy` sets whether captures start with it on. With it on, after you copy (button or `⌘C`) the result stays as a small preview in the bottom-right corner, like Shottr. Hover it for **Copy** and **Edit**; Edit (or double-click) reopens it in the full editor with your drawings and background still editable, and **Done** puts the edited result back in the preview. Drag the image into another app to drop it as a PNG; drag the move handle (top) to move the preview. Its pin icon turns it into a full-size **pin**: always on top (every Space, over full-screen apps), drag to move, scroll to zoom, ⌥ + scroll for opacity, ⌥-drag into other apps, hover bar with zoom/opacity/copy/save, right-click menu, `Esc` to close. "Close All Pins" is in the menu-bar menu.
 - **Background (beautify):** the image button in the action bar turns the background on or off for this capture; it's highlighted with a green dot while on. While it's on, copy and save include it. It starts on or off according to `beautify.applyOnCopy`.
 - **Edit background:** the magic-wand button opens a full editor with a live preview and all the drawing tools, so you can finish the image there. Choose Gradient or Color (Image comes later): the colors in use are shown with editable hex values, a random button and a hue slider, above 32 gradient or 32 color presets. Also: settings presets, output size (Auto, 1:1, 16:9, 4:3, 9:16 or custom px), padding / corners / shadow. The switch at the top previews with or without the background. Esc steps back one level (stops typing, then deselects, then leaves the editor); Copy, Save or Done.
@@ -76,6 +77,8 @@ Annotation test (macOS or Linux, uses its own profile and briefly shows the capt
 Pin test: `npm run build && node e2e/pin.mjs /tmp/snapkit-pin`
 
 Settings test: `npm run build && node e2e/settings.mjs /tmp/snapkit-settings`
+
+History test: `npm run build && node e2e/history.mjs /tmp/snapkit-history`
 
 Install a build on this Mac without waiting for GitHub: `./scripts/update-mac.sh --local "message"`
 

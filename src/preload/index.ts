@@ -31,12 +31,22 @@ const api: SnapkitApi = {
   thumbEdit: () => ipcRenderer.send(IPC.thumbEdit),
   thumbPin: () => ipcRenderer.send(IPC.thumbPin),
 
+  historyAdd: (r) => ipcRenderer.send(IPC.historyAdd, r),
+  historyList: () => ipcRenderer.invoke(IPC.historyList),
+  onHistoryChanged: (cb) => ipcRenderer.on(IPC.historyChanged, (_e, items) => cb(items)),
+  historyThumb: (id) => ipcRenderer.invoke(IPC.historyThumb, id),
+  historyAction: (id, action) => ipcRenderer.send(IPC.historyAction, id, action),
+  historyClear: (keepStarred) => ipcRenderer.invoke(IPC.historyClear, keepStarred),
+  historyUsage: () => ipcRenderer.invoke(IPC.historyUsage),
+  historyReveal: () => ipcRenderer.send(IPC.historyReveal),
+  historyClose: () => ipcRenderer.send(IPC.historyClose),
+
   openSettings: () => ipcRenderer.send(IPC.openSettings),
   settingsGet: () => ipcRenderer.invoke(IPC.settingsGet),
   settingsUpdate: (patch) => ipcRenderer.invoke(IPC.settingsUpdate, patch),
   settingsReset: (sections) => ipcRenderer.invoke(IPC.settingsReset, sections),
   onSettingsChanged: (cb) => ipcRenderer.on(IPC.settingsChanged, (_e, s) => cb(s)),
-  settingsSetHotkey: (acc) => ipcRenderer.invoke(IPC.settingsSetHotkey, acc),
+  settingsSetHotkey: (acc, name) => ipcRenderer.invoke(IPC.settingsSetHotkey, acc, name),
   settingsChooseFolder: () => ipcRenderer.invoke(IPC.settingsChooseFolder),
   settingsReveal: (what) => ipcRenderer.send(IPC.settingsReveal, what)
 }

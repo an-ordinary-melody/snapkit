@@ -23,6 +23,19 @@ export interface BeautifyPreset {
 export interface Settings {
   hotkeys: {
     capture: string
+    /** Opens the history panel. '' = none. */
+    history: string
+  }
+  /** Past captures (see docs/history.md). Limits are capped by HISTORY_LIMITS. */
+  history: {
+    /** How many to keep (starred ones don't count); 0 = keep none. */
+    maxCount: number
+    /** Disk limit in MB; the oldest go first. */
+    maxMB: number
+    /** Delete entries older than this many days; 0 = never. */
+    maxAgeDays: number
+    /** Record nothing while paused. */
+    paused: boolean
   }
   /** Tool id -> letter key in capture mode. Missing ids use the tool's built-in letter. */
   toolKeys: Record<string, string>
@@ -123,7 +136,14 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
-    capture: 'CommandOrControl+Shift+2'
+    capture: 'CommandOrControl+Shift+2',
+    history: 'CommandOrControl+Shift+1'
+  },
+  history: {
+    maxCount: 5,
+    maxMB: 300,
+    maxAgeDays: 30,
+    paused: false
   },
   toolKeys: {},
   toolVariants: {},
