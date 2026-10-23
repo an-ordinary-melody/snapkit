@@ -1,13 +1,15 @@
 // Settings window test: every section in both themes, real changes, and that
 // capture mode picks them up. Usage: npm run build && node e2e/settings.mjs <out-dir>
 import { _electron as electron } from 'playwright-core'
-import { mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join, resolve } from 'path'
 
 const out = resolve(process.argv[2] ?? 'e2e-out')
 const profile = join(out, 'profile')
 mkdirSync(profile, { recursive: true })
-writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12' } }))
+const saves = join(out, 'saved')
+mkdirSync(saves, { recursive: true })
+writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12' }, save: { folder: saves, askLocation: false }, notifications: { onSave: false } }))
 const saved = () => JSON.parse(readFileSync(join(profile, 'settings.json'), 'utf8'))
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -31,6 +33,19 @@ try {
     await section(name)
     writeFileSync(join(out, `glass-${name.toLowerCase()}.png`), await st.screenshot())
   }
+
+  // Switches are blue when on.
+  await section('General')
+  await st.click('button[aria-label="Notify when copied"]')
+  await wait(150)
+  console.log('switch on color:', await st.$eval('.switch.on', (e) => getComputedStyle(e).backgroundColor))
+  await st.click('button[aria-label="Notify when copied"]')
+  // File naming: "Bug" + number after.
+  await st.fill('input[aria-label="File name text"]', 'Bug')
+  await st.click('.st-seg[aria-label="Date position"] button:has-text("None")')
+  await st.click('.st-seg[aria-label="Number position"] button:has-text("After")')
+  await wait(200)
+  console.log('name example:', await st.$eval('.st-row:has-text("File name") small', (e) => e.textContent))
 
   // Shortcuts: record a new capture hotkey, change a tool letter.
   await section('Shortcuts')
@@ -82,12 +97,16 @@ try {
   await wait(150)
   console.log('step color saved:', saved().annotate?.stepColor)
 
-  // Background: make Sunset the default and change its padding.
+  // Background: pick a library gradient as the default; turn on remember-last.
   await section('Background')
-  await st.click('.st-preset:has-text("Sunset")')
-  await st.click('.st-btn:has-text("Make default")')
+  await st.click('.st-group:has-text("Gradient library") .st-lib-swatch >> nth=4')
+  await st.click('.st-group:has-text("Gradient library") .st-btn:has-text("Make default")')
   await wait(200)
-  console.log('default preset:', saved().beautify?.preset)
+  const defPreset = saved().beautify.presets.find((p) => p.id === (saved().beautify.preset ?? 'ocean'))
+  console.log('default background now:', JSON.stringify(defPreset?.background), '| marked:', await st.$$eval('.st-lib-default', (e) => e.length))
+  await st.click('button[aria-label="Remember the last background used"]')
+  await wait(150)
+  console.log('remember last:', saved().beautify.rememberLast)
   const before = await st.$$eval('.st-group:has-text("Gradient library") .st-lib-swatch', (b) => b.length)
   await st.click('.st-group:has-text("Gradient library") .st-btn:has-text("Add")')
   await wait(150)
@@ -111,8 +130,17 @@ try {
     '| W selects arrow', await ov.$eval('.toolbar button.active[data-id]', (b) => b.dataset.id).catch(() => 'none'),
     '| first swatch', await ov.$eval('.style-bar .swatch', (b) => b.dataset.tip).catch(() => 'none'))
   writeFileSync(join(out, 'capture-after-settings.png'), await ov.screenshot())
-  await ov.keyboard.press('Escape')
-  await wait(400)
+  // Two saves name the files Bug 001, Bug 002.
+  await ov.keyboard.press('Meta+s')
+  await wait(1000)
+  await app.evaluate(({ app }) => app.emit('second-instance'))
+  await wait(1000)
+  const ov2 = windowFor('overlay')
+  await ov2.mouse.move(300, 200); await ov2.mouse.down(); await ov2.mouse.move(600, 400, { steps: 3 }); await ov2.mouse.up(); await wait(200)
+  await ov2.click('.toolbar button[data-id="beautify"]') // background on, so remember-last kicks in
+  await ov2.keyboard.press('Meta+s')
+  await wait(1200)
+  console.log('saved files:', readdirSync(saves).sort(), '| next number:', saved().save.nextNumber)
 
   // Reset a section.
   await section('Appearance')

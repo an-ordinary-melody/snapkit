@@ -163,3 +163,12 @@
 .st-lib-swatch.dragging { opacity: .4; }
 .st-lib-edit { border-top: .5px solid var(--st-card-edge); }
 .st-split + .st-group { margin-top: 24px; }
+
+/* Default background preview */
+.st-bg-preview { height: 150px; display: flex; margin: 14px; border-radius: 12px; box-shadow: 0 0 0 .5px var(--st-card-edge); }
+.st-bg-shot { flex: 1; background: repeating-linear-gradient(180deg, #fff 0 14px, #f1f1f4 14px 22px); }
+.st-lib-swatch { position: relative; }
+.st-lib-default {
+  position: absolute; right: -3px; top: -3px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--ui-switch-on, #0a84ff); color: #fff; box-shadow: 0 0 0 1.5px var(--st-card);
+}

@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, GripVertical, Plus, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, GripVertical, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { FEATURES, type FeatureDef } from '@shared/features'
 import { visibleFeatures, type Settings } from '@shared/settings'
@@ -125,25 +125,19 @@ const FONTS = [
   { value: '"Marker Felt", "Bradley Hand", "Comic Sans MS", cursive', label: 'Handwritten' }
 ]
 
-/** Edit a list of colors: each swatch editable and removable, plus add (up to `max`). */
-function PaletteEditor({ colors, onChange, max, label }: { colors: string[]; onChange(c: string[]): void; max: number; label: string }) {
+/** Edit a fixed set of colors: click a swatch to change it; reset brings back the defaults. */
+function PaletteEditor({ colors, defaults, onChange, label }: { colors: string[]; defaults: string[]; onChange(c: string[]): void; label: string }) {
+  const changed = colors.join() !== defaults.join()
   return (
     <div className="st-palette">
       {colors.map((c, i) => (
         <span key={i} className="st-palette-item">
           <ColorField label={`${label} ${i + 1}`} value={c} onChange={(v) => onChange(colors.map((x, j) => (j === i ? v : x)))} />
-          {colors.length > 1 && (
-            <button className="st-btn subtle icon" aria-label={`Remove ${label} ${i + 1}`} onClick={() => onChange(colors.filter((_, j) => j !== i))}>
-              <X size={12} />
-            </button>
-          )}
         </span>
       ))}
-      {colors.length < max && (
-        <button className="st-btn subtle" onClick={() => onChange([...colors, '#888888'])}>
-          <Plus size={13} /> Add
-        </button>
-      )}
+      <button className="st-btn subtle" disabled={!changed} onClick={() => onChange(defaults)} title="Back to the default colors">
+        <RotateCcw size={13} /> Reset
+      </button>
     </div>
   )
 }
@@ -157,11 +151,16 @@ export function ToolsSection({ snap, set }: SectionProps) {
   return (
     <>
       <Group title="Colors" note="Picks you make while capturing stay until you change these settings or quit Snapkit.">
-        <Row label="Quick colors" desc="In the style bar; the first is the starting color.">
-          <PaletteEditor label="Color" colors={a.palette} max={8} onChange={(palette) => setA({ palette })} />
+        <Row label="Quick colors" desc="The five in the style bar; the first is the starting color.">
+          <PaletteEditor label="Color" colors={a.palette} defaults={snap.defaults.annotate.palette} onChange={(palette) => setA({ palette })} />
         </Row>
         <Row label="Highlighter colors" desc="Light colors work best.">
-          <PaletteEditor label="Highlighter color" colors={a.highlighterPalette} max={6} onChange={(highlighterPalette) => setA({ highlighterPalette, highlighterColor: highlighterPalette[0] })} />
+          <PaletteEditor
+            label="Highlighter color"
+            colors={a.highlighterPalette}
+            defaults={snap.defaults.annotate.highlighterPalette}
+            onChange={(highlighterPalette) => setA({ highlighterPalette, highlighterColor: highlighterPalette[0] })}
+          />
         </Row>
       </Group>
 

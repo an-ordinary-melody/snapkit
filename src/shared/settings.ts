@@ -1,4 +1,5 @@
 import { FEATURES } from './features'
+import { DEFAULT_NAME_RULE, type NameRule } from './naming'
 
 export type BeautifyBackground =
   | { type: 'solid'; color: string }
@@ -41,6 +42,10 @@ export interface Settings {
     askLocation: boolean
     /** Folder picked in the last save dialog. Set by Snapkit. */
     lastFolder: string
+    /** How files are named. */
+    name: NameRule
+    /** The number used in the next name (when the rule has a number). */
+    nextNumber: number
   }
   notifications: {
     onCopy: boolean
@@ -105,6 +110,8 @@ export interface Settings {
     gradients: [string, string][]
     /** Solid colors offered in the background editor. */
     solids: string[]
+    /** Whatever background is copied or saved with becomes the default. */
+    rememberLast: boolean
   }
   /** Feature id -> enabled. Missing ids fall back to the feature's default. */
   features: Record<string, boolean>
@@ -126,7 +133,9 @@ export const DEFAULT_SETTINGS: Settings = {
   save: {
     folder: '',
     askLocation: true,
-    lastFolder: ''
+    lastFolder: '',
+    name: DEFAULT_NAME_RULE,
+    nextNumber: 1
   },
   notifications: {
     onCopy: false,
@@ -182,6 +191,7 @@ export const DEFAULT_SETTINGS: Settings = {
       ['#232526', '#414345'], ['#0f2027', '#2c5364'], ['#141e30', '#243b55'], ['#42275a', '#734b6d'],
       ['#870000', '#190a05'], ['#000428', '#004e92'], ['#3a1c71', '#d76d77'], ['#434343', '#000000']
     ],
+    rememberLast: false,
     solids: ['#ffffff', '#e5e7eb', '#18181b', '#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7']
   },
   features: Object.fromEntries(FEATURES.map((f) => [f.id, f.defaultEnabled])),

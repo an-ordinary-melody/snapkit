@@ -15,7 +15,7 @@ export function applyTheme(a: Settings['appearance']) {
   const root = document.documentElement
   root.dataset.mode = a.mode === 'system' ? (darkQuery.matches ? 'dark' : 'light') : a.mode
   root.dataset.glass = a.glass === false ? 'off' : 'on'
-  const vars = ['--ui-accent', '--ui-accent-hover', '--ui-on-accent', '--ui-active-bg', '--ui-active-fg']
+  const vars = ['--ui-accent', '--ui-accent-hover', '--ui-on-accent', '--ui-active-bg', '--ui-active-fg', '--ui-switch-on']
   for (const v of vars) root.style.removeProperty(v)
   if (!a.accent) return
   const on = readableOn(a.accent)
@@ -24,4 +24,5 @@ export function applyTheme(a: Settings['appearance']) {
   root.style.setProperty('--ui-on-accent', on)
   root.style.setProperty('--ui-active-bg', a.accent)
   root.style.setProperty('--ui-active-fg', on)
+  root.style.setProperty('--ui-switch-on', a.accent)
 }

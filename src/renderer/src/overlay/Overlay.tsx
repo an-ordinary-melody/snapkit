@@ -294,7 +294,15 @@ export function Overlay() {
       let out = composeSelection(r, scale)
       const b = beautifyRef.current
       const bg = b?.on && cap ? backgroundOf(b, cap.settings.beautify.presets) : null
-      if (b && bg) out = await renderBeautified(out, bg, b, scale)
+      if (b && bg) {
+        out = await renderBeautified(out, bg, b, scale)
+        // "Remember the last background used": this one becomes the default.
+        const set = cap!.settings.beautify
+        if (set.rememberLast) {
+          const look = { background: bg, padding: b.padding, radius: b.radius, shadow: b.shadow }
+          void api.settingsUpdate({ beautify: { presets: set.presets.map((p) => (p.id === set.preset ? { ...p, ...look } : p)) } })
+        }
+      }
       const blob = await new Promise<Blob>((res, rej) => out.toBlob((x) => (x ? res(x) : rej(new Error('encode failed'))), 'image/png'))
       return blob.arrayBuffer()
     },

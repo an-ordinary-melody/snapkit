@@ -1,6 +1,7 @@
 import { FolderOpen, RotateCcw } from 'lucide-react'
 import { FEATURES } from '@shared/features'
-import { ColorField, Group, HotkeyField, Row, Segmented, SliderField, Toggle } from './controls'
+import { fileName } from '@shared/naming'
+import { ColorField, Group, HotkeyField, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
 import type { SectionProps } from './Settings'
 
 const api = window.snapkit
@@ -22,6 +23,45 @@ export function General({ snap, set }: SectionProps) {
         <Row label="Ask where to save" desc="Off: save straight to the folder below.">
           <Toggle label="Ask where to save" value={s.save.askLocation} onChange={(v) => set({ save: { askLocation: v } })} />
         </Row>
+        <Row label="File name" desc={`Example: ${fileName(s.save.name, new Date(), s.save.nextNumber)}`}>
+          <input
+            className="st-input wide"
+            aria-label="File name text"
+            placeholder="Text"
+            value={s.save.name.text}
+            onChange={(e) => set({ save: { name: { text: e.target.value } } })}
+          />
+        </Row>
+        <Row label="Date and time" desc="Like 2026-10-24 at 05.30.12.">
+          <Segmented
+            label="Date position"
+            value={s.save.name.date}
+            options={[
+              { value: 'none', label: 'None' },
+              { value: 'before', label: 'Before' },
+              { value: 'after', label: 'After' }
+            ]}
+            onChange={(date) => set({ save: { name: { date } } })}
+          />
+        </Row>
+        <Row label="Number" desc="Counts up with each save.">
+          <Segmented
+            label="Number position"
+            value={s.save.name.number}
+            options={[
+              { value: 'none', label: 'None' },
+              { value: 'before', label: 'Before' },
+              { value: 'after', label: 'After' }
+            ]}
+            onChange={(number) => set({ save: { name: { number } } })}
+          />
+        </Row>
+        {s.save.name.number !== 'none' && (
+          <Row label="Next number" desc="Digits: how many places, padded with zeros.">
+            <NumberField label="Next number" min={0} max={99999999} value={s.save.nextNumber} onChange={(nextNumber) => set({ save: { nextNumber } })} />
+            <NumberField label="Digits" min={1} max={8} value={s.save.name.digits} unit="digits" onChange={(digits) => set({ save: { name: { digits } } })} />
+          </Row>
+        )}
         <Row label="Screenshots folder" desc={s.save.folder || `${snap.defaultSaveFolder} (default)`}>
           <button
             className="st-btn"
