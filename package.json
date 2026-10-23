@@ -1,0 +1,40 @@
+{
+  "name": "snapkit",
+  "productName": "Snapkit",
+  "version": "0.1.0",
+  "description": "Minimal, fully customizable screenshot tool for macOS and Windows",
+  "main": "./out/main/index.js",
+  "author": "Son <son@charios.com>",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "build:mac": "npm run build && electron-builder --mac --publish never",
+    "build:win": "npm run build && electron-builder --win --publish never",
+    "build:dir": "npm run build && electron-builder --dir --publish never",
+    "e2e": "node e2e/smoke.mjs"
+  },
+  "dependencies": {
+    "node-screenshots": "^0.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "lucide-react": "^0.460.0",
+    "playwright-core": "^1.48.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.5"
+  },
+  "repository": "github:sonbq-fsc/snapkit"
+}

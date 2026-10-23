@@ -1,0 +1,41 @@
+appId: com.charios.snapkit
+productName: Snapkit
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - package.json
+extraResources:
+  - from: resources
+    to: .
+    filter: ["*.png"]
+asarUnpack:
+  - "**/*.node"
+npmRebuild: false
+afterPack: build/adhoc-sign.cjs
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  category: public.app-category.productivity
+  identity: null # no Apple Developer account: ad-hoc signed in afterPack instead
+  extendInfo:
+    LSUIElement: true
+    NSScreenCaptureUsageDescription: Snapkit needs to record the screen to take screenshots.
+dmg:
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-win-${arch}-setup.${ext}
+
+linux:
+  target: [dir]
