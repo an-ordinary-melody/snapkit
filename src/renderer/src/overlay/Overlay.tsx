@@ -58,6 +58,7 @@ function initialStyle(s: Settings): Style {
   const a = s.annotate
   return {
     color: a.palette[0] ?? '#ef4444',
+    textColor: a.palette[0] ?? '#ef4444',
     widthIndex: a.strokeWidth,
     blurMode: a.blurMode,
     blurStrength: a.blurStrength,
@@ -82,7 +83,7 @@ function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
     case 'text':
       return {
         ...s,
-        color: patch.color ?? s.color,
+        color: patch.textColor ?? s.color,
         fontSize: patch.fontSize ?? s.fontSize,
         shadow: patch.shadow ?? s.shadow,
         background: patch.textBackground ?? s.background
@@ -261,7 +262,12 @@ export function Overlay() {
       // Typing fields keep their keys; anything else (e.g. a slider that still
       // has focus) must not swallow ⌘C / Esc.
       const typing = e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLInputElement && (e.target.type === 'text' || e.target.type === 'number'))
+      // Text being typed keeps every key, even if its box lost focus for a moment.
       if (!cap || e.defaultPrevented || typing) return
+      if (annRef.current?.isEditing()) {
+        if (e.key === 'Escape') annRef.current.finishEditing()
+        return
+      }
       if (e.target instanceof HTMLInputElement) e.target.blur()
       const mod = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
@@ -399,6 +405,17 @@ export function Overlay() {
     beautify: { text: beautify?.on ? 'Background: on' : 'Background: off', sub: 'Click to turn it ' + (beautify?.on ? 'off' : 'on') + ' for copy & save' }
   }
   const closeEditor = useCallback(() => setEditorOpen(false), [])
+  const escapeInEditor = useCallback(() => {
+    if (annRef.current?.isEditing()) {
+      annRef.current.finishEditing()
+      return true
+    }
+    if (selectedId) {
+      setSelectedId(null)
+      return true
+    }
+    return false
+  }, [selectedId])
   const composeForEditor = useCallback((scale: number) => composeSelection(sel!, scale, false), [composeSelection, sel])
 
   // One drawing layer: in capture mode over the selection, or inside the background editor.
@@ -427,7 +444,7 @@ export function Overlay() {
         screen={screen}
         settings={cap.settings}
         activeTool={tool}
-        color={style.color}
+        color={tool === 'text' || selectedShape?.type === 'text' ? style.textColor : style.color}
         pressed={pressed}
         unavailable={unavailable}
         styleBar={styleBar}
@@ -503,6 +520,7 @@ export function Overlay() {
           )}
           toolbar={toolbars(true)}
           onClose={closeEditor}
+          onEscape={escapeInEditor}
           onCopy={() => void runAction('copy')}
           onSave={() => void runAction('save')}
         />

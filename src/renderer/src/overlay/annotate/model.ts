@@ -91,7 +91,10 @@ export type Shape = StrokeShape | LineShape | BoxShape | BlurShape | StepShape |
 
 /** Current style choices, shared by every tool. */
 export interface Style {
+  /** Color for shapes, lines and steps. */
   color: string
+  /** Text has its own color, so a text background style can pick a readable one without changing the other tools. */
+  textColor: string
   /** Index into the stroke width presets. */
   widthIndex: number
   blurMode: 'pixelate' | 'blur'

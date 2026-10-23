@@ -82,6 +82,9 @@ try {
   await win.click('.style-bar button[data-tip="Shadow"]')
   const active = await win.$$eval('.style-bar button.active', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Shadow|background/.test(t)))
   console.log('text styles:', order.join(' | '), '→ active after Shadow:', active)
+  await win.click('.style-bar button[data-tip="Dark background"]')
+  console.log('dark background sets white text:', await win.$eval('.style-bar .swatch.active', (b) => b.dataset.tip).catch(() => 'none'))
+  await win.click('.style-bar button[data-tip="Plain"]')
   await win.keyboard.press('Escape')
 
   // Right-click the rectangle tool: menu of shapes; right-click must not end the capture.
@@ -144,7 +147,13 @@ try {
   // Full editor: pick a gradient, check the shadow step, Done.
   await win.click('.toolbar button[data-tip="Edit background"]')
   await wait(400)
-  await win.click('.be-section:has-text("Gradients") + .be-grid .be-swatch >> nth=5')
+  await win.click('.be-tab:has-text("Gradient")')
+  await win.click('.be-grid .be-swatch[aria-label^="Gradient"] >> nth=12')
+  await win.fill('.be-hex[aria-label="End color"]', '#00aa55')
+  console.log('end color typed:', await win.$eval('.be-hex[aria-label="End color"]', (e) => e.value))
+  await win.click('.be-tab:has-text("Color")')
+  console.log('color tab -> solid swatches:', (await win.$$('.be-swatch[aria-label^="Color"]')).length)
+  await win.click('.be-tab:has-text("Gradient")')
   console.log('shadow slider step:', await win.$eval('.be-row:has-text("Shadow") input', (e) => e.step))
   // Size 16:9, and draw an open arrow right in the editor.
   await win.click('.be-chip:has-text("Slide 16:9")')
@@ -155,12 +164,20 @@ try {
   await drag(host.x + host.width * 0.55, host.y + host.height * 0.75, host.x + host.width * 0.8, host.y + host.height * 0.55)
   await wait(200)
   // The picker for a gradient stop opens fully on screen.
-  await win.click('.be-color[title="End color"]')
+  await win.click('.be-color[aria-label="End color: pick"]')
   await wait(150)
   const pk = await win.$eval('.color-picker', (e) => e.getBoundingClientRect().toJSON())
   console.log('picker fully visible:', pk.x >= 0 && pk.y >= 0 && pk.right <= innerWidthOf(win) && pk.bottom > pk.y, JSON.stringify({ x: Math.round(pk.x), y: Math.round(pk.y), b: Math.round(pk.bottom) }))
   writeFileSync(join(out, '4-background-editor.png'), await win.screenshot())
   await win.keyboard.press('Escape') // closes the picker
+  await wait(100)
+  // Typing text in the editor: Esc ends typing and stays in the editor.
+  await win.click('.be-dock .toolbar button[data-tip="Text"]')
+  await m.click(host.x + host.width * 0.3, host.y + host.height * 0.3); await wait(150)
+  await win.keyboard.type('in editor')
+  await win.keyboard.press('Escape'); await wait(150)
+  console.log('Esc while typing in editor -> still in editor:', !!(await win.$('.be-backdrop')), '| typing:', !!(await win.$('.text-editor')))
+  await win.keyboard.press('Escape') // deselects the text
   await wait(100)
   await win.keyboard.press('Escape') // closes the editor only
   console.log('Esc closed editor, still capturing:', !(await win.$('.be-backdrop')) && !!(await win.$('.toolbar')))

@@ -14,12 +14,12 @@ const COLORED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse',
 /** Nothing to show for this target. */
 export const hasStyleOptions = (t: StyleTarget) => COLORED.has(t) || t === 'blur'
 
-/** One choice at a time; plain text first. */
-const TEXT_STYLES = [
+/** One choice at a time; plain text first. Backgrounds come with a readable text color. */
+const TEXT_STYLES: { label: string; shadow: boolean; background: string; color?: string }[] = [
   { label: 'Plain', shadow: false, background: '' },
   { label: 'Shadow', shadow: true, background: '' },
-  { label: 'Light background', shadow: false, background: '#ffffff' },
-  { label: 'Dark background', shadow: false, background: '#111111' }
+  { label: 'Light background', shadow: false, background: '#ffffff', color: '#111111' },
+  { label: 'Dark background', shadow: false, background: '#111111', color: '#ffffff' }
 ]
 
 export const BLUR_RANGE = { min: 4, max: 40 }
@@ -42,18 +42,21 @@ export function StyleBar({ target, filled, style, palette, onChange }: Props) {
   const sep = <div className="sep" />
   const lower = palette.map((c) => c.toLowerCase())
   const customs = recentCustom.filter((c) => !lower.includes(c))
-  const current = style.color.toLowerCase()
+  // Text keeps its own color.
+  const colorKey = target === 'text' ? 'textColor' : 'color'
+  const currentColor = style[colorKey]
+  const current = currentColor.toLowerCase()
   // A custom color in use that isn't in the list yet still gets a swatch.
   if (!lower.includes(current) && !customs.includes(current)) customs.unshift(current)
 
   const closePicker = () => {
     setPicking(false)
-    const c = parseHex(style.color)
+    const c = parseHex(currentColor)
     if (c && !lower.includes(c)) recentCustom = [c, ...recentCustom.filter((x) => x !== c)].slice(0, 4)
   }
 
   const swatch = (c: string) => (
-    <button key={c} className={`swatch${c.toLowerCase() === current ? ' active' : ''}`} data-tip={c} onClick={() => onChange({ color: c })}>
+    <button key={c} className={`swatch${c.toLowerCase() === current ? ' active' : ''}`} data-tip={c} onClick={() => onChange({ [colorKey]: c })}>
       <span style={{ background: c }} />
     </button>
   )
@@ -68,7 +71,7 @@ export function StyleBar({ target, filled, style, palette, onChange }: Props) {
             <button className={`swatch custom${picking ? ' active' : ''}`} data-tip="Custom color" onClick={() => (picking ? closePicker() : setPicking(true))}>
               <span />
             </button>
-            {picking && <ColorPicker color={style.color} onChange={(c) => onChange({ color: c }, true)} onClose={closePicker} />}
+            {picking && <ColorPicker color={currentColor} onChange={(c) => onChange({ [colorKey]: c }, true)} onClose={closePicker} />}
           </div>
         </>
       )}
@@ -99,7 +102,7 @@ export function StyleBar({ target, filled, style, palette, onChange }: Props) {
             const on = style.shadow === t.shadow && style.textBackground === t.background
             const glyph = t.background ? 'glyph boxed' : t.shadow ? 'glyph shadowed' : 'glyph'
             return (
-              <button key={t.label} className={on ? 'active' : ''} data-tip={t.label} onClick={() => onChange({ shadow: t.shadow, textBackground: t.background })}>
+              <button key={t.label} className={on ? 'active' : ''} data-tip={t.label} onClick={() => onChange({ shadow: t.shadow, textBackground: t.background, ...(t.color && { textColor: t.color }) })}>
                 <span className={glyph} style={t.background ? { background: t.background, color: t.background === '#ffffff' ? '#111' : '#fff' } : undefined}>
                   A
                 </span>

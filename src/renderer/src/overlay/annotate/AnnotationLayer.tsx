@@ -20,6 +20,8 @@ export interface AnnotationLayerHandle {
   exportCanvas(scale: number): HTMLCanvasElement | null
   /** Commit any text being typed. */
   finishEditing(): void
+  /** Text is being typed right now. */
+  isEditing(): boolean
 }
 
 interface Props {
@@ -95,6 +97,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
 
   useImperativeHandle(ref, () => ({
     finishEditing: () => flushSync(finishEditing),
+    isEditing: () => !!editingRef.current,
     exportCanvas(pixelRatio) {
       if (editingRef.current) flushSync(finishEditing)
       const stage = stageRef.current
@@ -112,7 +115,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     if (prevStyle.current === style) return
     prevStyle.current = style
     const t = editingRef.current
-    if (t) setEditing({ ...t, color: style.color, fontSize: style.fontSize, shadow: style.shadow, background: style.textBackground })
+    if (t) setEditing({ ...t, color: style.textColor, fontSize: style.fontSize, shadow: style.shadow, background: style.textBackground })
   }, [style])
 
   // ---- selection handles -----------------------------------------------------
@@ -141,7 +144,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       const pad = style.textBackground ? TEXT_PAD : 0
       // Click point = middle of the first line, so the caret lands where you clicked.
       setEditing({
-        id, type: 'text', x: x0 - pad, y: y0 - (fontSize * LINE_HEIGHT) / 2 - pad, text: '', color: style.color,
+        id, type: 'text', x: x0 - pad, y: y0 - (fontSize * LINE_HEIGHT) / 2 - pad, text: '', color: style.textColor,
         fontSize, fontFamily: style.fontFamily, shadow: style.shadow, background: style.textBackground
       })
       onSelect(null)
@@ -511,8 +514,9 @@ function TextEditor(props: { shape: TextShape; zoom(): number; onChange(s: TextS
   const shapeRef = useRef(s)
   shapeRef.current = s
   useEffect(() => {
-    // Focus after the click that created the editor has finished.
-    const t = setTimeout(() => ref.current?.focus(), 0)
+    // Focus once the click that created the box has finished: focusing during
+    // it would be undone by its own mouse-down (and end the empty text box).
+    const t = setTimeout(() => ref.current?.focus({ preventScroll: true }), 0)
     return () => clearTimeout(t)
   }, [])
   const pad = textPad(s)

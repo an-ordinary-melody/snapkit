@@ -1,18 +1,45 @@
-import { Copy, Save, X } from 'lucide-react'
+import { Copy, Save, WandSparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { BeautifyBackground, BeautifyPreset } from '@shared/settings'
+import { hexToHsv, hsvToHex, parseHex } from '../annotate/color'
 import { ColorPicker } from '../annotate/ColorPicker'
 import { Slider } from '../Slider'
 import { backgroundOf, beautifyLayout, FRAMES, PLAIN, stateFromPreset, type BeautifyState, type Frame } from './layout'
 import { drawBeautified, loadBackgroundImage } from './render'
 
-/** Built-in backgrounds offered in the editor: 11 each, then a custom slot. */
+/** Built-in gradients, light to dark. */
 const GRADIENTS: [string, string][] = [
-  ['#4f8cff', '#a855f7'], ['#fb923c', '#ec4899'], ['#34d399', '#06b6d4'], ['#fbc2eb', '#a6c1ee'],
-  ['#fde68a', '#f59e0b'], ['#f97316', '#ef4444'], ['#7c3aed', '#db2777'], ['#38bdf8', '#6366f1'],
-  ['#a3e635', '#16a34a'], ['#94a3b8', '#334155'], ['#0f172a', '#312e81']
+  ['#f5f7fa', '#c3cfe2'], ['#a1c4fd', '#c2e9fb'], ['#ffecd2', '#fcb69f'], ['#e0c3fc', '#8ec5fc'],
+  ['#a8edea', '#fed6e3'], ['#d4fc79', '#96e6a1'], ['#f6d365', '#fda085'], ['#ee9ca7', '#ffdde1'],
+  ['#ff5f6d', '#ffc371'], ['#f83600', '#f9d423'], ['#f093fb', '#f5576c'], ['#fc466b', '#3f5efb'],
+  ['#4facfe', '#00f2fe'], ['#43cea2', '#185a9d'], ['#38ef7d', '#11998e'], ['#5ee7df', '#b490ca'],
+  ['#4f8cff', '#a855f7'], ['#fb923c', '#ec4899'], ['#34d399', '#06b6d4'], ['#7f7fd5', '#86a8e7'],
+  ['#667eea', '#764ba2'], ['#8e2de2', '#4a00e0'], ['#30cfd0', '#330867'], ['#bdc3c7', '#2c3e50'],
+  ['#232526', '#414345'], ['#0f2027', '#2c5364'], ['#141e30', '#243b55'], ['#42275a', '#734b6d'],
+  ['#870000', '#190a05'], ['#000428', '#004e92'], ['#3a1c71', '#d76d77'], ['#434343', '#000000']
 ]
-const SOLIDS = ['#ffffff', '#e5e7eb', '#71717a', '#111111', '#ef4444', '#f97316', '#facc15', '#22c55e', '#14b8a6', '#3b82f6', '#a855f7']
+/** Built-in solid colors: grays, vivid, more vivid, pastels. */
+const SOLIDS = [
+  '#ffffff', '#f4f4f5', '#d4d4d8', '#a1a1aa', '#71717a', '#3f3f46', '#18181b', '#000000',
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4',
+  '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
+  '#fee2e2', '#ffedd5', '#fef9c3', '#dcfce7', '#ccfbf1', '#dbeafe', '#ede9fe', '#fce7f3'
+]
+
+/** A pleasant random gradient / color for the magic-wand button. */
+function randomGradient(angle: number): BeautifyBackground {
+  const h = Math.random() * 360
+  const from = hsvToHex({ h, s: 0.45 + Math.random() * 0.3, v: 0.9 + Math.random() * 0.1 })
+  const to = hsvToHex({ h: (h + 30 + Math.random() * 60) % 360, s: 0.6 + Math.random() * 0.3, v: 0.65 + Math.random() * 0.3 })
+  return { type: 'gradient', from, to, angle }
+}
+const randomColor = (): BeautifyBackground => ({ type: 'solid', color: hsvToHex({ h: Math.random() * 360, s: 0.35 + Math.random() * 0.5, v: 0.6 + Math.random() * 0.4 }) })
+
+/** Rotate a color's hue by `deg`. */
+const shiftHue = (hex: string, deg: number) => {
+  const c = hexToHsv(hex)
+  return hsvToHex({ ...c, h: (c.h + deg + 360) % 360 })
+}
 
 const SIDEBAR = 300
 /** Room above the preview for the drawing tools. */
@@ -32,6 +59,8 @@ interface Props {
   /** Drawing tools and style bar, docked above the preview. */
   toolbar: ReactNode
   onClose(): void
+  /** Esc: return true if something smaller was undone first (e.g. a shape deselected), so the editor stays. */
+  onEscape(): boolean
   onCopy(): void
   onSave(): void
 }
@@ -48,7 +77,7 @@ const sameFrame = (a: Frame | undefined, b: Frame) => JSON.stringify(a ?? { kind
 
 /** Full-screen editor: background, layout and output size, with the drawing tools at hand. */
 export function BackgroundEditor(props: Props) {
-  const { presets, state, onChange, selection, exportScale, compose, annotations, toolbar, onClose, onCopy, onSave } = props
+  const { presets, state, onChange, selection, exportScale, compose, annotations, toolbar, onClose, onEscape, onCopy, onSave } = props
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [area, setArea] = useState({ w: 0, h: 0 })
@@ -65,17 +94,18 @@ export function BackgroundEditor(props: Props) {
     return () => ro.disconnect()
   }, [])
 
-  // Esc closes the editor (not the capture), unless a color picker is open.
+  // Esc steps back one level: typing, then a selected shape, then the editor
+  // itself. It never closes the capture.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || picking || e.target instanceof HTMLTextAreaElement) return
       e.preventDefault()
       e.stopImmediatePropagation()
-      onClose()
+      if (!onEscape()) onClose()
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose, picking])
+  }, [onClose, onEscape, picking])
 
   useEffect(() => {
     if (bg?.type === 'image') void loadBackgroundImage(bg.path).then(setImage)
@@ -101,8 +131,27 @@ export function BackgroundEditor(props: Props) {
   const set = (patch: Partial<BeautifyState>) => onChange({ ...state, ...patch, on: true })
   const setBg = (b: BeautifyBackground) => set({ background: b })
   const gradient = bg?.type === 'gradient' ? bg : null
-  const customGradient = gradient && !GRADIENTS.some((g) => sameGradient(bg, g))
-  const customSolid = bg?.type === 'solid' && !SOLIDS.includes(bg.color.toLowerCase())
+  const tab = bg?.type ?? 'gradient'
+  /** Switching tabs carries the color over, so the preview changes right away. */
+  const switchTab = (t: 'gradient' | 'solid' | 'image') => {
+    if (t === tab || t === 'image') return
+    if (t === 'solid') setBg({ type: 'solid', color: gradient?.from ?? '#ffffff' })
+    else if (bg?.type === 'solid') setBg({ type: 'gradient', from: bg.color, to: shiftHue(bg.color, 40), angle: 135 })
+    else setBg(randomGradient(135))
+  }
+
+  /** Swatch (opens the picker) + editable hex value. */
+  const colorField = (which: 'solid' | 'from' | 'to', label: string, color: string, apply: (c: string) => void) => (
+    <div className="be-field">
+      <div className="picker-anchor">
+        <button className="be-color" aria-label={`${label}: pick`} onClick={() => setPicking(picking === which ? null : which)}>
+          <span style={{ background: color }} />
+        </button>
+        {picker(which, color, apply)}
+      </div>
+      <HexInput label={label} value={color} onChange={apply} />
+    </div>
+  )
   const size = state.frame?.kind === 'size' ? state.frame : null
 
   const row = (label: string, key: 'padding' | 'radius' | 'shadow', max: number, step: number, fmt = (v: number) => String(v)) => (
@@ -149,66 +198,88 @@ export function BackgroundEditor(props: Props) {
             ))}
           </div>
 
-          <div className="be-section">Gradients</div>
-          <div className="be-grid">
-            {GRADIENTS.map(([from, to]) => (
+          <div className="be-tabs" role="tablist">
+            {(['gradient', 'solid', 'image'] as const).map((t) => (
               <button
-                key={from + to}
-                className={`be-swatch${sameGradient(bg, [from, to]) ? ' active' : ''}`}
-                onClick={() => setBg({ type: 'gradient', from, to, angle: gradient?.angle ?? 135 })}
+                key={t}
+                role="tab"
+                aria-selected={tab === t}
+                className={`be-tab${tab === t ? ' active' : ''}`}
+                disabled={t === 'image'}
+                title={t === 'image' ? 'Coming later' : undefined}
+                onClick={() => switchTab(t)}
               >
-                <span style={{ background: `linear-gradient(${(gradient?.angle ?? 135) + 90}deg, ${from}, ${to})` }} />
+                {t === 'gradient' ? 'Gradient' : t === 'solid' ? 'Color' : 'Image'}
               </button>
             ))}
-            <button
-              className={`be-swatch custom${customGradient ? ' active' : ''}`}
-              title="Custom gradient"
-              onClick={() => !gradient && setBg({ type: 'gradient', from: '#ffffff', to: '#3b82f6', angle: 135 })}
-            >
-              <span style={customGradient && gradient ? { background: cssBackground(gradient) } : undefined} />
-            </button>
           </div>
-          {gradient && (
-            <div className="be-gradient-edit">
-              <div className="picker-anchor">
-                <button className="be-color" title="Start color" onClick={() => setPicking(picking === 'from' ? null : 'from')}>
-                  <span style={{ background: gradient.from }} />
+
+          {tab === 'gradient' && gradient && (
+            <>
+              <div className="be-current">
+                {colorField('from', 'Start color', gradient.from, (c) => setBg({ ...gradient, from: c }))}
+                {colorField('to', 'End color', gradient.to, (c) => setBg({ ...gradient, to: c }))}
+                <button className="be-wand" title="Random gradient" onClick={() => setBg(randomGradient(gradient.angle))}>
+                  <WandSparkles size={16} />
                 </button>
-                {picker('from', gradient.from, (c) => setBg({ ...gradient, from: c }))}
               </div>
-              <div className="picker-anchor">
-                <button className="be-color" title="End color" onClick={() => setPicking(picking === 'to' ? null : 'to')}>
-                  <span style={{ background: gradient.to }} />
-                </button>
-                {picker('to', gradient.to, (c) => setBg({ ...gradient, to: c }))}
+              <div className="be-row">
+                <span>Hue</span>
+                <Slider
+                  className="hue"
+                  label="Gradient hue"
+                  min={0}
+                  max={359}
+                  value={Math.round(hexToHsv(gradient.from).h)}
+                  onChange={(h) => {
+                    const d = h - hexToHsv(gradient.from).h
+                    setBg({ ...gradient, from: shiftHue(gradient.from, d), to: shiftHue(gradient.to, d) })
+                  }}
+                />
+                <span className="be-value">{Math.round(hexToHsv(gradient.from).h)}°</span>
               </div>
-              <div className="be-row be-angle">
+              <div className="be-row">
                 <span>Angle</span>
                 <Slider label="Gradient angle" min={0} max={359} value={gradient.angle} onChange={(angle) => setBg({ ...gradient, angle })} />
                 <span className="be-value">{gradient.angle}°</span>
               </div>
-            </div>
+              <div className="be-grid">
+                {GRADIENTS.map(([from, to]) => (
+                  <button
+                    key={from + to}
+                    className={`be-swatch${sameGradient(bg, [from, to]) ? ' active' : ''}`}
+                    aria-label={`Gradient ${from} to ${to}`}
+                    onClick={() => setBg({ type: 'gradient', from, to, angle: gradient.angle })}
+                  >
+                    <span style={{ background: `linear-gradient(${gradient.angle + 90}deg, ${from}, ${to})` }} />
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
-          <div className="be-section">Solid colors</div>
-          <div className="be-grid">
-            {SOLIDS.map((color) => (
-              <button
-                key={color}
-                className={`be-swatch${bg?.type === 'solid' && bg.color.toLowerCase() === color ? ' active' : ''}`}
-                title={color}
-                onClick={() => setBg({ type: 'solid', color })}
-              >
-                <span style={{ background: color }} />
-              </button>
-            ))}
-            <div className="picker-anchor">
-              <button className={`be-swatch custom${customSolid ? ' active' : ''}`} title="Custom color" onClick={() => setPicking(picking === 'solid' ? null : 'solid')}>
-                <span style={customSolid && bg?.type === 'solid' ? { background: bg.color } : undefined} />
-              </button>
-              {picker('solid', bg?.type === 'solid' ? bg.color : '#ffffff', (c) => setBg({ type: 'solid', color: c }))}
-            </div>
-          </div>
+          {tab === 'solid' && bg?.type === 'solid' && (
+            <>
+              <div className="be-current">
+                {colorField('solid', 'Color', bg.color, (c) => setBg({ type: 'solid', color: c }))}
+                <button className="be-wand" title="Random color" onClick={() => setBg(randomColor())}>
+                  <WandSparkles size={16} />
+                </button>
+              </div>
+              <div className="be-grid">
+                {SOLIDS.map((color) => (
+                  <button
+                    key={color}
+                    className={`be-swatch${bg.color.toLowerCase() === color ? ' active' : ''}`}
+                    aria-label={`Color ${color}`}
+                    onClick={() => setBg({ type: 'solid', color })}
+                  >
+                    <span style={{ background: color }} />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <div className="be-section">Size</div>
           <div className="be-chips">
@@ -270,5 +341,27 @@ export function BackgroundEditor(props: Props) {
         </button>
       </div>
     </div>
+  )
+}
+
+/** Hex text field: applies valid values as you type, tidies up on blur. */
+function HexInput({ label, value, onChange }: { label: string; value: string; onChange(c: string): void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => setText(value), [value])
+  return (
+    <input
+      className="be-hex"
+      aria-label={label}
+      value={text.toUpperCase()}
+      maxLength={7}
+      spellCheck={false}
+      onChange={(e) => {
+        setText(e.target.value)
+        const c = parseHex(e.target.value)
+        if (c) onChange(c)
+      }}
+      onBlur={() => setText(value)}
+      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+    />
   )
 }
