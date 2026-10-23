@@ -1,7 +1,7 @@
 // Annotation test: start app (isolated profile), capture, draw with every tool, save.
 // Usage: npm run build && node e2e/annotate.mjs <out-dir>
 import { _electron as electron } from 'playwright-core'
-import { mkdirSync, readdirSync, writeFileSync } from 'fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join, resolve } from 'path'
 
 const out = resolve(process.argv[2] ?? 'e2e-out')
@@ -13,7 +13,7 @@ writeFileSync(
   join(profile, 'settings.json'),
   JSON.stringify({
     hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12' },
-    save: { folder: saves },
+    save: { folder: saves, askLocation: false },
     notifications: { onSave: false },
     features: { ellipse: true, step: true, redo: true }
   })
@@ -137,9 +137,21 @@ try {
   await wait(100)
   writeFileSync(join(out, '3-edited.png'), await win.screenshot())
 
+  // Beautify: open the panel, pick Sunset, then save. The PNG gains the padding.
+  await win.click('.toolbar button[data-tip="Background & padding"]')
+  await wait(300)
+  await win.click('.bp-preset[data-tip="Sunset"]')
+  await wait(200)
+  writeFileSync(join(out, '4-beautify-panel.png'), await win.screenshot())
+  await win.keyboard.press('Escape') // closes the panel only
+  console.log('Esc closed panel, still capturing:', !(await win.$('.beautify-panel')) && !!(await win.$('.toolbar')))
+
   await win.keyboard.press('Meta+s')
   await wait(1200)
-  console.log('saved files:', readdirSync(saves))
+  const files = readdirSync(saves)
+  console.log('saved files:', files)
+  const png = readFileSync(join(saves, files[0]))
+  console.log('saved size:', png.readUInt32BE(16), 'x', png.readUInt32BE(20), '(selection 700x500 at 2x + 48px padding = 1592 x 1192)')
   console.log('renderer errors:', errors.length ? errors : 'none')
 } finally {
   await app.close()

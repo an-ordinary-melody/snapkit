@@ -80,7 +80,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
   useImperativeHandle(ref, () => ({
     finishEditing: () => flushSync(finishEditing),
     exportCanvas(pixelRatio) {
-      flushSync(finishEditing)
+      if (editingRef.current) flushSync(finishEditing)
       const stage = stageRef.current
       if (!stage || !shapesRef.current.length) return null
       uiRef.current?.hide()

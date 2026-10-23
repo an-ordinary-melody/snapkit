@@ -37,7 +37,8 @@ export const IPC = {
   selectionStarted: 'overlay:selection-started',
   copy: 'capture:copy',
   save: 'capture:save',
-  cancel: 'capture:cancel'
+  cancel: 'capture:cancel',
+  readImage: 'beautify:read-image'
 } as const
 
 /** API exposed to renderers by the preload script (window.snapkit). */
@@ -54,4 +55,6 @@ export interface SnapkitApi {
   copy(session: number, png: ArrayBuffer): void
   save(session: number, png: ArrayBuffer): void
   cancel(session: number): void
+  /** Bytes of a local image file (for image backgrounds), or null if it can't be read. */
+  readImage(path: string): Promise<Uint8Array | null>
 }

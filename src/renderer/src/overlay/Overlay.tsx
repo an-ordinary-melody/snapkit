@@ -5,6 +5,9 @@ import { visibleFeatures, type Settings } from '@shared/settings'
 import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
 import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
 import { hasStyleOptions, StyleBar, type StyleTarget } from './annotate/StyleBar'
+import { BeautifyPanel } from './beautify/BeautifyPanel'
+import { stateFromPreset, type BeautifyState } from './beautify/layout'
+import { renderBeautified } from './beautify/render'
 import { moveRect, rectFromPoints, resizeRect, type Handle, type Point, type Rect } from './layout'
 import { Toolbars } from './Toolbars'
 
@@ -40,6 +43,16 @@ const DRAWING_TOOLS = new Set(FEATURES.filter((f) => f.drawing).map((f) => f.id)
 /** Style and tool variant choices survive between captures (until Snapkit quits). */
 let lastStyle: Style | null = null
 let lastVariants: Record<string, string> = {}
+/** Beautify preset and tweaks; whether it's on resets to the setting each capture. */
+let lastBeautify: BeautifyState | null = null
+
+function initialBeautify(s: Settings): BeautifyState {
+  const presets = s.beautify.presets
+  const on = s.beautify.applyOnCopy
+  if (lastBeautify && presets.some((p) => p.id === lastBeautify!.presetId)) return { ...lastBeautify, on }
+  const preset = presets.find((p) => p.id === s.beautify.preset) ?? presets[0]
+  return preset ? stateFromPreset(preset, on) : { on: false, presetId: '', padding: 0, radius: 0, shadow: 0 }
+}
 
 function initialStyle(s: Settings): Style {
   const a = s.annotate
@@ -105,6 +118,10 @@ export function Overlay() {
   const [style, setStyle] = useState<Style | null>(null)
   const [styleOpen, setStyleOpen] = useState(true)
   const [variants, setVariants] = useState<Record<string, string>>(lastVariants)
+  const [beautify, setBeautify] = useState<BeautifyState | null>(null)
+  const [beautifyOpen, setBeautifyOpen] = useState(false)
+  const beautifyRef = useRef(beautify)
+  beautifyRef.current = beautify
   const onCommit = useCallback((next: Shape[], mergeKey?: string) => setHistory((h) => commit(h, next, mergeKey)), [])
   const source = useCallback(() => canvasRef.current, [])
 
@@ -123,6 +140,8 @@ export function Overlay() {
         setTool(null)
         setSelectedId(null)
         setStyle(lastStyle ?? initialStyle(p.settings))
+        setBeautify(initialBeautify(p.settings))
+        setBeautifyOpen(false)
       })
       api.armed(p.session)
     })
@@ -146,6 +165,7 @@ export function Overlay() {
       setHistory(emptyHistory())
       setTool(null)
       setSelectedId(null)
+      setBeautifyOpen(false)
       const c = canvasRef.current
       if (c) {
         c.width = 1 // release the screenshot's memory (and leave a transparent frame)
@@ -159,24 +179,33 @@ export function Overlay() {
   }, [])
 
   // ---- output -------------------------------------------------------------
-  const cropToPng = useCallback(async (r: Rect): Promise<ArrayBuffer> => {
-    await painted.current.promise // the frozen image may still be arriving
+  /** The selection with its annotations, at `scale` image px per screen px. */
+  const composeSelection = useCallback((r: Rect, scale: number): HTMLCanvasElement => {
     const src = canvasRef.current!
-    const scale = src.width / window.innerWidth
-    const sx = Math.round(r.x * scale)
-    const sy = Math.round(r.y * scale)
-    const sw = Math.max(1, Math.round(r.w * scale))
-    const sh = Math.max(1, Math.round(r.h * scale))
+    const srcScale = src.width / window.innerWidth
     const out = document.createElement('canvas')
-    out.width = sw
-    out.height = sh
+    out.width = Math.max(1, Math.round(r.w * scale))
+    out.height = Math.max(1, Math.round(r.h * scale))
     const ctx = out.getContext('2d')!
-    ctx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh)
+    ctx.drawImage(src, r.x * srcScale, r.y * srcScale, r.w * srcScale, r.h * srcScale, 0, 0, out.width, out.height)
     const ann = annRef.current?.exportCanvas(scale)
-    if (ann) ctx.drawImage(ann, 0, 0, sw, sh)
-    const blob = await new Promise<Blob>((res, rej) => out.toBlob((b) => (b ? res(b) : rej(new Error('encode failed'))), 'image/png'))
-    return blob.arrayBuffer()
+    if (ann) ctx.drawImage(ann, 0, 0, out.width, out.height)
+    return out
   }, [])
+
+  const cropToPng = useCallback(
+    async (r: Rect): Promise<ArrayBuffer> => {
+      await painted.current.promise // the frozen image may still be arriving
+      const scale = canvasRef.current!.width / window.innerWidth
+      let out = composeSelection(r, scale)
+      const b = beautifyRef.current
+      const preset = b?.on && cap?.settings.beautify.presets.find((p) => p.id === b.presetId)
+      if (b && preset) out = await renderBeautified(out, preset.background, b, scale)
+      const blob = await new Promise<Blob>((res, rej) => out.toBlob((x) => (x ? res(x) : rej(new Error('encode failed'))), 'image/png'))
+      return blob.arrayBuffer()
+    },
+    [composeSelection, cap]
+  )
 
   const runAction = useCallback(
     async (id: string) => {
@@ -189,6 +218,11 @@ export function Overlay() {
         return
       }
       if (id === 'color') return setStyleOpen((o) => !o)
+      if (id === 'beautify') {
+        annRef.current?.finishEditing()
+        setSelectedId(null)
+        return setBeautifyOpen((o) => !o)
+      }
       if (id === 'undo' || id === 'redo') {
         annRef.current?.finishEditing()
         setSelectedId(null)
@@ -357,6 +391,34 @@ export function Overlay() {
   if (!history.past.length) unavailable.add('undo')
   if (!history.future.length) unavailable.add('redo')
   const pressed = new Set<string>(styleOpen ? ['color'] : [])
+  if (beautify?.on || beautifyOpen) pressed.add('beautify')
+
+  const beautifyPreview = () => {
+    if (!sel || canvasRef.current!.width <= 1) return null
+    // Small: about the preview's size, so dragging a slider redraws instantly.
+    const scale = Math.min(2, 520 / Math.max(sel.w, sel.h))
+    return { canvas: composeSelection(sel, scale), scale }
+  }
+  const closeBeautify = useCallback(() => setBeautifyOpen(false), [])
+  const popover =
+    beautifyOpen && beautify && cap
+      ? {
+          featureId: 'beautify',
+          size: { w: 276, h: 380 },
+          onClose: closeBeautify,
+          node: (
+            <BeautifyPanel
+              presets={cap.settings.beautify.presets}
+              state={beautify}
+              preview={beautifyPreview}
+              onChange={(next) => {
+                setBeautify(next)
+                lastBeautify = next
+              }}
+            />
+          )
+        }
+      : null
 
   let cursor = 'crosshair'
   if (drag?.kind === 'move') cursor = 'move'
@@ -432,6 +494,7 @@ export function Overlay() {
           variants={variants}
           onAction={(id) => void runAction(id)}
           onVariant={onVariant}
+          popover={popover}
         />
       )}
     </div>

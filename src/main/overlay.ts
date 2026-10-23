@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron'
-import { join } from 'path'
+import { readFile, stat } from 'fs/promises'
+import { extname, join } from 'path'
 import { IPC, type ArmPayload, type PixelsPayload } from '@shared/ipc'
 import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
@@ -186,8 +187,22 @@ function waitFor(channel: string, win: BrowserWindow, session: number | null, ti
   })
 }
 
+const IMAGE_TYPES = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.heic'])
+
 export function registerOverlayIpc() {
   const valid = (s: number) => active && s === session
+
+  // Image backgrounds for beautify: only image files, and not huge ones.
+  ipcMain.handle(IPC.readImage, async (_e, path: unknown) => {
+    if (typeof path !== 'string' || !IMAGE_TYPES.has(extname(path).toLowerCase())) return null
+    try {
+      if ((await stat(path)).size > 40 * 1024 * 1024) return null
+      return new Uint8Array(await readFile(path))
+    } catch (err) {
+      log('background image unreadable', path, String(err))
+      return null
+    }
+  })
 
   ipcMain.on(IPC.selectionStarted, (e, s: number) => {
     if (!valid(s)) return

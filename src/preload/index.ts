@@ -13,7 +13,8 @@ const api: SnapkitApi = {
   selectionStarted: (s) => ipcRenderer.send(IPC.selectionStarted, s),
   copy: (s, png) => ipcRenderer.send(IPC.copy, s, png),
   save: (s, png) => ipcRenderer.send(IPC.save, s, png),
-  cancel: (s) => ipcRenderer.send(IPC.cancel, s)
+  cancel: (s) => ipcRenderer.send(IPC.cancel, s),
+  readImage: (path) => ipcRenderer.invoke(IPC.readImage, path)
 }
 
 contextBridge.exposeInMainWorld('snapkit', api)

@@ -1,5 +1,24 @@
 import { FEATURES } from './features'
 
+export type BeautifyBackground =
+  | { type: 'solid'; color: string }
+  /** `angle` in degrees: 0 = left to right, 90 = top to bottom. */
+  | { type: 'gradient'; from: string; to: string; angle: number }
+  /** A local image file, scaled to cover the background. */
+  | { type: 'image'; path: string }
+
+export interface BeautifyPreset {
+  id: string
+  name: string
+  background: BeautifyBackground
+  /** Space around the screenshot, in screen px. */
+  padding: number
+  /** Corner radius of the screenshot, in screen px. */
+  radius: number
+  /** Drop shadow strength, 0–1. */
+  shadow: number
+}
+
 export interface Settings {
   hotkeys: {
     capture: string
@@ -14,7 +33,10 @@ export interface Settings {
   save: {
     /** Empty string = default folder (Pictures/Snapkit). */
     folder: string
+    /** Show a save dialog (starting in the last folder used) instead of saving straight to `folder`. */
     askLocation: boolean
+    /** Folder picked in the last save dialog. Set by Snapkit. */
+    lastFolder: string
   }
   notifications: {
     onCopy: boolean
@@ -44,6 +66,14 @@ export interface Settings {
       background: string
     }
   }
+  /** Background, padding, corner radius and shadow around the output image. */
+  beautify: {
+    /** Start every capture with beautify on, so copy (and save) add the preset automatically. */
+    applyOnCopy: boolean
+    /** Id of the preset used by default. */
+    preset: string
+    presets: BeautifyPreset[]
+  }
   /** Feature id -> enabled. Missing ids fall back to the feature's default. */
   features: Record<string, boolean>
   /** Order of feature ids in their toolbar. Unknown/missing ids are appended. */
@@ -61,7 +91,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   save: {
     folder: '',
-    askLocation: false
+    askLocation: true,
+    lastFolder: ''
   },
   notifications: {
     onCopy: false,
@@ -82,6 +113,17 @@ export const DEFAULT_SETTINGS: Settings = {
       shadow: false,
       background: ''
     }
+  },
+  beautify: {
+    applyOnCopy: false,
+    preset: 'ocean',
+    presets: [
+      { id: 'ocean', name: 'Ocean', background: { type: 'gradient', from: '#4f8cff', to: '#a855f7', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
+      { id: 'sunset', name: 'Sunset', background: { type: 'gradient', from: '#fb923c', to: '#ec4899', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
+      { id: 'mint', name: 'Mint', background: { type: 'gradient', from: '#34d399', to: '#06b6d4', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
+      { id: 'light', name: 'Light', background: { type: 'solid', color: '#eef0f3' }, padding: 40, radius: 10, shadow: 0.2 },
+      { id: 'dark', name: 'Dark', background: { type: 'solid', color: '#18181b' }, padding: 40, radius: 10, shadow: 0.5 }
+    ]
   },
   features: Object.fromEntries(FEATURES.map((f) => [f.id, f.defaultEnabled])),
   toolbarOrder: FEATURES.map((f) => f.id)

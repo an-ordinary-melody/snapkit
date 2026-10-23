@@ -36,7 +36,6 @@ export interface FeatureDef {
 export const FEATURES: FeatureDef[] = [
   // Annotation tools (vertical bar)
   { id: 'pen', drawing: true, label: 'Pen', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true },
-  { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: true },
   { id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true },
   {
     id: 'rect', drawing: true, label: 'Rectangle', kind: 'tool', hint: 'R', implemented: true, defaultEnabled: true,
@@ -47,6 +46,7 @@ export const FEATURES: FeatureDef[] = [
       { id: 'ellipse-filled', label: 'Filled ellipse' }
     ]
   },
+  { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: true },
   {
     id: 'ellipse', drawing: true, label: 'Ellipse', kind: 'tool', hint: 'E', implemented: true, defaultEnabled: false,
     variants: [
@@ -63,7 +63,7 @@ export const FEATURES: FeatureDef[] = [
   { id: 'redo', label: 'Redo', kind: 'tool', hint: '⇧⌘Z', implemented: true, defaultEnabled: false },
 
   // Actions (horizontal bar)
-  { id: 'beautify', label: 'Background & padding', kind: 'action', implemented: false, defaultEnabled: true },
+  { id: 'beautify', label: 'Background & padding', kind: 'action', implemented: true, defaultEnabled: true },
   { id: 'pin', label: 'Pin to screen', kind: 'action', implemented: false, defaultEnabled: true },
   { id: 'save', label: 'Save', kind: 'action', hint: '⌘S', implemented: true, defaultEnabled: true },
   { id: 'copy', label: 'Copy', kind: 'action', hint: '⌘C', implemented: true, defaultEnabled: true },

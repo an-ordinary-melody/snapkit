@@ -1,7 +1,8 @@
 import { app, clipboard, dialog, nativeImage, Notification, shell } from 'electron'
-import { mkdirSync, writeFileSync } from 'fs'
-import { join } from 'path'
-import { getSettings } from './settings'
+import { existsSync, mkdirSync, writeFileSync } from 'fs'
+import { dirname, join } from 'path'
+import type { Settings } from '@shared/settings'
+import { getSettings, updateSettings } from './settings'
 
 function notify(title: string, body: string, onClick?: () => void) {
   if (!Notification.isSupported()) return
@@ -31,12 +32,18 @@ export async function savePng(png: Buffer) {
   let target = join(folder, timestampName())
 
   if (settings.save.askLocation) {
+    const last = settings.save.lastFolder
+    const start = last && existsSync(last) ? last : folder
+    mkdirSync(start, { recursive: true })
+    // Snapkit is a menu-bar app with no window up now: bring it forward so the dialog gets focus.
+    if (process.platform === 'darwin') app.focus({ steal: true })
     const res = await dialog.showSaveDialog({
-      defaultPath: target,
+      defaultPath: join(start, timestampName()),
       filters: [{ name: 'PNG image', extensions: ['png'] }]
     })
     if (res.canceled || !res.filePath) return
     target = res.filePath
+    if (dirname(target) !== last) updateSettings({ save: { lastFolder: dirname(target) } as Settings['save'] })
   } else {
     mkdirSync(folder, { recursive: true })
   }

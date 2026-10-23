@@ -109,11 +109,11 @@ export function StyleBar({ target, filled, style, palette, onChange }: Props) {
 
       {target === 'blur' && (
         <>
-          <button className={style.blurMode === 'pixelate' ? 'active' : ''} data-tip="Pixelate" onClick={() => onChange({ blurMode: 'pixelate' })}>
-            <Grid3x3 size={16} />
-          </button>
           <button className={style.blurMode === 'blur' ? 'active' : ''} data-tip="Blur" onClick={() => onChange({ blurMode: 'blur' })}>
             <Waves size={16} />
+          </button>
+          <button className={style.blurMode === 'pixelate' ? 'active' : ''} data-tip="Pixelate" onClick={() => onChange({ blurMode: 'pixelate' })}>
+            <Grid3x3 size={16} />
           </button>
           {sep}
           <input

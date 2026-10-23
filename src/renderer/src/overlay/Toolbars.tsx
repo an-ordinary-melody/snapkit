@@ -51,10 +51,12 @@ interface Props {
   onAction(id: string): void
   /** Pick a variant from a tool's right-click menu (also selects the tool). */
   onVariant(featureId: string, variantId: string): void
+  /** A panel opened from one of the buttons (e.g. beautify), shown next to it. */
+  popover: { featureId: string; node: ReactNode; size: Size; onClose(): void } | null
 }
 
 export function Toolbars(props: Props) {
-  const { selection, screen, settings, activeTool, color, pressed, unavailable, styleBar, variants, onAction, onVariant } = props
+  const { selection, screen, settings, activeTool, color, pressed, unavailable, styleBar, variants, onAction, onVariant, popover } = props
   const actions = visibleFeatures(settings, 'action')
   const tools = visibleFeatures(settings, 'tool')
   const aSize = { w: barLength(actions.length), h: BAR_THICK }
@@ -81,6 +83,7 @@ export function Toolbars(props: Props) {
     return (
       <button
         key={f.id}
+        data-id={f.id}
         data-tip={f.implemented ? label : `${label} (coming soon)`}
         data-hint={f.implemented ? f.hint : undefined}
         data-sub={f.variants ? 'Right-click for more shapes' : undefined}
@@ -154,6 +157,7 @@ export function Toolbars(props: Props) {
         </div>
       )}
       {tip && !menu && tip.el.isConnected && <Tooltip {...tip} screen={screen} />}
+      {popover && <AnchoredPanel {...popover} screen={screen} onPointerDown={stop} tipHandlers={tipHandlers(false)} />}
       {menu && menu.el.isConnected && (
         <VariantMenu
           {...menu}
@@ -188,6 +192,59 @@ function popoverStyle(el: HTMLElement, vertical: boolean, screen: Size, w: numbe
     top: below ? r.bottom + GAP : r.top - GAP,
     transform: below ? 'translateX(-50%)' : 'translate(-50%, -100%)'
   }
+}
+
+/** A panel next to the button it belongs to; closes on Esc or a click elsewhere. */
+function AnchoredPanel(props: {
+  featureId: string
+  node: ReactNode
+  size: Size
+  screen: Size
+  onClose(): void
+  onPointerDown(e: React.PointerEvent | React.MouseEvent): void
+  tipHandlers: Record<string, unknown>
+}) {
+  const { featureId, node, size, screen, onClose, onPointerDown, tipHandlers } = props
+  const ref = useRef<HTMLDivElement>(null)
+  const [, relayout] = useState(0)
+  const button = document.querySelector<HTMLElement>(`.toolbar button[data-id="${featureId}"]`)
+  useEffect(() => {
+    if (!button) relayout((n) => n + 1) // the bar renders first; anchor on the next pass
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement
+      if (!ref.current?.contains(t) && !t.closest(`.toolbar button[data-id="${featureId}"]`)) onClose()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      onClose()
+    }
+    window.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('keydown', onKey, true)
+    }
+  }, [button, featureId, onClose])
+  if (!button) return null
+  const vertical = !!button.closest('.toolbar.vertical')
+  return (
+    <div
+      ref={ref}
+      className="anchored-panel"
+      style={popoverStyle(button, vertical, screen, size.w, size.h)}
+      onPointerDown={onPointerDown}
+      onMouseDown={onPointerDown}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+      {...tipHandlers}
+    >
+      {node}
+    </div>
+  )
 }
 
 function VariantMenu(props: {

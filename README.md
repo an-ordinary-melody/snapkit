@@ -12,7 +12,7 @@ in settings.
 | 1 | Capture mode: freeze screens, select / move / resize area, copy & save | ✅ |
 | 2 | Smart toolbars (auto-placed outside or inside the selection) | ✅ |
 | 3 | Annotations (pen, arrow, shapes, text, blur, steps, undo) | ✅ |
-| 4 | Background, padding, radius presets + apply-on-copy | ⏳ |
+| 4 | Background, padding, radius presets + apply-on-copy | ✅ |
 | 5 | Pin to screen | ⏳ |
 | 6 | Capture history (floating panel, copy back) | ⏳ |
 | 7 | Settings UI + full customization | ⏳ |
@@ -23,7 +23,7 @@ in settings.
 - **Capture:** `⌘⇧2` on macOS or `Ctrl+Shift+2` on Windows, or click the tray icon.
 - **Select:** drag to select. Drag inside the selection to move it, and drag the handles to resize. Arrow keys nudge the selection (hold Shift for 10px; hold Alt to resize).
 - **Copy:** `⌘C` / `Ctrl+C` or `Enter`.
-- **Save:** `⌘S` / `Ctrl+S`. Screenshots go to `Pictures/Snapkit` by default.
+- **Save:** `⌘S` / `Ctrl+S`. Asks where to save, starting in the last folder you used (`Pictures/Snapkit` the first time). Set `save.askLocation` to `false` to save straight to the folder.
 - **Cancel:** `Esc` or right-click.
 - **Annotate:** pick a tool from the vertical bar, or press its letter: `P` pen, `L` line, `A` arrow, `R` rectangle, `E` ellipse, `H` highlighter, `T` text, `N` numbered step, `B` blur. Press the letter again (or click the tool) to go back to moving the selection. Hold Shift for straight lines at 45° and square boxes. Right-click the rectangle (or ellipse) tool for more shapes: filled rectangle, ellipse, filled ellipse; buttons with a small corner mark have such a menu.
 - **Edit what you drew:** click a shape to select it, then drag to move it, drag its handles to resize, drag an arrow's ends, change its color/width in the style bar, or press Delete. Arrow keys nudge it.
@@ -31,6 +31,7 @@ in settings.
 - **Style bar:** colors (the rainbow swatch opens a custom color picker; custom colors are remembered until Snapkit quits), stroke width, text options, and blur (default) / pixelate with a strength slider. A blur area updates live while you move or resize it. The palette button shows or hides it.
 - **Undo / redo:** `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`).
 - Hover any button for its name and shortcut.
+- **Background & padding (beautify):** the frame button in the action bar opens a panel with a live preview. Turn it on, pick a preset (gradient or solid), and adjust padding, corner radius and shadow. While it's on, copy and save include the background. It's off at the start of each capture unless `beautify.applyOnCopy` is `true`. The last preset and tweaks are kept until Snapkit quits.
 
 ## Installing the builds
 
@@ -76,3 +77,6 @@ Annotation test (macOS or Linux, uses its own profile and briefly shows the capt
 - `src/main/`: tray, hotkey, screen capture (`node-screenshots` with a `desktopCapturer` fallback), overlay window manager, copy/save.
 - `src/renderer/src/overlay/`: capture-mode UI. `layout.ts` holds the toolbar placement algorithm and has unit tests.
 - `src/renderer/src/overlay/annotate/`: annotations. `model.ts` is the plain-data shape model and undo history (unit tested); `AnnotationLayer.tsx` draws and edits shapes with Konva; `StyleBar.tsx` is the color/width/text options bar. Per-tool defaults live under `annotate` in settings.
+- `src/renderer/src/overlay/beautify/`: background/padding/radius/shadow. `layout.ts` is the geometry (unit tested), `render.ts` draws it, `BeautifyPanel.tsx` is the panel. Presets live under `beautify.presets` in settings; a preset background can be `solid`, `gradient` or `image` (a local file path).
+
+Settings are stored in `settings.json` in the app's data folder (`~/Library/Application Support/Snapkit` on macOS). Only values you change are written there; everything else follows the defaults in `src/shared/settings.ts`.
