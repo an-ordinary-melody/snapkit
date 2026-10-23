@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { FEATURES } from '@shared/features'
+import type { CaptureDoc } from '@shared/ipc'
 import { visibleFeatures, type Settings } from '@shared/settings'
 import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
 import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
@@ -22,7 +23,11 @@ interface Capture {
   session: number
   width: number // image pixels
   height: number
+  /** Image px per overlay px. */
+  scale: number
   settings: Settings
+  /** Editing a floating preview: the editor is all there is. */
+  edit: boolean
 }
 
 const HANDLES: { id: Handle; x: number; y: number; cursor: string }[] = [
@@ -121,8 +126,16 @@ export function Overlay() {
   const [variants, setVariants] = useState<Record<string, string>>(lastVariants)
   const [beautify, setBeautify] = useState<BeautifyState | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
+  /** Floating preview after copy, for this capture (the pin button). */
+  const [floating, setFloating] = useState(false)
+  const capRef = useRef(cap)
+  capRef.current = cap
+  /** Bumped when the frozen image is painted, so anything built from it redraws. */
+  const [paintedVersion, setPaintedVersion] = useState(0)
   const beautifyRef = useRef(beautify)
   beautifyRef.current = beautify
+  const historyRef = useRef(history)
+  historyRef.current = history
   const onCommit = useCallback((next: Shape[], mergeKey?: string) => setHistory((h) => commit(h, next, mergeKey)), [])
   const source = useCallback(() => canvasRef.current, [])
 
@@ -132,18 +145,34 @@ export function Overlay() {
       busy.current = false
       painted.current = deferred()
       // Commit the dim to the DOM before telling main to show the window.
+      const doc = p.edit
+      const scale = doc ? doc.scale : p.width / window.innerWidth
       flushSync(() => {
         setScreen({ w: window.innerWidth, h: window.innerHeight })
-        setSel(null)
+        // Editing: the stored crop becomes the whole "screen", selected.
+        setSel(doc ? { x: 0, y: 0, w: doc.width / scale, h: doc.height / scale } : null)
         setDrag(null)
-        setCap({ session: p.session, width: p.width, height: p.height, settings: p.settings })
-        setHistory(emptyHistory())
+        setCap({ session: p.session, width: p.width, height: p.height, scale, settings: p.settings, edit: !!doc })
+        setHistory(doc ? { past: [], present: doc.shapes as Shape[], future: [] } : emptyHistory())
         setTool(null)
         setSelectedId(null)
         setStyle(lastStyle ?? initialStyle(p.settings))
-        setBeautify(initialBeautify(p.settings))
-        setEditorOpen(false)
+        setBeautify(doc ? (doc.beautify as BeautifyState) : initialBeautify(p.settings))
+        setFloating(doc ? true : p.settings.pin.afterCopy)
+        setEditorOpen(!!doc)
       })
+      if (doc) {
+        // No pixels step: paint the stored crop ourselves.
+        void createImageBitmap(new Blob([doc.png as BlobPart], { type: 'image/png' })).then((bmp) => {
+          const canvas = canvasRef.current!
+          canvas.width = bmp.width
+          canvas.height = bmp.height
+          canvas.getContext('2d')!.drawImage(bmp, 0, 0)
+          bmp.close()
+          painted.current.resolve()
+          setPaintedVersion((v) => v + 1)
+        })
+      }
       api.armed(p.session)
     })
     api.onPixels((p) => {
@@ -153,6 +182,7 @@ export function Overlay() {
       const pixels = new Uint8ClampedArray(p.pixels.buffer as ArrayBuffer, p.pixels.byteOffset, p.pixels.byteLength)
       canvas.getContext('2d')!.putImageData(new ImageData(pixels, p.width, p.height), 0, 0)
       painted.current.resolve()
+      setPaintedVersion((v) => v + 1)
       requestAnimationFrame(() => api.painted(p.session))
     })
     api.onClearSelection(() => {
@@ -183,7 +213,7 @@ export function Overlay() {
   /** The selection with its annotations, at `scale` image px per screen px. */
   const composeSelection = useCallback((r: Rect, scale: number, withAnnotations = true): HTMLCanvasElement => {
     const src = canvasRef.current!
-    const srcScale = src.width / window.innerWidth
+    const srcScale = capRef.current?.scale ?? src.width / window.innerWidth
     const out = document.createElement('canvas')
     out.width = Math.max(1, Math.round(r.w * scale))
     out.height = Math.max(1, Math.round(r.h * scale))
@@ -194,10 +224,28 @@ export function Overlay() {
     return out
   }, [])
 
+  /** The capture as a reopenable document: plain crop + drawings (relative to it) + background. */
+  const makeDoc = useCallback(
+    async (r: Rect): Promise<CaptureDoc> => {
+      const scale = capRef.current!.scale
+      const plain = composeSelection(r, scale, false)
+      const blob = await new Promise<Blob>((res, rej) => plain.toBlob((x) => (x ? res(x) : rej(new Error('encode failed'))), 'image/png'))
+      return {
+        png: new Uint8Array(await blob.arrayBuffer()),
+        width: plain.width,
+        height: plain.height,
+        scale,
+        shapes: historyRef.current.present.map((sh) => moveShape(sh, -r.x, -r.y)),
+        beautify: beautifyRef.current
+      }
+    },
+    [composeSelection]
+  )
+
   const cropToPng = useCallback(
     async (r: Rect): Promise<ArrayBuffer> => {
       await painted.current.promise // the frozen image may still be arriving
-      const scale = canvasRef.current!.width / window.innerWidth
+      const scale = cap!.scale
       let out = composeSelection(r, scale)
       const b = beautifyRef.current
       const bg = b?.on && cap ? backgroundOf(b, cap.settings.beautify.presets) : null
@@ -232,14 +280,17 @@ export function Overlay() {
         setHistory((h) => (id === 'undo' ? undo(h) : redo(h)))
         return
       }
+      if (id === 'pin') return setFloating((f) => !f)
       if (!sel) return
-      if (id === 'copy' || id === 'save' || id === 'pin') {
+      if (id === 'copy' || id === 'save' || id === 'editDone') {
         busy.current = true
         try {
           flushSync(() => setSelectedId(null))
           const png = await cropToPng(sel)
-          if (id === 'copy') api.copy(cap.session, png)
-          else if (id === 'pin') api.pin(cap.session, png, sel)
+          // Keep what's needed to reopen this in the editor from the floating preview.
+          const keep = floating || cap.edit
+          if (id === 'copy') api.copy(cap.session, png, keep ? { doc: await makeDoc(sel), rect: sel } : undefined)
+          else if (id === 'editDone') api.editDone(cap.session, png, await makeDoc(sel))
           else api.save(cap.session, png)
         } catch (err) {
           console.error(`${id} failed:`, err instanceof Error ? err.stack : err) // shows up in main.log
@@ -247,7 +298,7 @@ export function Overlay() {
         }
       }
     },
-    [cap, sel, cropToPng]
+    [cap, sel, cropToPng, floating, makeDoc]
   )
 
   /** Letter -> drawing tool, for the tools that are switched on. */
@@ -384,7 +435,7 @@ export function Overlay() {
   const s = cap?.settings
   const dim = `rgba(0,0,0,${s?.capture.dimOpacity ?? 0.45})`
   const accent = s?.capture.accentColor ?? '#3b82f6'
-  const scale = cap ? cap.width / screen.w : 1
+  const scale = cap?.scale ?? 1
   const hasSel = !!(cap && sel && sel.w >= MIN_SIZE && sel.h >= MIN_SIZE)
   const showToolbars = hasSel && !drag
 
@@ -402,10 +453,19 @@ export function Overlay() {
   const pressed = new Set<string>(styleOpen ? ['color'] : [])
   const lit = new Set<string>(beautify?.on ? ['beautify'] : [])
   if (beautify?.on) pressed.add('beautify') // highlighted like an active tool, plus the dot
+  if (floating) {
+    lit.add('pin')
+    pressed.add('pin')
+  }
   const tips = {
+    pin: {
+      text: floating ? 'Floating preview: on' : 'Floating preview: off',
+      sub: 'After copying, keep it in the corner to copy again, edit or pin'
+    },
     beautify: { text: beautify?.on ? 'Background: on' : 'Background: off', sub: 'Click to turn it ' + (beautify?.on ? 'off' : 'on') + ' for copy & save' }
   }
-  const closeEditor = useCallback(() => setEditorOpen(false), [])
+  // Editing a floating preview: leaving the editor keeps the edits there and ends the session.
+  const closeEditor = useCallback(() => (cap?.edit ? void runAction('editDone') : setEditorOpen(false)), [cap, runAction])
   const escapeInEditor = useCallback(() => {
     if (annRef.current?.isEditing()) {
       annRef.current.finishEditing()
@@ -417,7 +477,8 @@ export function Overlay() {
     }
     return false
   }, [selectedId])
-  const composeForEditor = useCallback((scale: number) => composeSelection(sel!, scale, false), [composeSelection, sel])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- paintedVersion: rebuild once the image has arrived
+  const composeForEditor = useCallback((scale: number) => composeSelection(sel!, scale, false), [composeSelection, sel, paintedVersion])
 
   // One drawing layer: in capture mode over the selection, or inside the background editor.
   const annotationLayer = sel && style && cap && (
@@ -470,11 +531,11 @@ export function Overlay() {
       onPointerUp={onPointerUp}
       onContextMenu={onContextMenu}
     >
-      <canvas ref={canvasRef} className="frozen" width={1} height={1} />
+      <canvas ref={canvasRef} className="frozen" width={1} height={1} style={cap?.edit ? { visibility: 'hidden' } : undefined} />
 
-      {cap && !sel && <div className="dim-full" style={{ background: dim }} />}
+      {cap && (!sel || cap.edit) && <div className="dim-full" style={{ background: dim }} />}
 
-      {cap && sel && (
+      {cap && sel && !cap.edit && (
         <div
           className="selection"
           style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h, boxShadow: `0 0 0 1px ${accent}, 0 0 0 99999px ${dim}` }}
@@ -483,7 +544,7 @@ export function Overlay() {
 
       {hasSel && !editorOpen && annotationLayer}
 
-      {cap && sel && !drag && (
+      {cap && sel && !drag && !cap.edit && (
         <div className="handles" style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h }}>
           {HANDLES.map((h) => (
             <div
@@ -496,7 +557,7 @@ export function Overlay() {
         </div>
       )}
 
-      {cap && sel && s?.capture.showSizeLabel && (
+      {cap && sel && !cap.edit && s?.capture.showSizeLabel && (
         <div className="size-label" style={{ left: sel.x, top: sel.y >= 26 ? sel.y - 24 : sel.y + 6 }}>
           {Math.round(sel.w * scale)} × {Math.round(sel.h * scale)}
         </div>

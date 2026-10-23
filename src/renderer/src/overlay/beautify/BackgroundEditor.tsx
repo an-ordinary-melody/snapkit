@@ -4,7 +4,7 @@ import type { BeautifyBackground, BeautifyPreset } from '@shared/settings'
 import { hexToHsv, hsvToHex, parseHex } from '../annotate/color'
 import { ColorPicker } from '../annotate/ColorPicker'
 import { Slider } from '../Slider'
-import { backgroundOf, beautifyLayout, FRAMES, PLAIN, stateFromPreset, type BeautifyState, type Frame } from './layout'
+import { backgroundOf, beautifyLayout, FRAMES, PLAIN, type BeautifyState, type Frame } from './layout'
 import { drawBeautified, loadBackgroundImage } from './render'
 
 /** Built-in gradients, light to dark. */
@@ -42,8 +42,8 @@ const shiftHue = (hex: string, deg: number) => {
 }
 
 const SIDEBAR = 300
-/** Room above the preview for the drawing tools. */
-const TOOLBAR_ROOM = 108
+/** Room above the preview for the docked tools and style bar. */
+const TOOLBAR_ROOM = 112
 
 interface Props {
   presets: BeautifyPreset[]
@@ -166,11 +166,19 @@ export function BackgroundEditor(props: Props) {
     picking === which && <ColorPicker color={color} onChange={apply} onClose={() => setPicking(null)} />
 
   return (
-    <div className="be-backdrop" onPointerDown={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
+    <div
+      className="be-backdrop"
+      onPointerDown={(e) => e.stopPropagation()}
+      // A right-click in the editor must not cancel the capture behind it.
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+    >
       <div className="be-card">
         <div ref={stageRef} className="be-stage">
           <div className="be-dock">{toolbar}</div>
-          <div className="be-canvas" style={{ marginTop: TOOLBAR_ROOM - 24 }}>
+          <div className="be-canvas" style={{ marginTop: TOOLBAR_ROOM }}>
             <canvas ref={canvasRef} />
             {layout && annotations({ left: layout.x / dpr, top: layout.y / dpr, k: layout.drawW / dpr / selection.w })}
           </div>
@@ -182,20 +190,6 @@ export function BackgroundEditor(props: Props) {
             <button className={`switch${state.on ? ' on' : ''}`} aria-label="Background on" aria-pressed={state.on} onClick={() => onChange({ ...state, on: !state.on })}>
               <span />
             </button>
-          </div>
-
-          <div className="be-section">Presets</div>
-          <div className="be-grid">
-            {presets.map((p) => (
-              <button
-                key={p.id}
-                className={`be-swatch${!state.background && p.id === state.presetId ? ' active' : ''}`}
-                title={p.name}
-                onClick={() => onChange(stateFromPreset(p, true, state.frame))}
-              >
-                <span style={{ background: cssBackground(p.background) }} />
-              </button>
-            ))}
           </div>
 
           <div className="be-tabs" role="tablist">

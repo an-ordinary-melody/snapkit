@@ -11,10 +11,10 @@ const api: SnapkitApi = {
   painted: (s) => ipcRenderer.send(IPC.painted, s),
   cleared: () => ipcRenderer.send(IPC.cleared),
   selectionStarted: (s) => ipcRenderer.send(IPC.selectionStarted, s),
-  copy: (s, png) => ipcRenderer.send(IPC.copy, s, png),
+  copy: (s, png, extra) => ipcRenderer.send(IPC.copy, s, png, extra),
   save: (s, png) => ipcRenderer.send(IPC.save, s, png),
   cancel: (s) => ipcRenderer.send(IPC.cancel, s),
-  pin: (s, png, rect) => ipcRenderer.send(IPC.pin, s, png, rect),
+  editDone: (s, png, doc) => ipcRenderer.send(IPC.editDone, s, png, doc),
   readImage: (path) => ipcRenderer.invoke(IPC.readImage, path),
 
   onPinImage: (cb) => ipcRenderer.on(IPC.pinImage, (_e, p) => cb(p)),
@@ -27,7 +27,9 @@ const api: SnapkitApi = {
   pinSave: () => ipcRenderer.send(IPC.pinSave),
   pinClose: () => ipcRenderer.send(IPC.pinClose),
   pinDragOut: () => ipcRenderer.send(IPC.pinDragOut),
-  pinMenu: () => ipcRenderer.send(IPC.pinMenu)
+  pinMenu: () => ipcRenderer.send(IPC.pinMenu),
+  thumbEdit: () => ipcRenderer.send(IPC.thumbEdit),
+  thumbPin: () => ipcRenderer.send(IPC.thumbPin)
 }
 
 contextBridge.exposeInMainWorld('snapkit', api)

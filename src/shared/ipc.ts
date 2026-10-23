@@ -6,6 +6,29 @@ import type { Settings } from './settings'
  *     shows the dim over the live screen, which still looks identical.
  *  2. `pixels`: the frozen image, painted underneath once it has been transferred.
  */
+/**
+ * Everything needed to reopen a capture in the editor: the plain screenshot
+ * crop plus the editing state. Main stores it as-is; the overlay owns the
+ * shape of `shapes` and `beautify`.
+ */
+export interface CaptureDoc {
+  /** The screenshot crop without drawings, PNG. */
+  png: Uint8Array
+  /** Size in image px, and image px per screen point. */
+  width: number
+  height: number
+  scale: number
+  shapes: unknown[]
+  beautify: unknown
+}
+
+/** Sent with a copy when a floating preview should stay afterwards. */
+export interface CopyExtra {
+  doc: CaptureDoc
+  /** The selection, in overlay CSS px. */
+  rect: { x: number; y: number; w: number; h: number }
+}
+
 export interface ArmPayload {
   /** Capture session id; replies must echo it so stale replies are ignored. */
   session: number
@@ -14,6 +37,8 @@ export interface ArmPayload {
   width: number
   height: number
   settings: Settings
+  /** Open this capture in the editor instead of starting a new one (no pixels step follows). */
+  edit?: CaptureDoc
 }
 
 export interface PixelsPayload {
@@ -49,7 +74,7 @@ export const IPC = {
   copy: 'capture:copy',
   save: 'capture:save',
   cancel: 'capture:cancel',
-  pin: 'capture:pin',
+  editDone: 'capture:edit-done',
   readImage: 'beautify:read-image',
   // main -> pin
   pinImage: 'pin:image',
@@ -63,7 +88,9 @@ export const IPC = {
   pinSave: 'pin:save',
   pinClose: 'pin:close',
   pinDragOut: 'pin:drag-out',
-  pinMenu: 'pin:menu'
+  pinMenu: 'pin:menu',
+  thumbEdit: 'thumb:edit',
+  thumbPin: 'thumb:pin'
 } as const
 
 /** API exposed to renderers by the preload script (window.snapkit). */
@@ -77,11 +104,12 @@ export interface SnapkitApi {
   painted(session: number): void
   cleared(): void
   selectionStarted(session: number): void
-  copy(session: number, png: ArrayBuffer): void
+  /** Copy the output; with `extra`, a floating preview stays afterwards (or, when editing one, it's updated). */
+  copy(session: number, png: ArrayBuffer, extra?: CopyExtra): void
   save(session: number, png: ArrayBuffer): void
   cancel(session: number): void
-  /** Turn the output into a pin at `rect` (overlay CSS px). */
-  pin(session: number, png: ArrayBuffer, rect: { x: number; y: number; w: number; h: number }): void
+  /** Leaving the editor while editing a floating preview: keep the edits there. */
+  editDone(session: number, png: ArrayBuffer, doc: CaptureDoc): void
   /** Bytes of a local image file (for image backgrounds), or null if it can't be read. */
   readImage(path: string): Promise<Uint8Array | null>
 
@@ -100,4 +128,7 @@ export interface SnapkitApi {
   /** Start dragging the image out as a file (call from a dragstart handler). */
   pinDragOut(): void
   pinMenu(): void
+  /** Floating preview: open it in the editor / turn it into a full-size pin. */
+  thumbEdit(): void
+  thumbPin(): void
 }

@@ -1,12 +1,12 @@
 import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron'
 import { readFile, stat } from 'fs/promises'
 import { extname, join } from 'path'
-import { IPC, type ArmPayload, type PixelsPayload } from '@shared/ipc'
+import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type PixelsPayload } from '@shared/ipc'
 import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import { copyPng, savePng } from './output'
 import { log } from './log'
-import { createPin, hasPins } from './pin'
+import { createThumb, hasPins } from './pin'
 
 const isMac = process.platform === 'darwin'
 
@@ -15,6 +15,8 @@ const overlays = new Map<number, BrowserWindow>()
 
 let session = 0
 let active = false
+/** While editing a floating preview: where the edited result goes. */
+let editTarget: ((png: Buffer, doc: CaptureDoc) => void) | null = null
 
 function overlayUrl(win: BrowserWindow) {
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
@@ -81,6 +83,7 @@ export function rebuildOverlays() {
 /** Hide overlays without ever showing a stale frame next time. */
 function endCapture() {
   active = false
+  editTarget = null
   const endedSession = session
   for (const win of overlays.values()) {
     if (win.isDestroyed()) continue
@@ -172,6 +175,33 @@ export async function startCapture(t0 = Date.now()) {
   )
 }
 
+/**
+ * Reopen a capture in the editor (from a floating preview). The overlay on
+ * the display under the cursor opens straight into the background editor.
+ */
+export async function startEdit(doc: CaptureDoc, onDone: (png: Buffer, doc: CaptureDoc) => void) {
+  if (active) return
+  active = true
+  const id = ++session
+  editTarget = onDone
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  if (!overlays.has(display.id)) rebuildOverlays()
+  const win = overlays.get(display.id)
+  if (!win || win.isDestroyed()) return endCapture()
+  if (win.webContents.isLoading()) await new Promise<void>((r) => win.webContents.once('did-finish-load', () => r()))
+  if (isMac) app.show()
+  const arm: ArmPayload = { session: id, displayId: display.id, width: doc.width, height: doc.height, settings: getSettings(), edit: doc }
+  const armed = waitFor(IPC.armed, win, id, 300)
+  win.webContents.send(IPC.arm, arm)
+  await armed
+  if (id !== session || !active) return
+  win.setBounds(display.bounds)
+  win.showInactive()
+  win.setOpacity(1)
+  if (isMac) app.focus({ steal: true })
+  win.focus()
+}
+
 /** Resolve when `win` sends `channel` (for `session`, if given), or after `timeout` ms. */
 function waitFor(channel: string, win: BrowserWindow, session: number | null, timeout: number) {
   return new Promise<void>((resolve) => {
@@ -219,19 +249,24 @@ export function registerOverlayIpc() {
     endCapture()
     releaseFocus()
   })
-  ipcMain.on(IPC.copy, (_e, s: number, png: ArrayBuffer) => {
+  ipcMain.on(IPC.copy, (e, s: number, png: ArrayBuffer, extra?: CopyExtra) => {
     if (!valid(s)) return
+    const target = editTarget
+    const origin = BrowserWindow.fromWebContents(e.sender)?.getBounds() ?? { x: 0, y: 0 }
     endCapture()
-    copyPng(Buffer.from(png))
+    const buf = Buffer.from(png)
+    copyPng(buf)
+    if (extra && target) target(buf, extra.doc) // editing a floating preview: update it
+    else if (extra) {
+      const r = extra.rect
+      createThumb(buf, extra.doc, { x: origin.x + r.x, y: origin.y + r.y, width: r.w, height: r.h })
+    }
     releaseFocus()
   })
-  ipcMain.on(IPC.pin, (e, s: number, png: ArrayBuffer, rect: { x: number; y: number; w: number; h: number }) => {
+  ipcMain.on(IPC.editDone, (_e, s: number, png: ArrayBuffer, doc: CaptureDoc) => {
     if (!valid(s)) return
-    const win = BrowserWindow.fromWebContents(e.sender)
-    const origin = win?.getBounds() ?? { x: 0, y: 0 }
+    editTarget?.(Buffer.from(png), doc)
     endCapture()
-    // Create the pin first, so handing focus back keeps it on screen.
-    createPin(Buffer.from(png), { x: origin.x + rect.x, y: origin.y + rect.y, width: rect.w, height: rect.h })
     releaseFocus()
   })
   ipcMain.on(IPC.save, async (_e, s: number, png: ArrayBuffer) => {

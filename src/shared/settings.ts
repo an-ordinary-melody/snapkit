@@ -66,6 +66,10 @@ export interface Settings {
       background: string
     }
   }
+  pin: {
+    /** Start every capture with the floating preview on: after copy, the result stays in a corner with copy / edit / pin. */
+    afterCopy: boolean
+  }
   /** Background, padding, corner radius and shadow around the output image. */
   beautify: {
     /** Start every capture with beautify on, so copy (and save) add the preset automatically. */
@@ -100,8 +104,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   annotate: {
     palette: ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#111111', '#ffffff'],
-    strokeWidths: [2, 4, 8],
-    strokeWidth: 1,
+    strokeWidths: [3, 5, 8],
+    strokeWidth: 0,
     highlighterColor: '#fde047',
     highlighterWidth: 18,
     blurMode: 'blur',
@@ -113,6 +117,9 @@ export const DEFAULT_SETTINGS: Settings = {
       shadow: false,
       background: ''
     }
+  },
+  pin: {
+    afterCopy: false
   },
   beautify: {
     applyOnCopy: false,

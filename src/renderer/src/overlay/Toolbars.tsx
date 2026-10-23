@@ -169,12 +169,16 @@ export function Toolbars(props: Props) {
     </>
   )
 
+  const copyFeature = actions.find((f) => f.id === 'copy')
   if (docked) {
     return (
       <>
         {tools.length > 0 && (
           <div className="toolbar docked" onPointerDown={stop} onMouseDown={stop} {...tipHandlers(false)}>
             {tools.map((f) => button(f, false))}
+            {/* Copy is one click away while editing, too. */}
+            {copyFeature && <span className="dock-sep" />}
+            {copyFeature && button(copyFeature, false)}
           </div>
         )}
         {styleBar && (
