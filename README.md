@@ -26,9 +26,11 @@ in settings.
 - **Save:** `⌘S` / `Ctrl+S`. Screenshots go to `Pictures/Snapkit` by default.
 - **Cancel:** `Esc` or right-click.
 - **Annotate:** pick a tool from the vertical bar, or press its letter: `P` pen, `L` line, `A` arrow, `R` rectangle, `E` ellipse, `H` highlighter, `T` text, `N` numbered step, `B` blur. Press the letter again (or click the tool) to go back to moving the selection. Hold Shift for straight lines at 45° and square boxes.
-- **Edit what you drew:** click a shape to select it, then drag to move it, drag its handles to resize, drag an arrow's ends, change its color/width in the style bar, or press Delete. Arrow keys nudge it. Double-click text to edit it. Text style options: size, shadow, light/dark background.
+- **Edit what you drew:** click a shape to select it, then drag to move it, drag its handles to resize, drag an arrow's ends, change its color/width in the style bar, or press Delete. Arrow keys nudge it.
+- **Text:** click to type. `Enter` adds a line; `⌘Enter` / `Ctrl+Enter` or `Esc` finishes (you stay in capture mode). Drag the blue frame to move the box while typing. Click text (or near it) to select and drag it; double-click to edit it again. Style options: size, shadow, light/dark background.
+- **Style bar:** colors (the rainbow swatch opens a custom color picker; custom colors are remembered until Snapkit quits), stroke width, text options, and pixelate/blur with a strength slider. The palette button shows or hides it.
 - **Undo / redo:** `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`).
-- The palette button shows or hides the style bar.
+- Hover any button for its name and shortcut.
 
 ## Installing the builds
 

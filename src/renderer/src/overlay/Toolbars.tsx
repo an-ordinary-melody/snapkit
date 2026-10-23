@@ -53,10 +53,18 @@ export function Toolbars({ selection, screen, settings, activeTool, color, press
 
   const button = (f: FeatureDef) => {
     const Icon = ICONS[f.id] ?? Square
-    const title = f.implemented ? `${f.label}${f.hint ? `  (${f.hint})` : ''}` : `${f.label} — coming soon`
-    const cls = [f.id === 'copy' && 'primary', (f.id === activeTool || pressed.has(f.id)) && 'active'].filter(Boolean).join(' ')
+    const off = !f.implemented || unavailable.has(f.id)
+    const cls = [f.id === 'copy' && 'primary', (f.id === activeTool || pressed.has(f.id)) && 'active', off && 'off'].filter(Boolean).join(' ')
+    // Not `disabled`: disabled buttons get no hover events, so no tooltip.
     return (
-      <button key={f.id} title={title} disabled={!f.implemented || unavailable.has(f.id)} className={cls} onClick={() => onAction(f.id)}>
+      <button
+        key={f.id}
+        data-tip={f.implemented ? f.label : `${f.label} (coming soon)`}
+        data-hint={f.implemented ? f.hint : undefined}
+        aria-disabled={off}
+        className={cls}
+        onClick={() => !off && onAction(f.id)}
+      >
         <Icon size={17} strokeWidth={2} />
         {f.id === 'color' && <span className="color-dot" style={{ background: color }} />}
       </button>
@@ -64,21 +72,33 @@ export function Toolbars({ selection, screen, settings, activeTool, color, press
   }
 
   // Stop mouse-downs on the bars from starting a new selection underneath, and
-  // from taking focus away from a text box being typed in.
+  // (except on inputs like the blur slider) from taking focus away from a text
+  // box being typed in.
   const stop = (e: React.PointerEvent | React.MouseEvent) => {
     e.stopPropagation()
-    e.preventDefault()
+    if (!(e.target instanceof HTMLInputElement)) e.preventDefault()
   }
+
+  // ---- tooltips ----
+  const [tip, setTip] = useState<{ text: string; hint?: string; el: HTMLElement; vertical: boolean } | null>(null)
+  const tipHandlers = (vertical: boolean) => ({
+    onMouseOver: (e: React.MouseEvent) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]')
+      if (el && el !== tip?.el) setTip({ text: el.dataset.tip!, hint: el.dataset.hint, el, vertical })
+      else if (!el && tip) setTip(null)
+    },
+    onMouseLeave: () => setTip(null)
+  })
 
   return (
     <>
       {tools.length > 0 && (
-        <div className="toolbar vertical" style={{ left: layout.tools.x, top: layout.tools.y }} onPointerDown={stop} onMouseDown={stop}>
+        <div className="toolbar vertical" style={{ left: layout.tools.x, top: layout.tools.y }} onPointerDown={stop} onMouseDown={stop} {...tipHandlers(true)}>
           {tools.map(button)}
         </div>
       )}
       {actions.length > 0 && (
-        <div className="toolbar" style={{ left: layout.actions.x, top: layout.actions.y }} onPointerDown={stop} onMouseDown={stop}>
+        <div className="toolbar" style={{ left: layout.actions.x, top: layout.actions.y }} onPointerDown={stop} onMouseDown={stop} {...tipHandlers(false)}>
           {actions.map(button)}
         </div>
       )}
@@ -89,10 +109,36 @@ export function Toolbars({ selection, screen, settings, activeTool, color, press
           style={{ left: stylePos.x, top: stylePos.y, visibility: styleSize.w ? 'visible' : 'hidden' }}
           onPointerDown={stop}
           onMouseDown={stop}
+          {...tipHandlers(false)}
         >
           {styleBar}
         </div>
       )}
+      {tip && tip.el.isConnected && <Tooltip {...tip} screen={screen} />}
     </>
+  )
+}
+
+/** Tooltip beside a vertical bar, or below/above a horizontal one, kept on screen. */
+function Tooltip({ text, hint, el, vertical, screen }: { text: string; hint?: string; el: HTMLElement; vertical: boolean; screen: Size }) {
+  const r = el.getBoundingClientRect()
+  const GAP = 8
+  const style: React.CSSProperties = {}
+  if (vertical) {
+    const right = r.right + GAP + 200 < screen.w
+    style.top = r.top + r.height / 2
+    style.left = right ? r.right + GAP : r.left - GAP
+    style.transform = right ? 'translateY(-50%)' : 'translate(-100%, -50%)'
+  } else {
+    const below = r.bottom + GAP + 30 < screen.h
+    style.left = Math.min(Math.max(r.left + r.width / 2, 100), screen.w - 100)
+    style.top = below ? r.bottom + GAP : r.top - GAP
+    style.transform = below ? 'translateX(-50%)' : 'translate(-50%, -100%)'
+  }
+  return (
+    <div className="tip" style={style}>
+      {text}
+      {hint && <kbd>{hint}</kbd>}
+    </div>
   )
 }

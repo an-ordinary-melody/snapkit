@@ -32,7 +32,7 @@ interface Props {
   stepSize: number
   selectedId: string | null
   onSelect(id: string | null): void
-  onCommit(next: Shape[]): void
+  onCommit(next: Shape[], mergeKey?: string): void
   /** Frozen screenshot, the source for blur. */
   source: () => HTMLCanvasElement | null
   /** Image px per overlay px. */
@@ -40,6 +40,10 @@ interface Props {
 }
 
 const TEXT_PAD = 6
+/** Extra grab margin around text, in px. */
+const TEXT_GRAB = 8
+/** Width of the draggable frame around the text box while typing. */
+const TEXT_FRAME = 7
 const LINE_HEIGHT = 1.2
 const textPad = (s: TextShape) => (s.background ? TEXT_PAD : 0)
 
@@ -65,8 +69,10 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     editingRef.current = null
     setEditing(null)
     const list = shapesRef.current
-    if (isMeaningful(t)) onCommit(upsert(list, t))
-    else if (list.some((s) => s.id === t.id)) onCommit(remove(list, t.id))
+    if (isMeaningful(t)) {
+      onCommit(upsert(list, t))
+      onSelect(t.id) // stays selected, ready to move or restyle
+    } else if (list.some((s) => s.id === t.id)) onCommit(remove(list, t.id))
   }
 
   useImperativeHandle(ref, () => ({
@@ -143,7 +149,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
         case 'ellipse':
           return { id, type: tool, ...boxFromDrag(x0, y0, x, y, shift), color: style.color, width: strokeWidth }
         case 'blur':
-          return { id, type: 'blur', ...boxFromDrag(x0, y0, x, y, shift), mode: style.blurMode }
+          return { id, type: 'blur', ...boxFromDrag(x0, y0, x, y, shift), mode: style.blurMode, strength: style.blurStrength }
       }
     }
 
@@ -173,7 +179,10 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       handledEvents.add(e.evt)
       return
     }
-    if (e.target !== e.target.getStage()) return // a shape or handle handled it
+    if (e.target !== e.target.getStage()) {
+      handledEvents.add(e.evt) // a shape, handle or the selection frame
+      return
+    }
     if (startDraw(e.evt)) handledEvents.add(e.evt)
     else onSelect(null) // no tool: deselect, and let the overlay move the selection
   }
@@ -191,7 +200,6 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       handledEvents.add(e.evt)
       if (editingRef.current) return
       e.cancelBubble = true
-      if (s.type === 'text' && tool === 'text') return startEditing(s)
       onSelect(s.id)
     },
     onDblClick: () => s.type === 'text' && startEditing(s),
@@ -323,7 +331,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
               anchorStroke="#3b82f6"
               anchorSize={8}
               anchorCornerRadius={2}
-              padding={4}
+              padding={6}
+              shouldOverdrawWholeArea
             />
             {lineSel && <LineEnds shape={lineSel} onCommit={commitShape} />}
           </Layer>
@@ -364,18 +373,33 @@ function readableOn(hex: string) {
 }
 
 function BlurNode({ shape, source, scale }: { shape: BlurShape; source: () => HTMLCanvasElement | null; scale: number }) {
-  const { x, y, w, h, mode } = shape
+  const { x, y, w, h, mode, strength } = shape
   const image = useMemo(() => {
     const src = source()
-    return src && src.width > 1 ? obscure(src, { x, y, w, h }, scale, mode) : undefined
-  }, [x, y, w, h, mode, scale, source])
-  return image ? <KImage image={image} x={x} y={y} width={w} height={h} /> : <KRect x={x} y={y} width={w} height={h} fill="rgba(128,128,128,.6)" />
+    return src && src.width > 1 ? obscure(src, { x, y, w, h }, scale, mode, strength ?? 12) : undefined
+  }, [x, y, w, h, mode, strength, scale, source])
+  // `fill` makes the whole area clickable (images aren't hit-testable otherwise).
+  return image ? (
+    <KImage image={image} x={x} y={y} width={w} height={h} fill="transparent" />
+  ) : (
+    <KRect x={x} y={y} width={w} height={h} fill="rgba(128,128,128,.6)" />
+  )
 }
 
 function TextNode({ shape: s }: { shape: TextShape }) {
   return (
     <Label x={s.x} y={s.y}>
-      <Tag fill={s.background || undefined} cornerRadius={s.background ? 6 : 0} />
+      <Tag
+        fill={s.background || 'transparent'}
+        cornerRadius={s.background ? 6 : 0}
+        // Easy to grab: the whole box plus a margin, not just the letters.
+        hitFunc={(ctx, shape) => {
+          ctx.beginPath()
+          ctx.rect(-TEXT_GRAB, -TEXT_GRAB, shape.width() + TEXT_GRAB * 2, shape.height() + TEXT_GRAB * 2)
+          ctx.closePath()
+          ctx.fillStrokeShape(shape)
+        }}
+      />
       <Text
         text={s.text || ' '}
         fontSize={s.fontSize}
@@ -431,43 +455,63 @@ function LineEnds({ shape, onCommit }: { shape: LineShape; onCommit(s: Shape): v
 
 function TextEditor({ shape: s, onChange, onDone }: { shape: TextShape; onChange(s: TextShape): void; onDone(): void }) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  const shapeRef = useRef(s)
+  shapeRef.current = s
   useEffect(() => {
     // Focus after the click that created the editor has finished.
     const t = setTimeout(() => ref.current?.focus(), 0)
     return () => clearTimeout(t)
   }, [])
   const pad = textPad(s)
+
+  // Dragging the frame around the text box moves it while typing.
+  const moveFrame = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    if (e.target !== e.currentTarget || e.button !== 0) return
+    e.preventDefault() // keep the caret in the text box
+    const start = { x: e.clientX, y: e.clientY, sx: shapeRef.current.x, sy: shapeRef.current.y }
+    const move = (ev: PointerEvent) => onChange({ ...shapeRef.current, x: start.sx + ev.clientX - start.x, y: start.sy + ev.clientY - start.y })
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   return (
-    <textarea
-      ref={ref}
-      className="text-editor"
-      value={s.text}
-      spellCheck={false}
-      rows={1}
-      style={{
-        left: s.x,
-        top: s.y,
-        padding: pad,
-        fontSize: s.fontSize,
-        fontFamily: s.fontFamily,
-        lineHeight: LINE_HEIGHT,
-        color: s.color,
-        background: s.background || 'transparent',
-        borderRadius: s.background ? 6 : 0,
-        textShadow: s.shadow ? `0 ${Math.max(1, s.fontSize * 0.05)}px ${s.fontSize * 0.25}px rgba(0,0,0,.6)` : 'none',
-        caretColor: s.color
-      }}
-      onChange={(e) => onChange({ ...s, text: e.target.value })}
-      onPointerDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        e.stopPropagation()
-        // Enter finishes; Shift+Enter adds a line.
-        if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) {
-          e.preventDefault()
-          onDone()
-        }
-      }}
-      onBlur={onDone}
-    />
+    <div className="text-frame" style={{ left: s.x - TEXT_FRAME, top: s.y - TEXT_FRAME, padding: TEXT_FRAME }} onPointerDown={moveFrame}>
+      <textarea
+        ref={ref}
+        className="text-editor"
+        value={s.text}
+        spellCheck={false}
+        rows={1}
+        style={{
+          padding: pad,
+          fontSize: s.fontSize,
+          fontFamily: s.fontFamily,
+          lineHeight: LINE_HEIGHT,
+          color: s.color,
+          background: s.background || 'transparent',
+          borderRadius: s.background ? 6 : 0,
+          textShadow: s.shadow ? `0 ${Math.max(1, s.fontSize * 0.05)}px ${s.fontSize * 0.25}px rgba(0,0,0,.6)` : 'none',
+          caretColor: s.color
+        }}
+        onChange={(e) => onChange({ ...s, text: e.target.value })}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          // Keep every key here (Enter, Esc, ⌘C...) away from capture mode while typing.
+          e.stopPropagation()
+          e.nativeEvent.stopImmediatePropagation()
+          // Enter adds a line; ⌘Enter / Ctrl+Enter or Esc finishes.
+          if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+            e.preventDefault()
+            onDone()
+          }
+        }}
+        onBlur={onDone}
+      />
+    </div>
   )
 }

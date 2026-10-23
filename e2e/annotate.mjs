@@ -40,7 +40,7 @@ try {
     await m.up()
     await wait(80)
   }
-  const tool = (label) => win.click(`.toolbar button[title^="${label}"]`)
+  const tool = (label) => win.click(`.toolbar button[data-tip="${label}"]`)
 
   await drag(200, 150, 900, 650)
   await wait(300)
@@ -53,18 +53,58 @@ try {
   await tool('Blur'); await drag(700, 450, 850, 600)
   await tool('Numbered step'); await m.click(300, 600); await m.click(340, 600); await wait(80)
   await tool('Text'); await m.click(600, 560); await wait(150)
-  await win.keyboard.type('Hello Snapkit')
-  await win.keyboard.press('Enter')
+  await win.keyboard.type('Hello')
+  await win.keyboard.press('Enter') // new line, not done
+  await win.keyboard.type('Snapkit')
+  console.log('Enter adds a line:', JSON.stringify(await win.$eval('.text-editor', (e) => e.value)))
+  await win.keyboard.press('Escape') // done typing, still in capture mode
+  await wait(150)
+  const stillCapturing = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.isVisible() && w.getOpacity() > 0))
+  console.log('Esc finishes text and stays in capture mode:', stillCapturing && !(await win.$('.text-editor')))
+
+  // With the text tool still active, a click near (not on) the letters grabs the text; drag moves it.
+  await drag(598, 555, 640, 520)
+  await m.click(640, 450) // new text box
+  await wait(150)
+  await win.keyboard.type('moved by frame')
+  const frame = await win.$eval('.text-frame', (e) => e.getBoundingClientRect().toJSON())
+  await drag(frame.x + 2, frame.y + 2, frame.x + 2 + 60, frame.y + 2 + 30) // drag the frame while typing
+  const frame2 = await win.$eval('.text-frame', (e) => e.getBoundingClientRect().toJSON())
+  console.log('frame drag moved text box by', frame2.x - frame.x, frame2.y - frame.y, '| still typing:', !!(await win.$('.text-editor:focus')))
+  await win.keyboard.press('Meta+Enter')
   await wait(150)
   writeFileSync(join(out, '1-drawn.png'), await win.screenshot())
 
+  // Tooltip on hover
+  await win.hover('.toolbar button[data-tip="Arrow"]')
+  await wait(500)
+  console.log('tooltip:', await win.$eval('.tip', (e) => e.textContent).catch(() => 'none'))
+
+  // Blur strength slider on the selected blur area
+  await tool("Text"); await wait(100) // text tool off
+  await m.click(770, 590); await wait(150)
+  await win.$eval('.style-bar input.slider', (el) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    set.call(el, '36'); el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await wait(150)
+  console.log('blur strength:', await win.$eval('.style-bar .value', (e) => e.textContent))
+  writeFileSync(join(out, '1b-blur-strength.png'), await win.screenshot())
+  await win.keyboard.press('Escape')
+
   // Style a selected shape: click the arrow (no tool) and make it thick + green.
-  await tool('Text') // toggle the text tool off
   await m.click(350, 250); await wait(150)
   const styleBar = await win.$('.style-bar')
   console.log('style bar shown for selected arrow:', !!styleBar)
-  await win.click('.style-bar button[title="#22c55e"]')
-  await win.click('.style-bar button[title="Thick"]')
+  await win.click('.style-bar button[data-tip="#22c55e"]')
+  await win.click('.style-bar button[data-tip="Thick"]')
+  // Custom color: open the picker, type a hex value.
+  await win.click('.style-bar button[data-tip="Custom color"]')
+  await win.fill('.color-picker .hex', '#ff00aa')
+  await wait(100)
+  writeFileSync(join(out, '2b-picker.png'), await win.screenshot())
+  await win.press('.color-picker .hex', 'Enter')
+  console.log('custom swatch added:', !!(await win.$('.style-bar button[data-tip="#ff00aa"]')))
   await wait(100)
   writeFileSync(join(out, '2-selected-arrow.png'), await win.screenshot())
 

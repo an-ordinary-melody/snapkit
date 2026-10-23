@@ -27,6 +27,19 @@ describe('history', () => {
     expect(redo(h)).toBe(h)
   })
 
+  it('merges consecutive commits with the same key into one undo step', () => {
+    let h = commit(emptyHistory(), [rect('a')])
+    h = commit(h, [rect('a', 1)], 'slide')
+    h = commit(h, [rect('a', 2)], 'slide')
+    h = commit(h, [rect('a', 3)], 'slide')
+    expect(h.past).toHaveLength(2)
+    h = undo(h)
+    expect((h.present[0] as { x: number }).x).toBe(0)
+    // After an undo, the same key starts a new step instead of merging.
+    h = commit(redo(h), [rect('a', 4)], 'slide')
+    expect(h.past).toHaveLength(3)
+  })
+
   it('ignores commits that change nothing', () => {
     const h = commit(emptyHistory(), [rect('a')])
     expect(commit(h, h.present)).toBe(h)

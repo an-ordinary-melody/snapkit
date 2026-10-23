@@ -46,6 +46,7 @@ function initialStyle(s: Settings): Style {
     color: a.palette[0] ?? '#ef4444',
     widthIndex: a.strokeWidth,
     blurMode: a.blurMode,
+    blurStrength: a.blurStrength,
     fontSize: a.text.fontSize,
     fontFamily: a.text.fontFamily,
     shadow: a.text.shadow,
@@ -73,7 +74,7 @@ function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
         background: patch.textBackground ?? s.background
       }
     case 'blur':
-      return { ...s, mode: patch.blurMode ?? s.mode }
+      return { ...s, mode: patch.blurMode ?? s.mode, strength: patch.blurStrength ?? s.strength }
     default:
       return s
   }
@@ -102,7 +103,7 @@ export function Overlay() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [style, setStyle] = useState<Style | null>(null)
   const [styleOpen, setStyleOpen] = useState(true)
-  const onCommit = useCallback((next: Shape[]) => setHistory((h) => commit(h, next)), [])
+  const onCommit = useCallback((next: Shape[], mergeKey?: string) => setHistory((h) => commit(h, next, mergeKey)), [])
   const source = useCallback(() => canvasRef.current, [])
 
   // ---- lifecycle from main process -------------------------------------
@@ -214,7 +215,7 @@ export function Overlay() {
   // ---- keyboard -------------------------------------------------------------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!cap || e.target instanceof HTMLTextAreaElement) return
+      if (!cap || e.defaultPrevented || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return
       const mod = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
       const selectedShape = shapes.find((x) => x.id === selectedId)
@@ -305,13 +306,15 @@ export function Overlay() {
   }
 
   const onStyleChange = useCallback(
-    (patch: Partial<Style>) => {
+    (patch: Partial<Style>, continuous?: boolean) => {
       if (!style || !cap) return
       const next = { ...style, ...patch }
       setStyle(next)
       lastStyle = next
       const target = shapes.find((x) => x.id === selectedId)
-      if (target) onCommit(upsert(shapes, restyle(target, patch, cap.settings.annotate.strokeWidths)))
+      // A slider or picker drag is one undo step.
+      const key = continuous && target ? `style:${target.id}:${Object.keys(patch).join()}` : undefined
+      if (target) onCommit(upsert(shapes, restyle(target, patch, cap.settings.annotate.strokeWidths)), key)
     },
     [style, cap, shapes, selectedId, onCommit]
   )

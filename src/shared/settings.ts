@@ -32,6 +32,8 @@ export interface Settings {
     highlighterWidth: number
     /** 'pixelate' or 'blur'. */
     blurMode: 'pixelate' | 'blur'
+    /** Pixel block size / blur radius in px (4–40). */
+    blurStrength: number
     /** Step badge diameter in px. */
     stepSize: number
     text: {
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: Settings = {
     highlighterColor: '#fde047',
     highlighterWidth: 18,
     blurMode: 'pixelate',
+    blurStrength: 12,
     stepSize: 28,
     text: {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',

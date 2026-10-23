@@ -44,6 +44,8 @@ export interface BlurShape extends Base {
   w: number
   h: number
   mode: 'pixelate' | 'blur'
+  /** Pixel block size / blur radius, in overlay px. */
+  strength: number
 }
 
 export interface StepShape extends Base {
@@ -77,6 +79,7 @@ export interface Style {
   /** Index into the stroke width presets. */
   widthIndex: number
   blurMode: 'pixelate' | 'blur'
+  blurStrength: number
   fontSize: number
   fontFamily: string
   shadow: boolean
@@ -152,14 +155,20 @@ export interface History {
   past: Shape[][]
   present: Shape[]
   future: Shape[][]
+  /** Merge key of the last commit (see `commit`). */
+  mergeKey?: string
 }
 
 export const emptyHistory = (): History => ({ past: [], present: [], future: [] })
 
-/** Record a new state. No-op if nothing changed. */
-export function commit(h: History, next: Shape[]): History {
+/**
+ * Record a new state. No-op if nothing changed. Consecutive commits with the
+ * same `mergeKey` (e.g. dragging a slider) become a single undo step.
+ */
+export function commit(h: History, next: Shape[], mergeKey?: string): History {
   if (next === h.present) return h
-  return { past: [...h.past, h.present], present: next, future: [] }
+  if (mergeKey && mergeKey === h.mergeKey) return { ...h, present: next, future: [] }
+  return { past: [...h.past, h.present], present: next, future: [], mergeKey }
 }
 
 export function undo(h: History): History {
