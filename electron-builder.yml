@@ -13,14 +13,7 @@ extraResources:
 asarUnpack:
   - "**/*.node"
 npmRebuild: false
-afterPack: build/adhoc-sign.cjs
-# Harden the packaged app: it can't be run as plain Node or debugged through
-# Node flags, and only loads its code from app.asar.
-electronFuses:
-  runAsNode: false
-  enableNodeOptionsEnvironmentVariable: false
-  enableNodeCliInspectArguments: false
-  onlyLoadAppFromAsar: true
+afterPack: build/after-pack.cjs # Electron fuses + macOS ad-hoc signing
 
 mac:
   target:
