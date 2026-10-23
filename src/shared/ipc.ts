@@ -1,24 +1,39 @@
 import type { Settings } from './settings'
 
-/** Sent from main to an overlay window when capture mode starts. */
-export interface CaptureStartPayload {
+/**
+ * Capture mode starts in two steps so the dim appears instantly:
+ *  1. `arm`: sent right after the screen is grabbed. The (transparent) overlay
+ *     shows the dim over the live screen, which still looks identical.
+ *  2. `pixels`: the frozen image, painted underneath once it has been transferred.
+ */
+export interface ArmPayload {
   /** Capture session id; replies must echo it so stale replies are ignored. */
   session: number
   displayId: number
-  /** Raw RGBA pixels of the frozen screen. */
-  pixels: Uint8Array
+  /** Image size in pixels. */
   width: number
   height: number
   settings: Settings
 }
 
+export interface PixelsPayload {
+  session: number
+  /** Raw RGBA pixels of the frozen screen. */
+  pixels: Uint8Array
+  width: number
+  height: number
+}
+
 export const IPC = {
   // main -> overlay
-  captureStart: 'capture:start',
+  arm: 'capture:arm',
+  pixels: 'capture:pixels',
   clearSelection: 'overlay:clear-selection',
   reset: 'overlay:reset',
   // overlay -> main
-  ready: 'overlay:ready',
+  armed: 'overlay:armed',
+  painted: 'overlay:painted',
+  cleared: 'overlay:cleared',
   selectionStarted: 'overlay:selection-started',
   copy: 'capture:copy',
   save: 'capture:save',
@@ -28,10 +43,13 @@ export const IPC = {
 /** API exposed to renderers by the preload script (window.snapkit). */
 export interface SnapkitApi {
   platform: string
-  onCaptureStart(cb: (p: CaptureStartPayload) => void): void
+  onArm(cb: (p: ArmPayload) => void): void
+  onPixels(cb: (p: PixelsPayload) => void): void
   onClearSelection(cb: () => void): void
   onReset(cb: () => void): void
-  ready(session: number): void
+  armed(session: number): void
+  painted(session: number): void
+  cleared(): void
   selectionStarted(session: number): void
   copy(session: number, png: ArrayBuffer): void
   save(session: number, png: ArrayBuffer): void

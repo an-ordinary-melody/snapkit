@@ -1,4 +1,5 @@
 import { app, dialog, globalShortcut, screen } from 'electron'
+import { warmUpCapture } from './capture'
 import { ensureScreenPermission } from './permissions'
 import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { getSettings } from './settings'
@@ -12,8 +13,9 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 async function capture() {
+  const t0 = Date.now()
   if (!(await ensureScreenPermission())) return
-  await startCapture()
+  await startCapture(t0)
 }
 
 function registerHotkey() {
@@ -28,6 +30,7 @@ function registerHotkey() {
 function init() {
   if (process.platform === 'darwin') app.dock?.hide() // menu-bar app, no Dock icon
 
+  warmUpCapture()
   registerOverlayIpc()
   rebuildOverlays()
   createTray(() => void capture())

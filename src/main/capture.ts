@@ -2,9 +2,10 @@ import { desktopCapturer, screen, type Display } from 'electron'
 
 export interface ScreenGrab {
   display: Display
-  pixels: Uint8Array // RGBA
   width: number
   height: number
+  /** RGBA pixels. Converted lazily so the overlay can appear before this work is done. */
+  pixels(): Promise<Uint8Array>
 }
 
 type NativeMonitor = {
@@ -59,8 +60,11 @@ async function grabNative(displays: Display[]): Promise<ScreenGrab[] | null> {
       const m = matchMonitor(display, monitors)
       if (!m) throw new Error(`no native monitor for display ${display.id}`)
       const img = await m.captureImage()
-      const raw = await img.toRaw()
-      return { display, pixels: new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength), width: img.width, height: img.height }
+      const pixels = async () => {
+        const raw = await img.toRaw()
+        return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength)
+      }
+      return { display, pixels, width: img.width, height: img.height }
     })
   )
   return grabs
@@ -83,8 +87,13 @@ async function grabElectron(displays: Display[]): Promise<ScreenGrab[]> {
       rgba[p + 2] = bgra[p]
       rgba[p + 3] = 255
     }
-    return { display, pixels: rgba, width, height }
+    return { display, pixels: async () => rgba, width, height }
   })
+}
+
+/** Load the native module ahead of time so the first capture isn't slowed by it. */
+export function warmUpCapture() {
+  loadNative()
 }
 
 /** Freeze every screen right now. */

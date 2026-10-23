@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { Settings } from '@shared/settings'
 import { moveRect, rectFromPoints, resizeRect, type Handle, type Point, type Rect } from './layout'
 import { Toolbars } from './Toolbars'
@@ -30,6 +31,12 @@ const HANDLES: { id: Handle; x: number; y: number; cursor: string }[] = [
 
 const MIN_SIZE = 4
 
+function deferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => (resolve = r))
+  return { promise, resolve }
+}
+
 export function Overlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [cap, setCap] = useState<Capture | null>(null)
@@ -37,22 +44,30 @@ export function Overlay() {
   const [drag, setDrag] = useState<Drag | null>(null)
   const [screen, setScreen] = useState({ w: window.innerWidth, h: window.innerHeight })
   const busy = useRef(false)
+  const painted = useRef(deferred())
 
   // ---- lifecycle from main process -------------------------------------
   useEffect(() => {
-    api.onCaptureStart((p) => {
+    api.onArm((p) => {
+      busy.current = false
+      painted.current = deferred()
+      // Commit the dim to the DOM before telling main to show the window.
+      flushSync(() => {
+        setScreen({ w: window.innerWidth, h: window.innerHeight })
+        setSel(null)
+        setDrag(null)
+        setCap({ session: p.session, width: p.width, height: p.height, settings: p.settings })
+      })
+      api.armed(p.session)
+    })
+    api.onPixels((p) => {
       const canvas = canvasRef.current!
       canvas.width = p.width
       canvas.height = p.height
-      const ctx = canvas.getContext('2d')!
       const pixels = new Uint8ClampedArray(p.pixels.buffer as ArrayBuffer, p.pixels.byteOffset, p.pixels.byteLength)
-      ctx.putImageData(new ImageData(pixels, p.width, p.height), 0, 0)
-      busy.current = false
-      setScreen({ w: window.innerWidth, h: window.innerHeight })
-      setSel(null)
-      setDrag(null)
-      setCap({ session: p.session, width: p.width, height: p.height, settings: p.settings })
-      setTimeout(() => api.ready(p.session), 16)
+      canvas.getContext('2d')!.putImageData(new ImageData(pixels, p.width, p.height), 0, 0)
+      painted.current.resolve()
+      requestAnimationFrame(() => api.painted(p.session))
     })
     api.onClearSelection(() => {
       setSel(null)
@@ -64,9 +79,10 @@ export function Overlay() {
       setDrag(null)
       const c = canvasRef.current
       if (c) {
-        c.width = 1 // release the screenshot's memory
+        c.width = 1 // release the screenshot's memory (and leave a transparent frame)
         c.height = 1
       }
+      requestAnimationFrame(() => requestAnimationFrame(() => api.cleared()))
     })
     const onResize = () => setScreen({ w: window.innerWidth, h: window.innerHeight })
     window.addEventListener('resize', onResize)
@@ -75,6 +91,7 @@ export function Overlay() {
 
   // ---- output -------------------------------------------------------------
   const cropToPng = useCallback(async (r: Rect): Promise<ArrayBuffer> => {
+    await painted.current.promise // the frozen image may still be arriving
     const src = canvasRef.current!
     const scale = src.width / window.innerWidth
     const sx = Math.round(r.x * scale)
