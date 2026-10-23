@@ -1,4 +1,4 @@
-import { GripVertical, Plus, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, GripVertical, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { FEATURES, type FeatureDef } from '@shared/features'
 import { visibleFeatures, type Settings } from '@shared/settings'
@@ -48,17 +48,17 @@ export function ToolbarSection({ snap, set }: SectionProps) {
   )
 }
 
-/** Rows you can drag (by the grip) to reorder, each with an on/off switch. */
+/** Rows you can drag (or move with the arrows) to reorder, each with an on/off switch. A tool with styles shows as a group. */
 function ReorderList(props: { title: string; items: FeatureDef[]; enabled(f: FeatureDef): boolean; onToggle(f: FeatureDef, v: boolean): void; onMove(from: number, to: number): void }) {
   const { title, items, enabled, onToggle, onMove } = props
   const [dragging, setDragging] = useState<number | null>(null)
   const [over, setOver] = useState<number | null>(null)
   return (
-    <Group title={title} note="Drag to reorder.">
+    <Group title={title} note="Drag a row, or use the arrows, to reorder. A group is one button; right-click it while capturing to pick a style.">
       {items.map((f, i) => (
         <div
           key={f.id}
-          className={`st-row st-reorder${dragging === i ? ' dragging' : ''}${over === i && dragging !== null && dragging !== i ? ' over' : ''}`}
+          className={`st-row st-reorder${f.variants ? ' group' : ''}${dragging === i ? ' dragging' : ''}${over === i && dragging !== null && dragging !== i ? ' over' : ''}`}
           draggable
           onDragStart={(e) => {
             setDragging(i)
@@ -79,15 +79,36 @@ function ReorderList(props: { title: string; items: FeatureDef[]; enabled(f: Fea
             setOver(null)
           }}
         >
-          <div className="st-label row">
-            <GripVertical size={15} className="st-grip" aria-hidden />
-            <span className="st-feature-icon">
-              {f.id === 'color' ? <span className="color-box st-color-icon" /> : <FeatureIcon id={f.id} size={16} />}
-            </span>
-            <span>{f.label}</span>
-            {!f.implemented && <small className="st-badge">Coming later</small>}
+          <div className="st-label">
+            <div className="st-label row">
+              <GripVertical size={15} className="st-grip" aria-hidden />
+              <span className="st-feature-icon">
+                {f.id === 'color' ? <span className="color-box st-color-icon" /> : <FeatureIcon id={f.variants?.[0].id ?? f.id} size={16} />}
+              </span>
+              <span>{f.groupLabel ?? f.label}</span>
+              {f.variants && <small className="st-badge">Group · {f.variants.length}</small>}
+              {!f.implemented && <small className="st-badge">Coming later</small>}
+            </div>
+            {f.variants && (
+              <div className="st-variants">
+                {f.variants.map((v) => (
+                  <span key={v.id} className="st-variant">
+                    <FeatureIcon id={v.id} size={13} />
+                    {v.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="st-control">
+            <span className="st-move">
+              <button className="st-btn subtle icon" aria-label={`Move ${f.label} up`} disabled={i === 0} onClick={() => onMove(i, i - 1)}>
+                <ChevronUp size={14} />
+              </button>
+              <button className="st-btn subtle icon" aria-label={`Move ${f.label} down`} disabled={i === items.length - 1} onClick={() => onMove(i, i + 1)}>
+                <ChevronDown size={14} />
+              </button>
+            </span>
             <Toggle label={`Show ${f.label}`} value={enabled(f)} onChange={(v) => onToggle(f, v)} disabled={!f.implemented} />
           </div>
         </div>
@@ -229,6 +250,9 @@ export function ToolsSection({ snap, set }: SectionProps) {
       </Group>
 
       <Group title="Numbered steps">
+        <Row label="Badge color" desc="For new steps; pick another in the style bar while capturing.">
+          <ColorField label="Step badge color" value={a.stepColor} onChange={(stepColor) => setA({ stepColor })} />
+        </Row>
         <Row label="Badge size">
           <SliderField label="Step badge size" min={18} max={72} value={a.stepSize} format={(n) => `${n} px`} onChange={(stepSize) => setA({ stepSize })} />
         </Row>

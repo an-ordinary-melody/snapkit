@@ -81,7 +81,7 @@ export function StyleBar({ target, filled, style, palette: mainPalette, highligh
   const customizable = target !== 'highlighter'
   const customs = recentCustom.filter((c) => !lower.includes(c))
   // Text keeps its own color.
-  const colorKey = target === 'text' ? 'textColor' : target === 'highlighter' ? 'highlighterColor' : 'color'
+  const colorKey = target === 'text' ? 'textColor' : target === 'highlighter' ? 'highlighterColor' : target === 'step' ? 'stepColor' : 'color'
   const currentColor = style[colorKey]
   const current = currentColor.toLowerCase()
   // A custom color in use that isn't in the list yet still gets a swatch.

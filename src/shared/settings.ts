@@ -66,6 +66,8 @@ export interface Settings {
     stepSize: number
     /** Number color on step badges; '' = black or white, whichever reads better on the badge. */
     stepTextColor: string
+    /** Badge color for new steps. */
+    stepColor: string
     text: {
       fontFamily: string
       fontSize: number
@@ -85,8 +87,10 @@ export interface Settings {
     afterCopy: boolean
   }
   appearance: {
-    /** 'glass': Liquid Glass (light frosted panels). 'dark': solid dark panels. */
-    theme: 'glass' | 'dark'
+    /** Liquid Glass: frosted, refracting panels. Off: solid panels. */
+    glass: boolean
+    /** Light or dark panels; 'system' follows macOS / Windows. */
+    mode: 'system' | 'light' | 'dark'
     /** Highlight color for the selected tool, switches and primary buttons; '' = the theme's (white in glass, gray in dark). */
     accent: string
   }
@@ -97,6 +101,10 @@ export interface Settings {
     /** Id of the preset used by default. */
     preset: string
     presets: BeautifyPreset[]
+    /** Gradients offered in the background editor, as [start, end] colors. */
+    gradients: [string, string][]
+    /** Solid colors offered in the background editor. */
+    solids: string[]
   }
   /** Feature id -> enabled. Missing ids fall back to the feature's default. */
   features: Record<string, boolean>
@@ -135,6 +143,7 @@ export const DEFAULT_SETTINGS: Settings = {
     blurStrength: 12,
     stepSize: 34,
     stepTextColor: '',
+    stepColor: '#ef4444',
     text: {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       fontSize: 20,
@@ -149,7 +158,8 @@ export const DEFAULT_SETTINGS: Settings = {
     afterCopy: false
   },
   appearance: {
-    theme: 'glass',
+    glass: true,
+    mode: 'system',
     accent: ''
   },
   beautify: {
@@ -161,7 +171,18 @@ export const DEFAULT_SETTINGS: Settings = {
       { id: 'mint', name: 'Mint', background: { type: 'gradient', from: '#34d399', to: '#06b6d4', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
       { id: 'light', name: 'Light', background: { type: 'solid', color: '#eef0f3' }, padding: 40, radius: 10, shadow: 0.2 },
       { id: 'dark', name: 'Dark', background: { type: 'solid', color: '#18181b' }, padding: 40, radius: 10, shadow: 0.5 }
-    ]
+    ],
+    gradients: [
+      ['#f5f7fa', '#c3cfe2'], ['#a1c4fd', '#c2e9fb'], ['#ffecd2', '#fcb69f'], ['#e0c3fc', '#8ec5fc'],
+      ['#a8edea', '#fed6e3'], ['#d4fc79', '#96e6a1'], ['#f6d365', '#fda085'], ['#ee9ca7', '#ffdde1'],
+      ['#ff5f6d', '#ffc371'], ['#f83600', '#f9d423'], ['#f093fb', '#f5576c'], ['#fc466b', '#3f5efb'],
+      ['#4facfe', '#00f2fe'], ['#43cea2', '#185a9d'], ['#38ef7d', '#11998e'], ['#5ee7df', '#b490ca'],
+      ['#4f8cff', '#a855f7'], ['#fb923c', '#ec4899'], ['#34d399', '#06b6d4'], ['#7f7fd5', '#86a8e7'],
+      ['#667eea', '#764ba2'], ['#8e2de2', '#4a00e0'], ['#30cfd0', '#330867'], ['#bdc3c7', '#2c3e50'],
+      ['#232526', '#414345'], ['#0f2027', '#2c5364'], ['#141e30', '#243b55'], ['#42275a', '#734b6d'],
+      ['#870000', '#190a05'], ['#000428', '#004e92'], ['#3a1c71', '#d76d77'], ['#434343', '#000000']
+    ],
+    solids: ['#ffffff', '#e5e7eb', '#18181b', '#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7']
   },
   features: Object.fromEntries(FEATURES.map((f) => [f.id, f.defaultEnabled])),
   toolbarOrder: FEATURES.map((f) => f.id)

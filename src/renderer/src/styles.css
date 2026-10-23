@@ -1,8 +1,7 @@
 /*
- * Themes. Every UI color comes from these variables.
- *  - glass (default): Liquid Glass, light frosted panels with a bright rim, dark ink.
- *  - dark: solid dark panels, light ink.
- * Picked in settings (appearance.theme); set as data-theme on <html>.
+ * Themes. Every UI color comes from these variables, set by two attributes on <html>:
+ *  - data-mode: light (default) / dark. "System" in settings resolves to one of them.
+ *  - data-glass: on (default, Liquid Glass: frosted, refracting panels with a bright rim) / off (solid panels).
  */
 :root {
   /* Glass: clear at the top, a touch milkier at the bottom; the backdrop bends at the rim (#liquid-glass in index.html). */
@@ -45,20 +44,19 @@
   --glyph-fill: #fff;
   --glyph-line: #1c1c1e;
 }
-:root[data-theme="dark"] {
-  --ui-bg: rgba(30,30,32,.86);
-  --ui-bg-strong: rgba(30,30,32,.96);
-  --ui-blur: blur(16px);
+:root[data-mode="dark"] {
+  /* Dark glass: smoky, with a dimmer rim. */
+  --ui-bg: linear-gradient(180deg, rgba(58,58,64,.55), rgba(28,28,32,.45));
+  --ui-bg-strong: linear-gradient(180deg, rgba(48,48,54,.86), rgba(30,30,34,.80));
+  --ui-rim: inset 0 1px 0 rgba(255,255,255,.28), inset 0 -1px 0 rgba(255,255,255,.08), inset 0 0 0 .5px rgba(255,255,255,.16),
+    inset 0 0 14px rgba(255,255,255,.05), 0 0 0 .5px rgba(0,0,0,.4);
+  --ui-shadow: 0 12px 36px rgba(0,0,0,.4), 0 2px 6px rgba(0,0,0,.2);
   --ui-fg: #e7e7ea;
   --ui-fg-dim: #a1a1aa;
   --ui-fg-faint: #8b8b93;
   --ui-hover: rgba(255,255,255,.17);
   --ui-field: rgba(255,255,255,.08);
   --ui-sep: rgba(255,255,255,.14);
-  --ui-rim: inset 0 0 0 1px rgba(255,255,255,.08);
-  --ui-shadow: 0 6px 24px rgba(0,0,0,.35);
-  --ui-radius: 9px;
-  --ui-btn-radius: 6px;
   --ui-active-bg: rgba(255,255,255,.22);
   --ui-active-fg: #fff;
   --ui-active-shadow: none;
@@ -71,7 +69,7 @@
   --ui-track-fill: #f4f4f5;
   --ui-tip-bg: rgba(20,20,22,.94);
   --ui-tip-fg: #f4f4f5;
-  --ed-card: #1e1e21;
+  --ed-card: rgba(30,30,34,.82);
   --ed-check-a: #26262a;
   --ed-check-b: #2c2c31;
   --ed-backdrop: rgba(0,0,0,.55);
@@ -79,6 +77,24 @@
   --ui-chip-active-fg: #111;
   --glyph-fill: #111;
   --glyph-line: #fff;
+}
+/* Liquid Glass off: solid panels. */
+:root[data-glass="off"] {
+  --ui-bg: rgba(248,248,250,.98);
+  --ui-bg-strong: #fbfbfc;
+  --ui-blur: none;
+  --ui-rim: inset 0 0 0 .5px rgba(0,0,0,.12);
+  --ui-shadow: 0 6px 24px rgba(0,0,0,.18);
+  --ui-radius: 10px;
+  --ui-btn-radius: 6px;
+  --ed-card: #f6f6f8;
+}
+:root[data-glass="off"][data-mode="dark"] {
+  --ui-bg: rgba(30,30,32,.97);
+  --ui-bg-strong: #1e1e21;
+  --ui-rim: inset 0 0 0 1px rgba(255,255,255,.08);
+  --ui-shadow: 0 6px 24px rgba(0,0,0,.35);
+  --ed-card: #1e1e21;
 }
 
 * { box-sizing: border-box; }

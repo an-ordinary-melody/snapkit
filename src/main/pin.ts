@@ -154,7 +154,7 @@ function updateThumb(p: Pin, png: Buffer, doc: CaptureDoc) {
   p.base = thumbSize(png)
   if (p.moved) p.win.setSize(p.base.w, p.base.h)
   else layoutThumbs(p.displayId)
-  p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(png), ...getSettings().appearance })
+  p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(png), appearance: getSettings().appearance })
 }
 
 export function closeAllPins() {
@@ -204,7 +204,7 @@ export function registerPinIpc() {
   ipcMain.on(IPC.pinReady, (e) => {
     const p = of(e)
     if (!p) return
-    p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(p.png), ...getSettings().appearance })
+    p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(p.png), appearance: getSettings().appearance })
     sendState(p)
     p.win.showInactive() // don't take focus from the app the user is in
   })

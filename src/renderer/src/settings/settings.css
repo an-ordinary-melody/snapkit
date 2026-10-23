@@ -5,14 +5,26 @@
   --st-card-edge: rgba(0,0,0,.08);
   --st-sidebar: transparent;
 }
-:root.settings-page[data-theme="dark"] {
+:root.settings-page[data-mode="dark"] {
+  --st-main: rgba(34,34,38,.55);
+  --st-card: rgba(255,255,255,.07);
+  --st-card-edge: rgba(255,255,255,.08);
+}
+/* Liquid Glass off: an opaque window. */
+:root.settings-page[data-glass="off"] {
+  --st-main: #ffffff;
+  --st-card: #f6f6f8;
+  --st-sidebar: #ececef;
+}
+:root.settings-page[data-glass="off"][data-mode="dark"] {
   --st-main: #232326;
   --st-card: #2c2c30;
   --st-card-edge: rgba(255,255,255,.06);
   --st-sidebar: #1c1c1f;
 }
 :root.settings-page body { color: var(--ui-fg); font-size: 13px; }
-:root.settings-page[data-theme="dark"] body { background: #1e1e21; }
+:root.settings-page[data-glass="off"] body { background: #f2f2f5; }
+:root.settings-page[data-glass="off"][data-mode="dark"] body { background: #1e1e21; }
 
 .st-window { display: flex; height: 100vh; }
 .st-sidebar { width: 210px; flex: none; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; background: var(--st-sidebar); }
@@ -104,6 +116,16 @@
 .st-reorder.dragging { opacity: .4; }
 .st-reorder.over { box-shadow: inset 0 2px 0 var(--ui-ring); }
 .st-grip { color: var(--ui-fg-faint); }
+.st-move { display: inline-flex; gap: 0; }
+.st-move .st-btn.icon { width: 24px; height: 24px; }
+/* A tool with styles: shown as one group, its styles listed under it. */
+.st-reorder.group { align-items: flex-start; background: linear-gradient(var(--ui-field), var(--ui-field)); }
+.st-reorder.group .st-control { padding-top: 2px; }
+.st-variants { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px 53px; }
+.st-variant {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 11px;
+  background: var(--st-card); box-shadow: 0 0 0 .5px var(--st-card-edge); color: var(--ui-fg-dim); font-size: 11.5px;
+}
 .st-feature-icon { width: 22px; display: grid; place-items: center; color: var(--ui-fg); }
 .st-color-icon { width: 15px; height: 15px; border-radius: 4px; background: conic-gradient(#ef4444, #facc15, #22c55e, #3b82f6, #a855f7, #ef4444); }
 
@@ -130,3 +152,14 @@
 /* About */
 .st-about { padding: 24px 0 20px; text-align: center; }
 .st-app { font-size: 20px; font-weight: 600; }
+
+/* Gradient / color libraries */
+.st-lib-head { min-height: 40px; }
+.st-lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; padding: 4px 14px 14px; }
+.st-lib-swatch { aspect-ratio: 1; padding: 2px; border: 0; border-radius: 8px; background: transparent; cursor: grab; }
+.st-lib-swatch span { display: block; width: 100%; height: 100%; border-radius: 6px; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.18); }
+.st-lib-swatch:hover span { box-shadow: inset 0 0 0 1px rgba(0,0,0,.3); }
+.st-lib-swatch.active { box-shadow: 0 0 0 2px var(--ui-ring); }
+.st-lib-swatch.dragging { opacity: .4; }
+.st-lib-edit { border-top: .5px solid var(--st-card-edge); }
+.st-split + .st-group { margin-top: 24px; }

@@ -68,6 +68,7 @@ function initialStyle(s: Settings): Style {
     color: a.palette[0] ?? '#ef4444',
     textColor: a.palette[0] ?? '#ef4444',
     highlighterColor: a.highlighterColor,
+    stepColor: a.stepColor,
     widthIndex: a.strokeWidth,
     blurMode: a.blurMode,
     blurStrength: a.blurStrength,
@@ -95,7 +96,7 @@ function styleOf(s: Shape, base: Style, widths: number[]): Style {
     case 'highlighter':
       return { ...base, highlighterColor: s.color }
     case 'step':
-      return { ...base, color: s.color }
+      return { ...base, stepColor: s.color }
     case 'text':
       return { ...base, textColor: s.color, fontSize: s.fontSize, textBackground: s.background, textStroke: s.stroke ?? '', shadow: Number(s.shadow) }
     case 'blur':
@@ -113,7 +114,7 @@ function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
     case 'ellipse':
       return { ...s, color: patch.color ?? s.color, width: patch.widthIndex !== undefined ? widths[patch.widthIndex] : s.width }
     case 'step':
-      return { ...s, color: patch.color ?? s.color }
+      return { ...s, color: patch.stepColor ?? s.color }
     case 'highlighter':
       return { ...s, color: patch.highlighterColor ?? s.color }
     case 'text':
@@ -178,7 +179,7 @@ export function Overlay() {
       busy.current = false
       painted.current = deferred()
       // Commit the dim to the DOM before telling main to show the window.
-      applyTheme(p.settings.appearance.theme, p.settings.appearance.accent)
+      applyTheme(p.settings.appearance)
       const defaults = JSON.stringify([p.settings.annotate, p.settings.beautify, p.settings.toolVariants])
       if (defaults !== lastDefaults) {
         // New defaults from the settings window win over this session's picks.
@@ -573,7 +574,9 @@ export function Overlay() {
             ? style.textColor
             : tool === 'highlighter' || selectedShape?.type === 'highlighter'
               ? style.highlighterColor
-              : style.color
+              : tool === 'step' || selectedShape?.type === 'step'
+                ? style.stepColor
+                : style.color
         }
         pressed={pressed}
         unavailable={unavailable}
@@ -634,6 +637,8 @@ export function Overlay() {
       {editorOpen && sel && cap && beautify && (
         <BackgroundEditor
           presets={cap.settings.beautify.presets}
+          gradients={cap.settings.beautify.gradients}
+          solids={cap.settings.beautify.solids}
           state={beautify}
           onChange={(next) => {
             setBeautify(next)

@@ -29,6 +29,8 @@ export interface FeatureDef {
   drawing?: boolean
   /** Alternative forms, chosen by right-clicking the button. The first is the default. */
   variants?: FeatureVariant[]
+  /** Name of the whole group in settings when the tool has variants, e.g. "Shapes". */
+  groupLabel?: string
   /** Tooltip hint for the right-click menu, e.g. "Right-click for arrow styles". */
   variantsHint?: string
   /** Extra tooltip line, e.g. a modifier key tip. */
@@ -46,6 +48,7 @@ export const FEATURES: FeatureDef[] = [
       { id: 'arrow-open', label: 'Arrow' },
       { id: 'arrow', label: 'Filled arrow' }
     ],
+    groupLabel: 'Arrows',
     variantsHint: 'Right-click for arrow styles',
     tipNote: 'Hold Shift to snap to 45°'
   },
@@ -58,6 +61,7 @@ export const FEATURES: FeatureDef[] = [
       { id: 'ellipse-filled', label: 'Filled ellipse' },
       { id: 'line', label: 'Line' }
     ],
+    groupLabel: 'Shapes',
     variantsHint: 'Right-click for more shapes',
     tipNote: 'Hold Shift for a square'
   },
@@ -69,6 +73,7 @@ export const FEATURES: FeatureDef[] = [
       { id: 'ellipse', label: 'Ellipse' },
       { id: 'ellipse-filled', label: 'Filled ellipse' }
     ],
+    groupLabel: 'Ellipses',
     variantsHint: 'Right-click for more shapes'
   },
   { id: 'highlighter', drawing: true, label: 'Highlighter', kind: 'tool', hint: 'H', implemented: true, defaultEnabled: true, tipNote: 'Hold Shift for a straight line' },

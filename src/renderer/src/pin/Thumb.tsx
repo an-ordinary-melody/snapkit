@@ -14,9 +14,9 @@ export function Thumb() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    api.onPinImage(({ png, theme, accent }) =>
+    api.onPinImage(({ png, appearance }) =>
       setSrc((old) => {
-        applyTheme(theme, accent)
+        applyTheme(appearance)
         if (old) URL.revokeObjectURL(old)
         return URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' }))
       })

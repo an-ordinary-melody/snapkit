@@ -1,5 +1,5 @@
-import { Check, Copy, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Check, ChevronLeft, ChevronRight, Copy, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import type { BeautifyBackground, BeautifyPreset } from '@shared/settings'
 import { cssBackground } from '../overlay/beautify/BackgroundEditor'
 import { ColorField, Group, Row, Segmented, SliderField } from './controls'
@@ -29,6 +29,7 @@ export function BackgroundSection({ snap, set }: SectionProps) {
   }
 
   return (
+    <>
     <div className="st-split">
       <div className="st-preset-list" role="listbox" aria-label="Background presets">
         {presets.map((p) => (
@@ -119,5 +120,129 @@ export function BackgroundSection({ snap, set }: SectionProps) {
         </div>
       )}
     </div>
+
+    <LibraryEditor<[string, string]>
+      title="Gradient library"
+      note="Shown in the background editor. New ones go first."
+      items={b.gradients}
+      defaults={snap.defaults.beautify.gradients}
+      fresh={['#a1c4fd', '#6366f1']}
+      swatch={([from, to]) => `linear-gradient(225deg, ${from}, ${to})`}
+      describe={([from, to]) => `${from} to ${to}`}
+      onChange={(gradients) => set({ beautify: { gradients } })}
+      editor={(g, update) => (
+        <>
+          <ColorField label="Start color" value={g[0]} onChange={(c) => update([c, g[1]])} />
+          <ColorField label="End color" value={g[1]} onChange={(c) => update([g[0], c])} />
+        </>
+      )}
+    />
+    <LibraryEditor
+      title="Color library"
+      note="Solid colors shown in the background editor."
+      items={b.solids}
+      defaults={snap.defaults.beautify.solids}
+      fresh="#94a3b8"
+      swatch={(c) => c}
+      describe={(c) => c}
+      onChange={(solids) => set({ beautify: { solids } })}
+      editor={(c, update) => <ColorField label="Color" value={c} onChange={update} />}
+    />
+    </>
+  )
+}
+
+/**
+ * A list of swatches to edit: click one to change it, drag (or use the
+ * arrows) to reorder, add (it goes first), delete, or reset to the defaults.
+ */
+function LibraryEditor<T>(props: {
+  title: string
+  note: string
+  items: T[]
+  defaults: T[]
+  fresh: T
+  swatch(item: T): string
+  describe(item: T): string
+  onChange(items: T[]): void
+  editor(item: T, update: (next: T) => void): ReactNode
+}) {
+  const { title, note, items, defaults, fresh, swatch, describe, onChange, editor } = props
+  const [sel, setSel] = useState<number | null>(null)
+  const [drag, setDrag] = useState<number | null>(null)
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= items.length) return
+    const next = [...items]
+    const [it] = next.splice(from, 1)
+    next.splice(to, 0, it)
+    onChange(next)
+    setSel(to)
+  }
+  const current = sel !== null && sel < items.length ? items[sel] : null
+  return (
+    <Group title={title} note={note}>
+      <div className="st-row st-lib-head">
+        <span className="st-muted">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
+        <span className="st-control">
+          <button
+            className="st-btn"
+            onClick={() => {
+              onChange([fresh, ...items])
+              setSel(0)
+            }}
+          >
+            <Plus size={13} /> Add
+          </button>
+          <button className="st-btn subtle" onClick={() => (onChange(defaults), setSel(null))} title="Back to the built-in list">
+            <RotateCcw size={13} /> Reset to defaults
+          </button>
+        </span>
+      </div>
+      <div className="st-lib-grid">
+        {items.map((it, i) => (
+          <button
+            key={i}
+            className={`st-lib-swatch${sel === i ? ' active' : ''}${drag === i ? ' dragging' : ''}`}
+            aria-label={describe(it)}
+            aria-pressed={sel === i}
+            draggable
+            onClick={() => setSel(sel === i ? null : i)}
+            onDragStart={() => setDrag(i)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault()
+              if (drag !== null && drag !== i) move(drag, i)
+              setDrag(null)
+            }}
+            onDragEnd={() => setDrag(null)}
+          >
+            <span style={{ background: swatch(it) }} />
+          </button>
+        ))}
+      </div>
+      {current !== null && sel !== null && (
+        <div className="st-row st-lib-edit">
+          <span className="st-control">{editor(current, (next) => onChange(items.map((x, j) => (j === sel ? next : x))))}</span>
+          <span className="st-control">
+            <button className="st-btn subtle icon" aria-label="Move earlier" disabled={sel === 0} onClick={() => move(sel, sel - 1)}>
+              <ChevronLeft size={14} />
+            </button>
+            <button className="st-btn subtle icon" aria-label="Move later" disabled={sel === items.length - 1} onClick={() => move(sel, sel + 1)}>
+              <ChevronRight size={14} />
+            </button>
+            <button
+              className="st-btn danger"
+              disabled={items.length < 2}
+              onClick={() => {
+                onChange(items.filter((_, j) => j !== sel))
+                setSel(null)
+              }}
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+          </span>
+        </div>
+      )}
+    </Group>
   )
 }

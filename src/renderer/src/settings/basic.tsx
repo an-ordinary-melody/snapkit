@@ -120,18 +120,22 @@ export function Appearance({ snap, set }: SectionProps) {
   return (
     <>
       <Group title="Theme">
-        <Row label="Style" desc="For toolbars, menus, the editor, pins and this window.">
+        <Row label="Appearance" desc="For toolbars, menus, the editor, pins and this window. System follows your Mac.">
           <Segmented
-            label="Theme"
-            value={s.appearance.theme}
+            label="Appearance"
+            value={s.appearance.mode}
             options={[
-              { value: 'glass', label: 'Liquid Glass' },
-              { value: 'dark', label: 'Dark' }
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' },
+              { value: 'system', label: 'System' }
             ]}
-            onChange={(theme) => set({ appearance: { theme } })}
+            onChange={(mode) => set({ appearance: { mode } })}
           />
         </Row>
-        <Row label="Highlight color" desc="Selected tool, switches and main buttons. Theme: white in Liquid Glass, gray in Dark.">
+        <Row label="Liquid Glass" desc="Frosted, see-through panels that bend what's behind them at the edges. Off: solid panels.">
+          <Toggle label="Liquid Glass" value={s.appearance.glass} onChange={(glass) => set({ appearance: { glass } })} />
+        </Row>
+        <Row label="Highlight color" desc="Selected tool, switches and main buttons. Theme: white in Light, gray in Dark.">
           <Segmented
             label="Highlight color"
             value={s.appearance.accent ? 'custom' : 'theme'}

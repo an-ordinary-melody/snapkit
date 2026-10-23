@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
 import { join } from 'path'
 import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from '@shared/settings'
 import { IPC, type SettingsSnapshot } from '@shared/ipc'
@@ -23,7 +23,7 @@ export function openSettingsWindow() {
     win.focus()
     return
   }
-  const glass = getSettings().appearance.theme === 'glass'
+  const glass = getSettings().appearance.glass
   win = new BrowserWindow({
     width: 880,
     height: 640,
@@ -35,7 +35,7 @@ export function openSettingsWindow() {
     ...(isMac
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 18 }, vibrancy: glass ? ('sidebar' as const) : undefined, visualEffectState: 'active' as const }
       : { backgroundMaterial: 'mica' as const, autoHideMenuBar: true }),
-    backgroundColor: glass ? '#00000000' : '#1e1e21',
+    backgroundColor: '#00000000', // the page paints its own background when glass is off
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   })
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL + '#settings')
@@ -70,8 +70,13 @@ export function registerSettingsIpc(setHotkey: (accelerator: string) => string |
     if (what === 'logs') void shell.openPath(app.getPath('logs'))
     else shell.showItemInFolder(settingsFile())
   })
+  // Light / dark / system for everything native too (window material, dialogs, menus).
+  nativeTheme.themeSource = getSettings().appearance.mode
   // Keep the window in sync with changes made anywhere (e.g. the last save folder).
-  onSettingsChange(() => {
-    if (win && !win.isDestroyed()) win.webContents.send(IPC.settingsChanged, snapshot())
+  onSettingsChange((s, prev) => {
+    nativeTheme.themeSource = s.appearance.mode
+    if (!win || win.isDestroyed()) return
+    if (isMac && s.appearance.glass !== prev.appearance.glass) win.setVibrancy(s.appearance.glass ? 'sidebar' : null)
+    win.webContents.send(IPC.settingsChanged, snapshot())
   })
 }

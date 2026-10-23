@@ -37,7 +37,7 @@ export function Settings() {
     api.onSettingsChanged(setSnap)
   }, [])
   useEffect(() => {
-    if (snap) applyTheme(snap.settings.appearance.theme, snap.settings.appearance.accent)
+    if (snap) applyTheme(snap.settings.appearance)
   }, [snap])
 
   const set = useCallback((patch: SettingsPatch) => void api.settingsUpdate(patch).then(setSnap), [])

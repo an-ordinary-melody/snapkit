@@ -101,6 +101,8 @@ export interface Style {
   textColor: string
   /** The highlighter has its own (light) colors too. */
   highlighterColor: string
+  /** And numbered steps their own badge color. */
+  stepColor: string
   /** Index into the stroke width presets. */
   widthIndex: number
   blurMode: 'pixelate' | 'blur'

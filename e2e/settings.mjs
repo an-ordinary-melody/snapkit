@@ -46,7 +46,12 @@ try {
   await section('Appearance')
   await st.click('.st-seg button:has-text("Dark")')
   await wait(300)
-  console.log('theme:', await st.evaluate(() => document.documentElement.dataset.theme), '| saved:', saved().appearance?.theme)
+  console.log('mode:', await st.evaluate(() => document.documentElement.dataset.mode), '| saved:', saved().appearance?.mode)
+  await st.click('button[aria-label="Liquid Glass"]')
+  await wait(200)
+  console.log('glass off:', await st.evaluate(() => document.documentElement.dataset.glass), '| saved:', saved().appearance?.glass)
+  writeFileSync(join(out, 'dark-solid-appearance.png'), await st.screenshot())
+  await st.click('button[aria-label="Liquid Glass"]') // back on: dark glass
   for (const name of ['General', 'Appearance', 'Toolbar', 'Tools', 'Background']) {
     await section(name)
     writeFileSync(join(out, `dark-${name.toLowerCase()}.png`), await st.screenshot())
@@ -59,6 +64,10 @@ try {
   await rows.filter({ hasText: 'Text' }).dragTo(rows.filter({ hasText: 'Pencil' }))
   await wait(300)
   console.log('highlighter off:', saved().features?.highlighter === false, '| order starts:', (saved().toolbarOrder ?? []).slice(0, 3).join(', '))
+  console.log('group rows:', await st.$$eval('.st-reorder.group', (rs) => rs.map((r) => r.querySelector('.st-label span:not(.st-feature-icon)')?.textContent + ' (' + r.querySelectorAll('.st-variant').length + ')')))
+  await st.click('button[aria-label="Move Arrow down"]')
+  await wait(200)
+  console.log('arrow moved down, order:', (saved().toolbarOrder ?? []).slice(0, 4).join(', '))
 
   // Tools: change the first quick color.
   await section('Tools')
@@ -67,6 +76,11 @@ try {
   await st.keyboard.press('Enter')
   await wait(200)
   console.log('palette saved:', saved().annotate?.palette?.[0])
+  await st.click('button[aria-label="Step badge color: pick a color"]')
+  await st.fill('.color-picker .hex', '#3b82f6')
+  await st.keyboard.press('Enter')
+  await wait(150)
+  console.log('step color saved:', saved().annotate?.stepColor)
 
   // Background: make Sunset the default and change its padding.
   await section('Background')
@@ -74,6 +88,14 @@ try {
   await st.click('.st-btn:has-text("Make default")')
   await wait(200)
   console.log('default preset:', saved().beautify?.preset)
+  const before = await st.$$eval('.st-group:has-text("Gradient library") .st-lib-swatch', (b) => b.length)
+  await st.click('.st-group:has-text("Gradient library") .st-btn:has-text("Add")')
+  await wait(150)
+  console.log('gradient added first:', JSON.stringify(saved().beautify?.gradients?.[0]), '| count', before, '->', saved().beautify?.gradients?.length)
+  writeFileSync(join(out, 'dark-glass-background.png'), await st.screenshot({ fullPage: true }))
+  await st.click('.st-group:has-text("Gradient library") .st-btn:has-text("Reset to defaults")')
+  await wait(150)
+  console.log('gradients reset:', saved().beautify?.gradients?.length)
 
   // Capture mode picks it all up.
   await app.evaluate(({ app }) => app.emit('second-instance'))
@@ -84,7 +106,7 @@ try {
   const tools = await ov.$$eval('.toolbar.vertical button', (bs) => bs.map((b) => b.dataset.tip))
   await ov.keyboard.press('w')
   await wait(150)
-  console.log('capture: theme', await ov.evaluate(() => document.documentElement.dataset.theme),
+  console.log('capture: mode', await ov.evaluate(() => document.documentElement.dataset.mode + '/' + document.documentElement.dataset.glass),
     '| first tool', tools[0], '| highlighter shown', tools.includes('Highlighter'),
     '| W selects arrow', await ov.$eval('.toolbar button.active[data-id]', (b) => b.dataset.id).catch(() => 'none'),
     '| first swatch', await ov.$eval('.style-bar .swatch', (b) => b.dataset.tip).catch(() => 'none'))
@@ -96,7 +118,7 @@ try {
   await section('Appearance')
   await st.click('.st-header button:has-text("Reset section")')
   await wait(300)
-  console.log('after reset: theme', saved().appearance?.theme ?? 'default', '| toolbar kept:', saved().features?.highlighter === false)
+  console.log('after reset: appearance', JSON.stringify(saved().appearance ?? 'default'), '| toolbar kept:', saved().features?.highlighter === false)
   console.log('settings errors:', errors.length ? errors : 'none')
 } finally {
   await app.close()

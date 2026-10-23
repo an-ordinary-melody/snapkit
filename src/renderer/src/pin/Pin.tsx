@@ -21,8 +21,8 @@ export function Pin() {
   const hudTimer = useRef<number>()
 
   useEffect(() => {
-    api.onPinImage(({ png, theme, accent }) => {
-      applyTheme(theme, accent)
+    api.onPinImage(({ png, appearance }) => {
+      applyTheme(appearance)
       setSrc(URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' })))
     })
     api.onPinState(setState)
