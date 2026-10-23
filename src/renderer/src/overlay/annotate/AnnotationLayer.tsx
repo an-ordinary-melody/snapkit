@@ -147,7 +147,9 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     const id = newId()
 
     if (tool === 'step') {
-      onCommit([...shapes, { id, type: 'step', x: x0, y: y0, size: props.stepSize, color: style.color }])
+      // Zoomed out (the background editor): a somewhat bigger badge, so it isn't tiny on screen.
+      const size = Math.round(props.stepSize / Math.sqrt(Math.min(1, zoom())))
+      onCommit([...shapes, { id, type: 'step', x: x0, y: y0, size, color: style.color }])
       return true
     }
     if (tool === 'text') {

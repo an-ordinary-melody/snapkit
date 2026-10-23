@@ -105,7 +105,7 @@ export const DEFAULT_SETTINGS: Settings = {
     capture: 'CommandOrControl+Shift+2'
   },
   capture: {
-    dimOpacity: 0.45,
+    dimOpacity: 0.6,
     showSizeLabel: true,
     accentColor: '#3b82f6'
   },

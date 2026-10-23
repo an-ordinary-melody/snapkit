@@ -80,6 +80,27 @@ function initialStyle(s: Settings): Style {
   }
 }
 
+/** What the style bar shows for a selected shape: its own values over the current style. */
+function styleOf(s: Shape, base: Style, widths: number[]): Style {
+  const widthIndex = (w: number) => widths.reduce((best, v, i) => (Math.abs(v - w) < Math.abs(widths[best] - w) ? i : best), 0)
+  switch (s.type) {
+    case 'pen':
+    case 'line':
+    case 'arrow':
+    case 'rect':
+    case 'ellipse':
+      return { ...base, color: s.color, widthIndex: widthIndex(s.width) }
+    case 'highlighter':
+      return { ...base, highlighterColor: s.color }
+    case 'step':
+      return { ...base, color: s.color }
+    case 'text':
+      return { ...base, textColor: s.color, fontSize: s.fontSize, textBackground: s.background, textStroke: s.stroke ?? '', shadow: Number(s.shadow) }
+    case 'blur':
+      return { ...base, blurMode: s.mode, blurStrength: s.strength ?? base.blurStrength }
+  }
+}
+
 /** The parts of `patch` that apply to an existing shape. */
 function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
   switch (s.type) {
@@ -444,7 +465,7 @@ export function Overlay() {
 
   // ---- render ---------------------------------------------------------------
   const s = cap?.settings
-  const dim = `rgba(0,0,0,${s?.capture.dimOpacity ?? 0.45})`
+  const dim = `rgba(0,0,0,${s?.capture.dimOpacity ?? 0.6})`
   const accent = s?.capture.accentColor ?? '#3b82f6'
   const scale = cap?.scale ?? 1
   const hasSel = !!(cap && sel && sel.w >= MIN_SIZE && sel.h >= MIN_SIZE)
@@ -456,7 +477,16 @@ export function Overlay() {
   const filled = selectedShape ? 'filled' in selectedShape && !!selectedShape.filled : !!toolVariant?.endsWith('-filled')
   const styleBar =
     cap && style && styleTarget && hasStyleOptions(styleTarget) ? (
-      <StyleBar pickerRequest={pickerRequest} highlighterPalette={cap.settings.annotate.highlighterPalette} target={styleTarget} filled={filled} style={style} palette={cap.settings.annotate.palette} onChange={onStyleChange} />
+      <StyleBar
+        pickerRequest={pickerRequest}
+        highlighterPalette={cap.settings.annotate.highlighterPalette}
+        target={styleTarget}
+        filled={filled}
+        // A selected shape shows its own color, size and look.
+        style={selectedShape ? styleOf(selectedShape, style, cap.settings.annotate.strokeWidths) : style}
+        palette={cap.settings.annotate.palette}
+        onChange={onStyleChange}
+      />
     ) : null
   const unavailable = new Set<string>()
   if (!history.past.length) unavailable.add('undo')

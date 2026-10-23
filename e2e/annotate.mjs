@@ -82,6 +82,10 @@ try {
   await win.click('.style-bar button[data-tip="Stroke (outline)"]')
   const active = await win.$$eval('.style-bar button.active', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Stroke|background/.test(t)))
   console.log('text styles:', order.join(' | '), '→ active after Stroke:', active)
+  console.log('style bar shows the selected text size:', await win.$eval('.style-bar .size-input', (e) => e.value))
+  await win.fill('.style-bar .size-input', '36')
+  await wait(100)
+  console.log('typed size 36 -> text node:', await win.evaluate(() => window.Konva.stages[0].find('Text').map((t) => t.fontSize()).filter((f) => f === 36).length > 0))
   await win.click('.style-bar button[data-tip="Dark background"]')
   console.log('dark background sets white text:', await win.$eval('.style-bar .swatch.active', (b) => b.dataset.tip).catch(() => 'none'))
   await win.click('.style-bar button[data-tip="Plain"]')
@@ -95,6 +99,13 @@ try {
   await drag(260, 420, 330, 470)
   console.log('rect button now:', await win.$eval('.toolbar button.active', (b) => b.dataset.tip + ' / ' + b.dataset.sub))
   await tool('Filled ellipse') // tool off
+
+  // Highlighter: its 5 colors only, and the picked one shows as selected.
+  await tool('Highlighter')
+  await win.click('.style-bar button[data-tip="#86efac"]')
+  console.log('highlighter swatches:', (await win.$$('.style-bar .swatch')).length, '| custom:', !!(await win.$('.style-bar .swatch.custom')),
+    '| picked shows selected:', await win.$eval('.style-bar .swatch.active', (b) => b.dataset.tip))
+  await tool('Highlighter') // off
 
   // Tooltip on hover
   await win.hover('.toolbar button[data-tip="Arrow"]')

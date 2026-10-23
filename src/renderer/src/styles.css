@@ -12,15 +12,15 @@
   --ui-fg: #1c1c1e;
   --ui-fg-dim: #5d5d66;
   --ui-fg-faint: #8a8a93;
-  --ui-hover: rgba(0,0,0,.07);
+  --ui-hover: rgba(0,0,0,.12);
   --ui-field: rgba(0,0,0,.06);
   --ui-sep: rgba(0,0,0,.12);
   /* Specular highlight on the top edge, softer light on the bottom edge, a faint inner glow, a hairline outside. */
   --ui-rim: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(255,255,255,.4), inset 0 0 0 .5px rgba(255,255,255,.7),
     inset 0 0 14px rgba(255,255,255,.28), 0 0 0 .5px rgba(0,0,0,.14);
   --ui-shadow: 0 12px 36px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
-  --ui-radius: 18px;
-  --ui-btn-radius: 12px;
+  --ui-radius: 16px;
+  --ui-btn-radius: 8px;
   /* Selected tool: a white pill (glass) / gray (dark). */
   --ui-active-bg: #fff;
   --ui-active-fg: #1c1c1e;
@@ -52,7 +52,7 @@
   --ui-fg: #e7e7ea;
   --ui-fg-dim: #a1a1aa;
   --ui-fg-faint: #8b8b93;
-  --ui-hover: rgba(255,255,255,.12);
+  --ui-hover: rgba(255,255,255,.17);
   --ui-field: rgba(255,255,255,.08);
   --ui-sep: rgba(255,255,255,.14);
   --ui-rim: inset 0 0 0 1px rgba(255,255,255,.08);
@@ -106,7 +106,7 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
   width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: var(--ui-btn-radius);
   background: transparent; color: var(--ui-fg); cursor: pointer; padding: 0;
 }
-.toolbar button:hover:not(.off) { background: var(--ui-hover); }
+.toolbar button:hover:not(.off) { background: var(--ui-hover); box-shadow: inset 0 0 0 .5px var(--ui-sep); }
 .toolbar button.off { opacity: .35; cursor: default; }
 @keyframes tb-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
 
@@ -146,6 +146,13 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
 .style-bar .swatch.active span { box-shadow: 0 0 0 2px var(--ui-ring); }
 .style-bar .width-dot { border-radius: 50%; background: currentColor; }
 .style-bar .value { min-width: 22px; text-align: center; color: var(--ui-fg); font-variant-numeric: tabular-nums; }
+.style-bar .size-input {
+  width: 38px; height: 26px; padding: 0 2px; border: 0; border-radius: 7px; outline: none; text-align: center;
+  background: var(--ui-field); color: var(--ui-fg); font: inherit; font-size: 12.5px; font-variant-numeric: tabular-nums;
+  user-select: text; -webkit-user-select: text; -moz-appearance: textfield;
+}
+.style-bar .size-input::-webkit-inner-spin-button, .style-bar .size-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.style-bar .size-input:focus { box-shadow: inset 0 0 0 1.5px var(--ui-ring); }
 .style-bar .glyph { font-weight: 700; font-size: 14px; line-height: 1; }
 .style-bar .glyph.stroke { color: var(--glyph-fill); -webkit-text-stroke: 3px var(--glyph-line); paint-order: stroke fill; }
 .style-bar .glyph.light, .style-bar .glyph.dark { padding: 2px 4px; border-radius: 3px; }

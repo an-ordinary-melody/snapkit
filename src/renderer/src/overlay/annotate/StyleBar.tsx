@@ -73,11 +73,12 @@ export function StyleBar({ target, filled, style, palette: mainPalette, highligh
   // The color button in the tool bar opens the color picker here.
   const firstRequest = useRef(pickerRequest)
   useEffect(() => {
-    if (pickerRequest !== firstRequest.current && COLORED.has(target)) setPicking('color')
+    if (pickerRequest !== firstRequest.current && COLORED.has(target) && target !== 'highlighter') setPicking('color')
   }, [pickerRequest]) // eslint-disable-line react-hooks/exhaustive-deps
   const look = textLook(style)
   const sep = <div className="sep" />
   const lower = palette.map((c) => c.toLowerCase())
+  const customizable = target !== 'highlighter'
   const customs = recentCustom.filter((c) => !lower.includes(c))
   // Text keeps its own color.
   const colorKey = target === 'text' ? 'textColor' : target === 'highlighter' ? 'highlighterColor' : 'color'
@@ -103,13 +104,16 @@ export function StyleBar({ target, filled, style, palette: mainPalette, highligh
       {COLORED.has(target) && (
         <>
           {palette.map(swatch)}
-          {customs.map(swatch)}
-          <div className="picker-anchor">
-            <button className={`swatch custom${picking === 'color' ? ' active' : ''}`} data-tip="Custom color" onClick={() => (picking === 'color' ? closePicker() : setPicking('color'))}>
-              <span />
-            </button>
-            {picking === 'color' && <ColorPicker color={currentColor} onChange={(c) => onChange({ [colorKey]: c }, true)} onClose={closePicker} />}
-          </div>
+          {/* The highlighter keeps to its own few light colors: no custom ones. */}
+          {customizable && customs.map(swatch)}
+          {customizable && (
+            <div className="picker-anchor">
+              <button className={`swatch custom${picking === 'color' ? ' active' : ''}`} data-tip="Custom color" onClick={() => (picking === 'color' ? closePicker() : setPicking('color'))}>
+                <span />
+              </button>
+              {picking === 'color' && <ColorPicker color={currentColor} onChange={(c) => onChange({ [colorKey]: c }, true)} onClose={closePicker} />}
+            </div>
+          )}
         </>
       )}
 
@@ -130,7 +134,7 @@ export function StyleBar({ target, filled, style, palette: mainPalette, highligh
           <button data-tip="Smaller text" onClick={() => onChange({ fontSize: Math.max(10, style.fontSize - 4) })}>
             <Minus size={15} />
           </button>
-          <span className="value">{style.fontSize}</span>
+          <FontSizeInput value={style.fontSize} onChange={(fontSize) => onChange({ fontSize })} />
           <button data-tip="Larger text" onClick={() => onChange({ fontSize: Math.min(200, style.fontSize + 4) })}>
             <Plus size={15} />
           </button>
@@ -184,5 +188,31 @@ export function StyleBar({ target, filled, style, palette: mainPalette, highligh
         </>
       )}
     </>
+  )
+}
+
+/** Text size you can type (8–200), applied as you type. */
+function FontSizeInput({ value, onChange }: { value: number; onChange(v: number): void }) {
+  const [text, setText] = useState(String(value))
+  useEffect(() => setText(String(value)), [value])
+  return (
+    <input
+      className="size-input"
+      type="number"
+      aria-label="Text size"
+      min={8}
+      max={200}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value)
+        const v = Number(e.target.value)
+        if (v >= 8 && v <= 200) onChange(Math.round(v))
+      }}
+      onBlur={() => setText(String(value))}
+      onKeyDown={(e) => {
+        e.stopPropagation()
+        if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur()
+      }}
+    />
   )
 }
