@@ -137,14 +137,18 @@ try {
   await wait(100)
   writeFileSync(join(out, '3-edited.png'), await win.screenshot())
 
-  // Beautify: open the panel, pick Sunset, then save. The PNG gains the padding.
-  await win.click('.toolbar button[data-tip="Background & padding"]')
-  await wait(300)
-  await win.click('.bp-preset[data-tip="Sunset"]')
+  // Background toggle: off by default, a click turns it on and shows the green dot.
+  await win.click('.toolbar button[data-tip="Background: off"]')
+  console.log('background on, dot shown:', !!(await win.$('.toolbar button[data-tip="Background: on"] .on-dot')))
+  // Full editor: pick a gradient, check the shadow step, Done.
+  await win.click('.toolbar button[data-tip="Edit background"]')
+  await wait(400)
+  await win.click('.be-section:has-text("Gradients") + .be-grid .be-swatch >> nth=5')
+  console.log('shadow slider step:', await win.$eval('.be-row:has-text("Shadow") input', (e) => e.step))
   await wait(200)
-  writeFileSync(join(out, '4-beautify-panel.png'), await win.screenshot())
-  await win.keyboard.press('Escape') // closes the panel only
-  console.log('Esc closed panel, still capturing:', !(await win.$('.beautify-panel')) && !!(await win.$('.toolbar')))
+  writeFileSync(join(out, '4-background-editor.png'), await win.screenshot())
+  await win.keyboard.press('Escape') // closes the editor only
+  console.log('Esc closed editor, still capturing:', !(await win.$('.be-backdrop')) && !!(await win.$('.toolbar')))
 
   await win.keyboard.press('Meta+s')
   await wait(1200)

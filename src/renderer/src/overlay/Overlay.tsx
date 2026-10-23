@@ -5,8 +5,8 @@ import { visibleFeatures, type Settings } from '@shared/settings'
 import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
 import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
 import { hasStyleOptions, StyleBar, type StyleTarget } from './annotate/StyleBar'
-import { BeautifyPanel } from './beautify/BeautifyPanel'
-import { stateFromPreset, type BeautifyState } from './beautify/layout'
+import { BackgroundEditor } from './beautify/BackgroundEditor'
+import { backgroundOf, stateFromPreset, type BeautifyState } from './beautify/layout'
 import { renderBeautified } from './beautify/render'
 import { moveRect, rectFromPoints, resizeRect, type Handle, type Point, type Rect } from './layout'
 import { Toolbars } from './Toolbars'
@@ -119,7 +119,7 @@ export function Overlay() {
   const [styleOpen, setStyleOpen] = useState(true)
   const [variants, setVariants] = useState<Record<string, string>>(lastVariants)
   const [beautify, setBeautify] = useState<BeautifyState | null>(null)
-  const [beautifyOpen, setBeautifyOpen] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
   const beautifyRef = useRef(beautify)
   beautifyRef.current = beautify
   const onCommit = useCallback((next: Shape[], mergeKey?: string) => setHistory((h) => commit(h, next, mergeKey)), [])
@@ -141,7 +141,7 @@ export function Overlay() {
         setSelectedId(null)
         setStyle(lastStyle ?? initialStyle(p.settings))
         setBeautify(initialBeautify(p.settings))
-        setBeautifyOpen(false)
+        setEditorOpen(false)
       })
       api.armed(p.session)
     })
@@ -165,7 +165,7 @@ export function Overlay() {
       setHistory(emptyHistory())
       setTool(null)
       setSelectedId(null)
-      setBeautifyOpen(false)
+      setEditorOpen(false)
       const c = canvasRef.current
       if (c) {
         c.width = 1 // release the screenshot's memory (and leave a transparent frame)
@@ -199,8 +199,8 @@ export function Overlay() {
       const scale = canvasRef.current!.width / window.innerWidth
       let out = composeSelection(r, scale)
       const b = beautifyRef.current
-      const preset = b?.on && cap?.settings.beautify.presets.find((p) => p.id === b.presetId)
-      if (b && preset) out = await renderBeautified(out, preset.background, b, scale)
+      const bg = b?.on && cap ? backgroundOf(b, cap.settings.beautify.presets) : null
+      if (b && bg) out = await renderBeautified(out, bg, b, scale)
       const blob = await new Promise<Blob>((res, rej) => out.toBlob((x) => (x ? res(x) : rej(new Error('encode failed'))), 'image/png'))
       return blob.arrayBuffer()
     },
@@ -218,10 +218,12 @@ export function Overlay() {
         return
       }
       if (id === 'color') return setStyleOpen((o) => !o)
-      if (id === 'beautify') {
+      if (id === 'beautify') return setBeautify((b) => b && (lastBeautify = { ...b, on: !b.on }))
+      if (id === 'beautifyEdit') {
         annRef.current?.finishEditing()
         setSelectedId(null)
-        return setBeautifyOpen((o) => !o)
+        setBeautify((b) => b && (lastBeautify = { ...b, on: true }))
+        return setEditorOpen(true)
       }
       if (id === 'undo' || id === 'redo') {
         annRef.current?.finishEditing()
@@ -261,6 +263,7 @@ export function Overlay() {
       const typing = e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLInputElement && e.target.type === 'text')
       if (!cap || e.defaultPrevented || typing) return
       if (e.target instanceof HTMLInputElement) e.target.blur()
+      if (editorOpen && !((e.metaKey || e.ctrlKey) && /^[cs]$/i.test(e.key))) return // the editor is on top
       const mod = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
       const selectedShape = shapes.find((x) => x.id === selectedId)
@@ -307,7 +310,7 @@ export function Overlay() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [cap, sel, screen, runAction, shapes, selectedId, toolKeys, onCommit])
+  }, [cap, sel, screen, runAction, shapes, selectedId, toolKeys, onCommit, editorOpen])
 
   // ---- mouse ----------------------------------------------------------------
   const point = (e: React.PointerEvent): Point => ({ x: e.clientX, y: e.clientY })
@@ -391,34 +394,12 @@ export function Overlay() {
   if (!history.past.length) unavailable.add('undo')
   if (!history.future.length) unavailable.add('redo')
   const pressed = new Set<string>(styleOpen ? ['color'] : [])
-  if (beautify?.on || beautifyOpen) pressed.add('beautify')
-
-  const beautifyPreview = () => {
-    if (!sel || canvasRef.current!.width <= 1) return null
-    // Small: about the preview's size, so dragging a slider redraws instantly.
-    const scale = Math.min(2, 520 / Math.max(sel.w, sel.h))
-    return { canvas: composeSelection(sel, scale), scale }
+  const lit = new Set<string>(beautify?.on ? ['beautify'] : [])
+  const tips = {
+    beautify: { text: beautify?.on ? 'Background: on' : 'Background: off', sub: 'Click to turn it ' + (beautify?.on ? 'off' : 'on') + ' for copy & save' }
   }
-  const closeBeautify = useCallback(() => setBeautifyOpen(false), [])
-  const popover =
-    beautifyOpen && beautify && cap
-      ? {
-          featureId: 'beautify',
-          size: { w: 276, h: 380 },
-          onClose: closeBeautify,
-          node: (
-            <BeautifyPanel
-              presets={cap.settings.beautify.presets}
-              state={beautify}
-              preview={beautifyPreview}
-              onChange={(next) => {
-                setBeautify(next)
-                lastBeautify = next
-              }}
-            />
-          )
-        }
-      : null
+  const closeEditor = useCallback(() => setEditorOpen(false), [])
+  const composeForEditor = useCallback((scale: number) => composeSelection(sel!, scale), [composeSelection, sel])
 
   let cursor = 'crosshair'
   if (drag?.kind === 'move') cursor = 'move'
@@ -481,6 +462,22 @@ export function Overlay() {
         </div>
       )}
 
+      {editorOpen && sel && cap && beautify && (
+        <BackgroundEditor
+          presets={cap.settings.beautify.presets}
+          state={beautify}
+          onChange={(next) => {
+            setBeautify(next)
+            lastBeautify = next
+          }}
+          selection={sel}
+          compose={composeForEditor}
+          onClose={closeEditor}
+          onCopy={() => void runAction('copy')}
+          onSave={() => void runAction('save')}
+        />
+      )}
+
       {showToolbars && sel && cap && style && (
         <Toolbars
           selection={sel}
@@ -494,7 +491,8 @@ export function Overlay() {
           variants={variants}
           onAction={(id) => void runAction(id)}
           onVariant={onVariant}
-          popover={popover}
+          lit={lit}
+          tips={tips}
         />
       )}
     </div>

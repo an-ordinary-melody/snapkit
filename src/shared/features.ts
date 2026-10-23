@@ -63,7 +63,8 @@ export const FEATURES: FeatureDef[] = [
   { id: 'redo', label: 'Redo', kind: 'tool', hint: '⇧⌘Z', implemented: true, defaultEnabled: false },
 
   // Actions (horizontal bar)
-  { id: 'beautify', label: 'Background & padding', kind: 'action', implemented: true, defaultEnabled: true },
+  { id: 'beautify', label: 'Background', kind: 'action', implemented: true, defaultEnabled: true },
+  { id: 'beautifyEdit', label: 'Edit background', kind: 'action', implemented: true, defaultEnabled: true },
   { id: 'pin', label: 'Pin to screen', kind: 'action', implemented: false, defaultEnabled: true },
   { id: 'save', label: 'Save', kind: 'action', hint: '⌘S', implemented: true, defaultEnabled: true },
   { id: 'copy', label: 'Copy', kind: 'action', hint: '⌘C', implemented: true, defaultEnabled: true },

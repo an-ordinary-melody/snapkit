@@ -1,13 +1,19 @@
-import type { BeautifyPreset } from '@shared/settings'
+import type { BeautifyBackground, BeautifyPreset } from '@shared/settings'
 
 /** Per-capture beautify choices: a preset plus the user's tweaks to it. */
 export interface BeautifyState {
   on: boolean
   presetId: string
+  /** Background picked in the editor instead of the preset's. */
+  background?: BeautifyBackground
   padding: number
   radius: number
   shadow: number
 }
+
+/** The background in effect: the editor's pick, else the preset's. */
+export const backgroundOf = (s: BeautifyState, presets: BeautifyPreset[]): BeautifyBackground | null =>
+  s.background ?? presets.find((p) => p.id === s.presetId)?.background ?? presets[0]?.background ?? null
 
 export interface BeautifyLayout {
   width: number

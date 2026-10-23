@@ -31,7 +31,8 @@ in settings.
 - **Style bar:** colors (the rainbow swatch opens a custom color picker; custom colors are remembered until Snapkit quits), stroke width, text options, and blur (default) / pixelate with a strength slider. A blur area updates live while you move or resize it. The palette button shows or hides it.
 - **Undo / redo:** `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`).
 - Hover any button for its name and shortcut.
-- **Background & padding (beautify):** the frame button in the action bar opens a panel with a live preview. Turn it on, pick a preset (gradient or solid), and adjust padding, corner radius and shadow. While it's on, copy and save include the background. It's off at the start of each capture unless `beautify.applyOnCopy` is `true`. The last preset and tweaks are kept until Snapkit quits.
+- **Background (beautify):** the image button in the action bar turns the background on or off for this capture; a green dot means it's on. While it's on, copy and save include it. It starts on or off according to `beautify.applyOnCopy`.
+- **Edit background:** the palette button opens a full editor with a live preview: presets, 16 gradients (edit their colors and angle), solid colors plus a custom color, and padding / corner / shadow sliders. Copy, Save or Done from there; Esc goes back to capture mode. Your last choice is kept until Snapkit quits.
 
 ## Installing the builds
 
@@ -77,6 +78,6 @@ Annotation test (macOS or Linux, uses its own profile and briefly shows the capt
 - `src/main/`: tray, hotkey, screen capture (`node-screenshots` with a `desktopCapturer` fallback), overlay window manager, copy/save.
 - `src/renderer/src/overlay/`: capture-mode UI. `layout.ts` holds the toolbar placement algorithm and has unit tests.
 - `src/renderer/src/overlay/annotate/`: annotations. `model.ts` is the plain-data shape model and undo history (unit tested); `AnnotationLayer.tsx` draws and edits shapes with Konva; `StyleBar.tsx` is the color/width/text options bar. Per-tool defaults live under `annotate` in settings.
-- `src/renderer/src/overlay/beautify/`: background/padding/radius/shadow. `layout.ts` is the geometry (unit tested), `render.ts` draws it, `BeautifyPanel.tsx` is the panel. Presets live under `beautify.presets` in settings; a preset background can be `solid`, `gradient` or `image` (a local file path).
+- `src/renderer/src/overlay/beautify/`: background/padding/radius/shadow. `layout.ts` is the geometry (unit tested), `render.ts` draws it, `BackgroundEditor.tsx` is the full editor. Presets live under `beautify.presets` in settings; a preset background can be `solid`, `gradient` or `image` (a local file path).
 
 Settings are stored in `settings.json` in the app's data folder (`~/Library/Application Support/Snapkit` on macOS). Only values you change are written there; everything else follows the defaults in `src/shared/settings.ts`.

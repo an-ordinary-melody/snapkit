@@ -1,5 +1,5 @@
 import {
-  Check, Circle, Copy, Droplets, Frame, Hash, Highlighter, MoveUpRight, Pencil, Pin, Redo2, Save, Slash, Square, Type, Undo2, X,
+  Check, Circle, Copy, Droplets, Hash, Highlighter, Image, MoveUpRight, Palette, Pencil, Pin, Redo2, Save, Slash, Square, Type, Undo2, X,
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
@@ -9,7 +9,7 @@ import { placeStyleBar, placeToolbars, type Rect, type Size } from './layout'
 
 const ICONS: Record<string, LucideIcon> = {
   pen: Pencil, line: Slash, arrow: MoveUpRight, rect: Square, ellipse: Circle, highlighter: Highlighter, text: Type,
-  step: Hash, blur: Droplets, undo: Undo2, redo: Redo2, beautify: Frame, pin: Pin, save: Save, copy: Copy, close: X
+  step: Hash, blur: Droplets, undo: Undo2, redo: Redo2, beautify: Image, beautifyEdit: Palette, pin: Pin, save: Save, copy: Copy, close: X
 }
 
 /** Icon for a tool variant: the base shape, outlined or filled. */
@@ -51,12 +51,14 @@ interface Props {
   onAction(id: string): void
   /** Pick a variant from a tool's right-click menu (also selects the tool). */
   onVariant(featureId: string, variantId: string): void
-  /** A panel opened from one of the buttons (e.g. beautify), shown next to it. */
-  popover: { featureId: string; node: ReactNode; size: Size; onClose(): void } | null
+  /** Ids of buttons showing an "on" dot (e.g. background on). */
+  lit: Set<string>
+  /** Tooltip text for buttons whose tip depends on state. */
+  tips: Record<string, { text: string; sub?: string }>
 }
 
 export function Toolbars(props: Props) {
-  const { selection, screen, settings, activeTool, color, pressed, unavailable, styleBar, variants, onAction, onVariant, popover } = props
+  const { selection, screen, settings, activeTool, color, pressed, unavailable, styleBar, variants, onAction, onVariant, lit, tips } = props
   const actions = visibleFeatures(settings, 'action')
   const tools = visibleFeatures(settings, 'tool')
   const aSize = { w: barLength(actions.length), h: BAR_THICK }
@@ -78,7 +80,7 @@ export function Toolbars(props: Props) {
     const off = !f.implemented || unavailable.has(f.id)
     const cls = [f.id === 'copy' && 'primary', (f.id === activeTool || pressed.has(f.id)) && 'active', off && 'off'].filter(Boolean).join(' ')
     const variant: FeatureVariant | undefined = f.variants?.find((v) => v.id === variants[f.id]) ?? f.variants?.[0]
-    const label = variant?.label ?? f.label
+    const label = tips[f.id]?.text ?? variant?.label ?? f.label
     // Not `disabled`: disabled buttons get no hover events, so no tooltip.
     return (
       <button
@@ -86,7 +88,7 @@ export function Toolbars(props: Props) {
         data-id={f.id}
         data-tip={f.implemented ? label : `${label} (coming soon)`}
         data-hint={f.implemented ? f.hint : undefined}
-        data-sub={f.variants ? 'Right-click for more shapes' : undefined}
+        data-sub={tips[f.id]?.sub ?? (f.variants ? 'Right-click for more shapes' : undefined)}
         aria-disabled={off}
         className={cls}
         onClick={() => !off && onAction(f.id)}
@@ -101,6 +103,7 @@ export function Toolbars(props: Props) {
       >
         {f.id === 'color' ? <span className="color-box" style={{ background: color }} /> : <FeatureIcon id={variant?.id ?? f.id} />}
         {f.variants && <span className="more-mark" />}
+        {lit.has(f.id) && <span className="on-dot" />}
       </button>
     )
   }
@@ -157,7 +160,6 @@ export function Toolbars(props: Props) {
         </div>
       )}
       {tip && !menu && tip.el.isConnected && <Tooltip {...tip} screen={screen} />}
-      {popover && <AnchoredPanel {...popover} screen={screen} onPointerDown={stop} tipHandlers={tipHandlers(false)} />}
       {menu && menu.el.isConnected && (
         <VariantMenu
           {...menu}
@@ -192,59 +194,6 @@ function popoverStyle(el: HTMLElement, vertical: boolean, screen: Size, w: numbe
     top: below ? r.bottom + GAP : r.top - GAP,
     transform: below ? 'translateX(-50%)' : 'translate(-50%, -100%)'
   }
-}
-
-/** A panel next to the button it belongs to; closes on Esc or a click elsewhere. */
-function AnchoredPanel(props: {
-  featureId: string
-  node: ReactNode
-  size: Size
-  screen: Size
-  onClose(): void
-  onPointerDown(e: React.PointerEvent | React.MouseEvent): void
-  tipHandlers: Record<string, unknown>
-}) {
-  const { featureId, node, size, screen, onClose, onPointerDown, tipHandlers } = props
-  const ref = useRef<HTMLDivElement>(null)
-  const [, relayout] = useState(0)
-  const button = document.querySelector<HTMLElement>(`.toolbar button[data-id="${featureId}"]`)
-  useEffect(() => {
-    if (!button) relayout((n) => n + 1) // the bar renders first; anchor on the next pass
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as HTMLElement
-      if (!ref.current?.contains(t) && !t.closest(`.toolbar button[data-id="${featureId}"]`)) onClose()
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      onClose()
-    }
-    window.addEventListener('pointerdown', onDown, true)
-    window.addEventListener('keydown', onKey, true)
-    return () => {
-      window.removeEventListener('pointerdown', onDown, true)
-      window.removeEventListener('keydown', onKey, true)
-    }
-  }, [button, featureId, onClose])
-  if (!button) return null
-  const vertical = !!button.closest('.toolbar.vertical')
-  return (
-    <div
-      ref={ref}
-      className="anchored-panel"
-      style={popoverStyle(button, vertical, screen, size.w, size.h)}
-      onPointerDown={onPointerDown}
-      onMouseDown={onPointerDown}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-      }}
-      {...tipHandlers}
-    >
-      {node}
-    </div>
-  )
 }
 
 function VariantMenu(props: {
