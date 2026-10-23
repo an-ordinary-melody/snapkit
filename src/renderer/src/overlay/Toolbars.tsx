@@ -17,7 +17,8 @@ const VARIANT_ICONS: Record<string, { Icon: LucideIcon; filled: boolean }> = {
   rect: { Icon: Square, filled: false },
   'rect-filled': { Icon: Square, filled: true },
   ellipse: { Icon: Circle, filled: false },
-  'ellipse-filled': { Icon: Circle, filled: true }
+  'ellipse-filled': { Icon: Circle, filled: true },
+  line: { Icon: Slash, filled: false }
 }
 
 /** Long diagonal arrow, with a solid or an open head. */
@@ -30,12 +31,13 @@ function ArrowIcon({ size, open }: { size: number; open: boolean }) {
   )
 }
 
-/** Background: the screenshot as a layer over a faint filled layer, both tilted in perspective. */
+/** Background: two stacked layers (classic layers icon, rounded); the lower one faintly filled. */
 function BackgroundIcon({ size }: { size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round">
-      <path d="M12 10.5 L21.5 15 L12 19.5 L2.5 15 Z" fill="currentColor" fillOpacity={0.4} stroke="none" />
-      <path d="M12 4 L21 8.5 L12 13 L3 8.5 Z" fill="currentColor" fillOpacity={0.1} />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 19.24a2 2 0 0 1-2 0L2.5 14.37a1 1 0 0 1 0-1.74L11 7.76a2 2 0 0 1 2 0l8.5 4.87a1 1 0 0 1 0 1.74Z" fill="currentColor" fillOpacity={0.35} stroke="none" />
+      <path d="m16.02 12 5.48 3.13a1 1 0 0 1 0 1.74L13 21.74a2 2 0 0 1-2 0l-8.5-4.87a1 1 0 0 1 0-1.74L7.98 12" />
+      <path d="M13 13.74a2 2 0 0 1-2 0L2.5 8.87a1 1 0 0 1 0-1.74L11 2.26a2 2 0 0 1 2 0l8.5 4.87a1 1 0 0 1 0 1.74Z" />
     </svg>
   )
 }

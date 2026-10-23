@@ -52,6 +52,7 @@ export interface PixelsPayload {
 /** Sent to a pin window once it has loaded. */
 export interface PinImagePayload {
   png: Uint8Array
+  theme: string
 }
 
 /** What a pin window shows in its HUD and menus. */

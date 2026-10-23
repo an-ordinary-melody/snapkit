@@ -82,7 +82,8 @@ export interface TextShape extends Base {
   color: string
   fontSize: number
   fontFamily: string
-  shadow: boolean
+  /** Drop shadow strength, 0–1 (0 = none). */
+  shadow: number
   /** Fill behind the text, or '' for none. */
   background: string
   /** Outline around the letters, or '' for none. */
@@ -104,7 +105,8 @@ export interface Style {
   blurStrength: number
   fontSize: number
   fontFamily: string
-  shadow: boolean
+  /** Text shadow strength, 0–1. */
+  shadow: number
   /** Text fill behind the letters ('' = none) and outline ('' = none). Only one is used at a time. */
   textBackground: string
   textStroke: string

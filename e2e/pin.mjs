@@ -62,7 +62,7 @@ try {
   await thumb.click('.thumb-btn:has-text("Edit")')
   await wait(1000)
   const ed = windowFor('overlay')
-  console.log('editor open:', !!(await ed.$('.be-backdrop')), '| drawings restored (Konva arrow nodes):', await ed.evaluate(() => window.Konva?.stages[0]?.find('Arrow').length))
+  console.log('editor open:', !!(await ed.$('.be-backdrop')), '| drawings restored (shape groups):', await ed.evaluate(() => window.Konva?.stages[0]?.getLayers()[0].getChildren().length))
   await ed.click('.be-dock .toolbar button[data-tip="Rectangle"]')
   const host = await ed.$eval('.be-ann .annotations', (e) => e.getBoundingClientRect().toJSON())
   await drag(ed.mouse, host.x + 20, host.y + 20, host.x + host.width / 2, host.y + host.height / 2)

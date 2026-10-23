@@ -58,6 +58,8 @@ export interface Settings {
     blurStrength: number
     /** Step badge diameter in px. */
     stepSize: number
+    /** Number color on step badges; '' = black or white, whichever reads better on the badge. */
+    stepTextColor: string
     text: {
       fontFamily: string
       fontSize: number
@@ -68,13 +70,17 @@ export interface Settings {
       strokeWidth: number
       /** Fill behind the text in the 'background' style. */
       background: string
-      /** A subtle drop shadow under all text (settings only). */
-      shadow: boolean
+      /** Drop shadow strength under text, 0–1 (0 = none). Settings only. */
+      shadow: number
     }
   }
   pin: {
     /** Start every capture with the floating preview on: after copy, the result stays in a corner with copy / edit / pin. */
     afterCopy: boolean
+  }
+  appearance: {
+    /** 'glass': Liquid Glass (light frosted panels). 'dark': solid dark panels. */
+    theme: 'glass' | 'dark'
   }
   /** Background, padding, corner radius and shadow around the output image. */
   beautify: {
@@ -117,6 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
     blurMode: 'blur',
     blurStrength: 12,
     stepSize: 28,
+    stepTextColor: '',
     text: {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       fontSize: 20,
@@ -124,11 +131,14 @@ export const DEFAULT_SETTINGS: Settings = {
       strokeColor: '#ffffff',
       strokeWidth: 3,
       background: '#ffffff',
-      shadow: false
+      shadow: 0.1
     }
   },
   pin: {
     afterCopy: false
+  },
+  appearance: {
+    theme: 'glass'
   },
   beautify: {
     applyOnCopy: false,

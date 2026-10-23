@@ -35,6 +35,8 @@ interface Props {
   strokeWidths: [number, number, number]
   highlighter: { color: string; width: number }
   stepSize: number
+  /** Number color on step badges; '' = black or white, whichever reads better. */
+  stepTextColor: string
   selectedId: string | null
   onSelect(id: string | null): void
   onCommit(next: Shape[], mergeKey?: string): void
@@ -43,6 +45,13 @@ interface Props {
   /** Image px per overlay px. */
   scale: number
 }
+
+/** "Add pin" cursor for the numbered-step tool: a map pin with a plus, tip at the bottom. */
+const STEP_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M19.5 10c0 5.2-6 10.6-7.1 11.6a.6.6 0 0 1-.8 0C10.5 20.6 4.5 15.2 4.5 10a7.5 7.5 0 0 1 15 0"/>' +
+    '<path d="M12 7v6M9 10h6"/></svg>'
+)}") 14 26, copy`
 
 const TEXT_PAD = 6
 /** Extra grab margin around text, in px. */
@@ -153,21 +162,23 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       return true
     }
 
+    // The rectangle tool's last variant draws a line.
+    const kind: ToolId = tool === 'rect' && props.variant === 'line' ? 'line' : tool
     const make = (x: number, y: number, shift: boolean): Shape => {
-      switch (tool) {
+      switch (kind) {
         case 'pen':
         case 'highlighter':
-          return draftRef.current && draftRef.current.type === tool
+          return draftRef.current && draftRef.current.type === kind
             ? { ...draftRef.current, points: [...draftRef.current.points, x, y] }
-            : tool === 'pen'
+            : kind === 'pen'
               ? { id, type: 'pen', points: [x0, y0, x, y], color: style.color, width: strokeWidth }
               : { id, type: 'highlighter', points: [x0, y0, x, y], color: props.highlighter.color, width: props.highlighter.width }
         case 'line':
         case 'arrow': {
           const [dx, dy] = shift ? snap45(x - x0, y - y0) : [x - x0, y - y0]
           // Open head unless the filled variant was picked (open is the default).
-          const head = tool === 'arrow' && props.variant !== 'arrow' ? 'open' : undefined
-          return { id, type: tool, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth, head }
+          const head = kind === 'arrow' && props.variant !== 'arrow' ? 'open' : undefined
+          return { id, type: kind, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth, head }
         }
         case 'rect':
         case 'ellipse': {
@@ -342,7 +353,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
                 verticalAlign="middle"
                 fontSize={s.size * 0.5}
                 fontStyle="bold"
-                fill={readableOn(s.color)}
+                fill={props.stepTextColor || readableOn(s.color)}
               />
             </Group>
           )
@@ -359,7 +370,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
   }
 
   const lineSel = selected && (selected.type === 'line' || selected.type === 'arrow') && !editing ? selected : null
-  const containerCursor = cursor ?? (tool === 'text' ? 'text' : tool ? 'crosshair' : 'move')
+  const containerCursor = cursor ?? (tool === 'text' ? 'text' : tool === 'step' ? STEP_CURSOR : tool ? 'crosshair' : 'move')
 
   return (
     <>
@@ -462,12 +473,12 @@ function TextNode({ shape: s }: { shape: TextShape }) {
         strokeWidth={s.stroke ? (s.strokeWidth ?? 3) * 2 : 0}
         fillAfterStrokeEnabled
         lineJoin="round"
-        // Subtle shadow (a setting).
-        shadowEnabled={s.shadow}
+        // Subtle shadow; its strength is a setting.
+        shadowEnabled={Number(s.shadow) > 0}
         shadowColor="#000"
-        shadowBlur={s.fontSize * 0.12}
-        shadowOffset={{ x: 0, y: Math.max(1, s.fontSize * 0.04) }}
-        shadowOpacity={0.35}
+        shadowBlur={s.fontSize * 0.18}
+        shadowOffset={{ x: 0, y: Math.max(1, s.fontSize * 0.06) }}
+        shadowOpacity={Number(s.shadow)}
       />
     </Label>
   )
@@ -554,7 +565,7 @@ function TextEditor(props: { shape: TextShape; zoom(): number; onChange(s: TextS
           color: s.color,
           background: s.background || 'transparent',
           borderRadius: s.background ? 6 : 0,
-          textShadow: s.shadow ? `0 ${Math.max(1, s.fontSize * 0.04)}px ${s.fontSize * 0.12}px rgba(0,0,0,.35)` : 'none',
+          textShadow: Number(s.shadow) > 0 ? `0 ${Math.max(1, s.fontSize * 0.06)}px ${s.fontSize * 0.18}px rgba(0,0,0,${Number(s.shadow)})` : 'none',
           WebkitTextStroke: s.stroke ? `${(s.strokeWidth ?? 3) * 2}px ${s.stroke}` : undefined,
           paintOrder: 'stroke fill',
           caretColor: s.color

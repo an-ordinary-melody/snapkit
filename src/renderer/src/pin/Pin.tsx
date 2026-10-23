@@ -20,7 +20,10 @@ export function Pin() {
   const hudTimer = useRef<number>()
 
   useEffect(() => {
-    api.onPinImage(({ png }) => setSrc(URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' }))))
+    api.onPinImage(({ png, theme }) => {
+      document.documentElement.dataset.theme = theme
+      setSrc(URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' })))
+    })
     api.onPinState(setState)
     api.pinReady()
   }, [])

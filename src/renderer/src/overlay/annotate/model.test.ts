@@ -74,7 +74,7 @@ describe('shapes', () => {
 
   it('drops click-sized shapes and empty text', () => {
     expect(isMeaningful({ ...rect('a'), w: 2 } as Shape)).toBe(false)
-    expect(isMeaningful({ id: 't', type: 'text', x: 0, y: 0, text: '  ', color: '', fontSize: 1, fontFamily: '', shadow: false, background: '' })).toBe(false)
+    expect(isMeaningful({ id: 't', type: 'text', x: 0, y: 0, text: '  ', color: '', fontSize: 1, fontFamily: '', shadow: 0, background: '' })).toBe(false)
     expect(isMeaningful(step('s'))).toBe(true)
   })
 

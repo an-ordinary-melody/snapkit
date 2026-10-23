@@ -30,11 +30,13 @@ function textLook(s: Style): TextLook {
 }
 
 function lookPatch(id: TextLook, s: Style): Partial<Style> {
+  // Leaving a background look: its black/white text would vanish on the screenshot, so use the drawing color again.
+  const restore = s.textBackground ? { textColor: s.color } : {}
   switch (id) {
     case 'plain':
-      return { textStroke: '', textBackground: '' }
+      return { textStroke: '', textBackground: '', ...restore }
     case 'stroke':
-      return { textStroke: s.textStrokeColor, textBackground: '' }
+      return { textStroke: s.textStrokeColor, textBackground: '', ...restore }
     case 'light': {
       const bg = isLight(s.textBgColor) ? s.textBgColor : '#ffffff'
       return { textStroke: '', textBackground: bg, textBgColor: bg, textColor: readableOn(bg) }

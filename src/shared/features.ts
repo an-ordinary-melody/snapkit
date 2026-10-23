@@ -52,11 +52,13 @@ export const FEATURES: FeatureDef[] = [
       { id: 'rect', label: 'Rectangle' },
       { id: 'rect-filled', label: 'Filled rectangle' },
       { id: 'ellipse', label: 'Ellipse' },
-      { id: 'ellipse-filled', label: 'Filled ellipse' }
+      { id: 'ellipse-filled', label: 'Filled ellipse' },
+      { id: 'line', label: 'Line' }
     ],
     variantsHint: 'Right-click for more shapes'
   },
-  { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: true },
+  // Also the last shape in the rectangle tool's menu, so off by default.
+  { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: false },
   {
     id: 'ellipse', drawing: true, label: 'Ellipse', kind: 'tool', hint: 'E', implemented: true, defaultEnabled: false,
     variants: [
@@ -67,7 +69,7 @@ export const FEATURES: FeatureDef[] = [
   },
   { id: 'highlighter', drawing: true, label: 'Highlighter', kind: 'tool', hint: 'H', implemented: true, defaultEnabled: true },
   { id: 'text', drawing: true, label: 'Text', kind: 'tool', hint: 'T', implemented: true, defaultEnabled: true },
-  { id: 'step', drawing: true, label: 'Numbered step', kind: 'tool', hint: 'N', implemented: true, defaultEnabled: false },
+  { id: 'step', drawing: true, label: 'Numbered step', kind: 'tool', hint: 'N', implemented: true, defaultEnabled: true },
   { id: 'blur', drawing: true, label: 'Blur', kind: 'tool', hint: 'B', implemented: true, defaultEnabled: true },
   { id: 'color', label: 'Color', kind: 'tool', implemented: true, defaultEnabled: true },
   { id: 'undo', label: 'Undo', kind: 'tool', hint: '⌘Z', implemented: true, defaultEnabled: true },

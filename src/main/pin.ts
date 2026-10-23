@@ -4,6 +4,7 @@ import { join } from 'path'
 import { IPC, type CaptureDoc, type PinState } from '@shared/ipc'
 import { log } from './log'
 import { savePng, timestampName } from './output'
+import { getSettings } from './settings'
 import { startEdit } from './overlay'
 
 const isMac = process.platform === 'darwin'
@@ -153,7 +154,7 @@ function updateThumb(p: Pin, png: Buffer, doc: CaptureDoc) {
   p.base = thumbSize(png)
   if (p.moved) p.win.setSize(p.base.w, p.base.h)
   else layoutThumbs(p.displayId)
-  p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(png) })
+  p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(png), theme: getSettings().appearance.theme })
 }
 
 export function closeAllPins() {
@@ -203,7 +204,7 @@ export function registerPinIpc() {
   ipcMain.on(IPC.pinReady, (e) => {
     const p = of(e)
     if (!p) return
-    p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(p.png) })
+    p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(p.png), theme: getSettings().appearance.theme })
     sendState(p)
     p.win.showInactive() // don't take focus from the app the user is in
   })

@@ -150,6 +150,7 @@ export function Overlay() {
       busy.current = false
       painted.current = deferred()
       // Commit the dim to the DOM before telling main to show the window.
+      document.documentElement.dataset.theme = p.settings.appearance.theme
       const doc = p.edit
       const scale = doc ? doc.scale : p.width / window.innerWidth
       flushSync(() => {
@@ -497,6 +498,7 @@ export function Overlay() {
       strokeWidths={cap.settings.annotate.strokeWidths}
       highlighter={{ color: cap.settings.annotate.highlighterColor, width: cap.settings.annotate.highlighterWidth }}
       stepSize={cap.settings.annotate.stepSize}
+      stepTextColor={cap.settings.annotate.stepTextColor}
       selectedId={selectedId}
       onSelect={setSelectedId}
       onCommit={onCommit}
