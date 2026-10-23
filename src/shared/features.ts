@@ -17,23 +17,29 @@ export interface FeatureDef {
   hint?: string
   /** False while the feature is planned but not built yet. */
   implemented: boolean
+  /**
+   * Tools only: true for drawing tools (one is active at a time), false for
+   * buttons that act immediately (color, undo, redo).
+   */
+  drawing?: boolean
   /** Whether the feature is on for a fresh install. */
   defaultEnabled: boolean
 }
 
 export const FEATURES: FeatureDef[] = [
-  // Annotation tools (vertical bar) — implemented in Phase 3
-  { id: 'pen', label: 'Pen', kind: 'tool', hint: 'P', implemented: false, defaultEnabled: true },
-  { id: 'line', label: 'Line', kind: 'tool', hint: 'L', implemented: false, defaultEnabled: true },
-  { id: 'arrow', label: 'Arrow', kind: 'tool', hint: 'A', implemented: false, defaultEnabled: true },
-  { id: 'rect', label: 'Rectangle', kind: 'tool', hint: 'R', implemented: false, defaultEnabled: true },
-  { id: 'ellipse', label: 'Ellipse', kind: 'tool', hint: 'E', implemented: false, defaultEnabled: false },
-  { id: 'highlighter', label: 'Highlighter', kind: 'tool', hint: 'H', implemented: false, defaultEnabled: true },
-  { id: 'text', label: 'Text', kind: 'tool', hint: 'T', implemented: false, defaultEnabled: true },
-  { id: 'step', label: 'Numbered step', kind: 'tool', hint: 'N', implemented: false, defaultEnabled: false },
-  { id: 'blur', label: 'Blur', kind: 'tool', hint: 'B', implemented: false, defaultEnabled: true },
-  { id: 'color', label: 'Color', kind: 'tool', implemented: false, defaultEnabled: true },
-  { id: 'undo', label: 'Undo', kind: 'tool', hint: '⌘Z', implemented: false, defaultEnabled: true },
+  // Annotation tools (vertical bar)
+  { id: 'pen', drawing: true, label: 'Pen', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true },
+  { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: true },
+  { id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true },
+  { id: 'rect', drawing: true, label: 'Rectangle', kind: 'tool', hint: 'R', implemented: true, defaultEnabled: true },
+  { id: 'ellipse', drawing: true, label: 'Ellipse', kind: 'tool', hint: 'E', implemented: true, defaultEnabled: false },
+  { id: 'highlighter', drawing: true, label: 'Highlighter', kind: 'tool', hint: 'H', implemented: true, defaultEnabled: true },
+  { id: 'text', drawing: true, label: 'Text', kind: 'tool', hint: 'T', implemented: true, defaultEnabled: true },
+  { id: 'step', drawing: true, label: 'Numbered step', kind: 'tool', hint: 'N', implemented: true, defaultEnabled: false },
+  { id: 'blur', drawing: true, label: 'Blur', kind: 'tool', hint: 'B', implemented: true, defaultEnabled: true },
+  { id: 'color', label: 'Color', kind: 'tool', implemented: true, defaultEnabled: true },
+  { id: 'undo', label: 'Undo', kind: 'tool', hint: '⌘Z', implemented: true, defaultEnabled: true },
+  { id: 'redo', label: 'Redo', kind: 'tool', hint: '⇧⌘Z', implemented: true, defaultEnabled: false },
 
   // Actions (horizontal bar)
   { id: 'beautify', label: 'Background & padding', kind: 'action', implemented: false, defaultEnabled: true },

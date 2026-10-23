@@ -7,10 +7,6 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
 .dim-full { position: absolute; inset: 0; pointer-events: none; }
 
 .selection { position: absolute; pointer-events: none; }
-.selection .handle {
-  position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
-  background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.35); pointer-events: auto;
-}
 .size-label {
   position: absolute; padding: 3px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap;
   background: rgba(20,20,22,.85); color: #fff; font-variant-numeric: tabular-nums; font-size: 11px;
@@ -31,3 +27,32 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
 .toolbar button.primary { color: #fff; }
 .toolbar button:disabled { opacity: .35; cursor: default; }
 @keyframes tb-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+
+.handles { position: absolute; pointer-events: none; }
+.handles .handle {
+  position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.35); pointer-events: auto;
+}
+.annotations { position: absolute; }
+
+.toolbar button.active { background: rgba(59,130,246,.9); color: #fff; }
+.toolbar button.active:hover:not(:disabled) { background: rgba(59,130,246,1); }
+.toolbar button { position: relative; }
+.toolbar .color-dot { position: absolute; right: 5px; bottom: 5px; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(30,30,32,.9); }
+
+.style-bar { align-items: center; }
+.style-bar button { width: 28px; height: 28px; }
+.style-bar .sep { width: 1px; height: 20px; margin: 0 3px; background: rgba(255,255,255,.14); }
+.style-bar .swatch span { width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+.style-bar .swatch.active { background: rgba(255,255,255,.16); }
+.style-bar .swatch.active span { box-shadow: 0 0 0 2px #fff; }
+.style-bar .width-dot { border-radius: 50%; background: currentColor; }
+.style-bar .value { min-width: 22px; text-align: center; color: #e7e7ea; font-variant-numeric: tabular-nums; }
+.style-bar .glyph { font-weight: 700; font-size: 14px; line-height: 1; }
+.style-bar .glyph.shadowed { text-shadow: 0 1px 3px #000, 0 0 1px #000; }
+.style-bar .glyph.boxed { padding: 2px 4px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+
+.text-editor {
+  position: absolute; margin: 0; border: 0; outline: 1px dashed rgba(59,130,246,.9); outline-offset: 2px;
+  resize: none; overflow: hidden; white-space: pre; field-sizing: content; min-width: 1ch; user-select: text; -webkit-user-select: text;
+}

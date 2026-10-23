@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moveRect, placeToolbars, resizeRect, type Rect } from './layout'
+import { moveRect, placeStyleBar, placeToolbars, resizeRect, type Rect } from './layout'
 
 const screen = { w: 1440, h: 900 }
 const actions = { w: 200, h: 40 }
@@ -67,5 +67,34 @@ describe('rect helpers', () => {
 
   it('keeps moved rects on screen', () => {
     expect(moveRect({ x: 100, y: 100, w: 100, h: 100 }, 5000, -5000, screen)).toEqual({ x: 1340, y: 0, w: 100, h: 100 })
+  })
+})
+
+describe('placeStyleBar', () => {
+  const bar = { w: 260, h: 36 }
+  const place = (sel: Rect) => {
+    const l = placeToolbars(sel, screen, actions, tools)
+    const a = box(l.actions, actions)
+    const t = box(l.tools, tools)
+    const s = box(placeStyleBar(a, t, bar, screen), bar)
+    expect(onScreen(s)).toBe(true)
+    expect(overlap(s, a)).toBe(false)
+    expect(overlap(s, t)).toBe(false)
+    return { a, s }
+  }
+
+  it('sits left of the action bar in the same row', () => {
+    const { a, s } = place({ x: 400, y: 200, w: 500, h: 300 })
+    expect(s.y + s.h / 2).toBe(a.y + a.h / 2)
+    expect(s.x + s.w).toBeLessThan(a.x)
+  })
+
+  it('gets its own row when the selection is narrow and near the left edge', () => {
+    const { a, s } = place({ x: 0, y: 200, w: 150, h: 200 })
+    expect(s.y).not.toBe(a.y)
+  })
+
+  it('stays on screen for a full-screen selection', () => {
+    place({ x: 0, y: 0, w: screen.w, h: screen.h })
   })
 })

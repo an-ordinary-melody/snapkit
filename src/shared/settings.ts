@@ -20,6 +20,28 @@ export interface Settings {
     onCopy: boolean
     onSave: boolean
   }
+  /** Defaults for the annotation tools. */
+  annotate: {
+    /** Colors offered in the style bar; the first is the starting color. */
+    palette: string[]
+    /** Stroke width presets in px (S / M / L). */
+    strokeWidths: [number, number, number]
+    /** Index into strokeWidths used at the start. */
+    strokeWidth: number
+    highlighterColor: string
+    highlighterWidth: number
+    /** 'pixelate' or 'blur'. */
+    blurMode: 'pixelate' | 'blur'
+    /** Step badge diameter in px. */
+    stepSize: number
+    text: {
+      fontFamily: string
+      fontSize: number
+      shadow: boolean
+      /** Fill behind the text, or '' for none. */
+      background: string
+    }
+  }
   /** Feature id -> enabled. Missing ids fall back to the feature's default. */
   features: Record<string, boolean>
   /** Order of feature ids in their toolbar. Unknown/missing ids are appended. */
@@ -42,6 +64,21 @@ export const DEFAULT_SETTINGS: Settings = {
   notifications: {
     onCopy: false,
     onSave: true
+  },
+  annotate: {
+    palette: ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#111111', '#ffffff'],
+    strokeWidths: [2, 4, 8],
+    strokeWidth: 1,
+    highlighterColor: '#fde047',
+    highlighterWidth: 18,
+    blurMode: 'pixelate',
+    stepSize: 28,
+    text: {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+      fontSize: 20,
+      shadow: false,
+      background: ''
+    }
   },
   features: Object.fromEntries(FEATURES.map((f) => [f.id, f.defaultEnabled])),
   toolbarOrder: FEATURES.map((f) => f.id)

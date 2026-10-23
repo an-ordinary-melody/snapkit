@@ -116,3 +116,21 @@ export function moveRect(start: Rect, dx: number, dy: number, screen: Size): Rec
     y: clamp(start.y + dy, 0, screen.h - start.h)
   }
 }
+
+/**
+ * Style bar (colors, width, text options): in the action bar's row, to its
+ * left. If that doesn't fit or would hit the tool bar, it goes in a row of its
+ * own next to the action bar (below it if there's room, else above).
+ */
+export function placeStyleBar(actions: Rect, tools: Rect, bar: Size, screen: Size, gap = 8, margin = 6): Point {
+  const fits = (r: Rect) =>
+    r.x >= margin && r.y >= margin && r.x + r.w <= screen.w - margin && r.y + r.h <= screen.h - margin && !overlaps(r, tools) && !overlaps(r, actions)
+  const sameRow = { x: actions.x - gap - bar.w, y: actions.y + (actions.h - bar.h) / 2, ...bar }
+  if (fits(sameRow)) return sameRow
+  const x = clamp(actions.x + actions.w - bar.w, margin, screen.w - margin - bar.w)
+  const below = { x, y: actions.y + actions.h + gap, ...bar }
+  if (fits(below)) return below
+  const above = { x, y: actions.y - gap - bar.h, ...bar }
+  if (fits(above)) return above
+  return { x, y: clamp(below.y, margin, screen.h - margin - bar.h) }
+}

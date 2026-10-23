@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import type { Settings } from '@shared/settings'
+import { FEATURES } from '@shared/features'
+import { visibleFeatures, type Settings } from '@shared/settings'
+import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
+import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
+import { hasStyleOptions, StyleBar, type StyleTarget } from './annotate/StyleBar'
 import { moveRect, rectFromPoints, resizeRect, type Handle, type Point, type Rect } from './layout'
 import { Toolbars } from './Toolbars'
 
@@ -31,6 +35,50 @@ const HANDLES: { id: Handle; x: number; y: number; cursor: string }[] = [
 
 const MIN_SIZE = 4
 
+const DRAWING_TOOLS = new Set(FEATURES.filter((f) => f.drawing).map((f) => f.id))
+
+/** Style choices survive between captures (until Snapkit quits). */
+let lastStyle: Style | null = null
+
+function initialStyle(s: Settings): Style {
+  const a = s.annotate
+  return {
+    color: a.palette[0] ?? '#ef4444',
+    widthIndex: a.strokeWidth,
+    blurMode: a.blurMode,
+    fontSize: a.text.fontSize,
+    fontFamily: a.text.fontFamily,
+    shadow: a.text.shadow,
+    textBackground: a.text.background
+  }
+}
+
+/** The parts of `patch` that apply to an existing shape. */
+function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
+  switch (s.type) {
+    case 'pen':
+    case 'line':
+    case 'arrow':
+    case 'rect':
+    case 'ellipse':
+      return { ...s, color: patch.color ?? s.color, width: patch.widthIndex !== undefined ? widths[patch.widthIndex] : s.width }
+    case 'step':
+      return { ...s, color: patch.color ?? s.color }
+    case 'text':
+      return {
+        ...s,
+        color: patch.color ?? s.color,
+        fontSize: patch.fontSize ?? s.fontSize,
+        shadow: patch.shadow ?? s.shadow,
+        background: patch.textBackground ?? s.background
+      }
+    case 'blur':
+      return { ...s, mode: patch.blurMode ?? s.mode }
+    default:
+      return s
+  }
+}
+
 function deferred() {
   let resolve!: () => void
   const promise = new Promise<void>((r) => (resolve = r))
@@ -46,6 +94,17 @@ export function Overlay() {
   const busy = useRef(false)
   const painted = useRef(deferred())
 
+  // Annotations
+  const annRef = useRef<AnnotationLayerHandle>(null)
+  const [history, setHistory] = useState<History>(emptyHistory)
+  const shapes = history.present
+  const [tool, setTool] = useState<ToolId | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [style, setStyle] = useState<Style | null>(null)
+  const [styleOpen, setStyleOpen] = useState(true)
+  const onCommit = useCallback((next: Shape[]) => setHistory((h) => commit(h, next)), [])
+  const source = useCallback(() => canvasRef.current, [])
+
   // ---- lifecycle from main process -------------------------------------
   useEffect(() => {
     api.onArm((p) => {
@@ -57,6 +116,10 @@ export function Overlay() {
         setSel(null)
         setDrag(null)
         setCap({ session: p.session, width: p.width, height: p.height, settings: p.settings })
+        setHistory(emptyHistory())
+        setTool(null)
+        setSelectedId(null)
+        setStyle(lastStyle ?? initialStyle(p.settings))
       })
       api.armed(p.session)
     })
@@ -77,6 +140,9 @@ export function Overlay() {
       setCap(null)
       setSel(null)
       setDrag(null)
+      setHistory(emptyHistory())
+      setTool(null)
+      setSelectedId(null)
       const c = canvasRef.current
       if (c) {
         c.width = 1 // release the screenshot's memory (and leave a transparent frame)
@@ -101,7 +167,10 @@ export function Overlay() {
     const out = document.createElement('canvas')
     out.width = sw
     out.height = sh
-    out.getContext('2d')!.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh)
+    const ctx = out.getContext('2d')!
+    ctx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh)
+    const ann = annRef.current?.exportCanvas(scale)
+    if (ann) ctx.drawImage(ann, 0, 0, sw, sh)
     const blob = await new Promise<Blob>((res, rej) => out.toBlob((b) => (b ? res(b) : rej(new Error('encode failed'))), 'image/png'))
     return blob.arrayBuffer()
   }, [])
@@ -110,9 +179,23 @@ export function Overlay() {
     async (id: string) => {
       if (!cap || busy.current) return
       if (id === 'close') return api.cancel(cap.session)
+      if (DRAWING_TOOLS.has(id)) {
+        annRef.current?.finishEditing()
+        setSelectedId(null)
+        setTool((t) => (t === id ? null : (id as ToolId)))
+        return
+      }
+      if (id === 'color') return setStyleOpen((o) => !o)
+      if (id === 'undo' || id === 'redo') {
+        annRef.current?.finishEditing()
+        setSelectedId(null)
+        setHistory((h) => (id === 'undo' ? undo(h) : redo(h)))
+        return
+      }
       if (!sel) return
       if (id === 'copy' || id === 'save') {
         busy.current = true
+        flushSync(() => setSelectedId(null))
         const png = await cropToPng(sel)
         if (id === 'copy') api.copy(cap.session, png)
         else api.save(cap.session, png)
@@ -121,15 +204,43 @@ export function Overlay() {
     [cap, sel, cropToPng]
   )
 
+  /** Letter -> drawing tool, for the tools that are switched on. */
+  const toolKeys = useMemo(() => {
+    const m = new Map<string, string>()
+    if (cap) for (const f of visibleFeatures(cap.settings, 'tool')) if (f.drawing && f.hint) m.set(f.hint.toLowerCase(), f.id)
+    return m
+  }, [cap])
+
   // ---- keyboard -------------------------------------------------------------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!cap) return
+      if (!cap || e.target instanceof HTMLTextAreaElement) return
       const mod = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
+      const selectedShape = shapes.find((x) => x.id === selectedId)
       if (e.key === 'Escape') {
         e.preventDefault()
-        api.cancel(cap.session)
+        if (selectedShape) setSelectedId(null)
+        else api.cancel(cap.session)
+      } else if (mod && key === 'z') {
+        e.preventDefault()
+        void runAction(e.shiftKey ? 'redo' : 'undo')
+      } else if (mod && key === 'y') {
+        e.preventDefault()
+        void runAction('redo')
+      } else if (selectedShape && (e.key === 'Backspace' || e.key === 'Delete')) {
+        e.preventDefault()
+        onCommit(remove(shapes, selectedShape.id))
+        setSelectedId(null)
+      } else if (selectedShape && e.key.startsWith('Arrow')) {
+        e.preventDefault()
+        const step = e.shiftKey ? 10 : 1
+        const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0
+        const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0
+        onCommit(upsert(shapes, moveShape(selectedShape, dx, dy)))
+      } else if (!mod && !e.altKey && sel && toolKeys.has(key)) {
+        e.preventDefault()
+        void runAction(toolKeys.get(key)!)
       } else if (mod && key === 'c') {
         e.preventDefault()
         void runAction('copy')
@@ -150,17 +261,20 @@ export function Overlay() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [cap, sel, screen, runAction])
+  }, [cap, sel, screen, runAction, shapes, selectedId, toolKeys, onCommit])
 
   // ---- mouse ----------------------------------------------------------------
   const point = (e: React.PointerEvent): Point => ({ x: e.clientX, y: e.clientY })
   const inside = (p: Point, r: Rect) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!cap || e.button !== 0) return
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    if (!cap || e.button !== 0 || handledEvents.has(e.nativeEvent)) return
     const p = point(e)
     const handle = (e.target as HTMLElement).dataset.handle as Handle | undefined
+    // Once something is drawn, a click outside keeps the selection (and the drawing).
+    if (sel && !handle && !inside(p, sel) && shapes.length) return
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    setSelectedId(null)
     if (sel && handle) setDrag({ kind: 'resize', origin: p, start: sel, handle })
     else if (sel && inside(p, sel)) setDrag({ kind: 'move', origin: p, start: sel })
     else {
@@ -190,12 +304,36 @@ export function Overlay() {
     if (cap) api.cancel(cap.session)
   }
 
+  const onStyleChange = useCallback(
+    (patch: Partial<Style>) => {
+      if (!style || !cap) return
+      const next = { ...style, ...patch }
+      setStyle(next)
+      lastStyle = next
+      const target = shapes.find((x) => x.id === selectedId)
+      if (target) onCommit(upsert(shapes, restyle(target, patch, cap.settings.annotate.strokeWidths)))
+    },
+    [style, cap, shapes, selectedId, onCommit]
+  )
+
   // ---- render ---------------------------------------------------------------
   const s = cap?.settings
   const dim = `rgba(0,0,0,${s?.capture.dimOpacity ?? 0.45})`
   const accent = s?.capture.accentColor ?? '#3b82f6'
   const scale = cap ? cap.width / screen.w : 1
-  const showToolbars = cap && sel && !drag && sel.w >= MIN_SIZE && sel.h >= MIN_SIZE
+  const hasSel = !!(cap && sel && sel.w >= MIN_SIZE && sel.h >= MIN_SIZE)
+  const showToolbars = hasSel && !drag
+
+  const selectedShape = shapes.find((x) => x.id === selectedId)
+  const styleTarget: StyleTarget | null = selectedShape?.type ?? tool
+  const styleBar =
+    cap && style && styleOpen && styleTarget && hasStyleOptions(styleTarget) && s?.features.color !== false ? (
+      <StyleBar target={styleTarget} style={style} palette={cap.settings.annotate.palette} onChange={onStyleChange} />
+    ) : null
+  const unavailable = new Set<string>()
+  if (!history.past.length) unavailable.add('undo')
+  if (!history.future.length) unavailable.add('redo')
+  const pressed = new Set<string>(styleOpen ? ['color'] : [])
 
   let cursor = 'crosshair'
   if (drag?.kind === 'move') cursor = 'move'
@@ -216,25 +354,38 @@ export function Overlay() {
       {cap && sel && (
         <div
           className="selection"
-          style={{
-            left: sel.x,
-            top: sel.y,
-            width: sel.w,
-            height: sel.h,
-            boxShadow: `0 0 0 1px ${accent}, 0 0 0 99999px ${dim}`,
-            cursor: 'move',
-            pointerEvents: drag ? 'none' : 'auto'
-          }}
-        >
-          {!drag &&
-            HANDLES.map((h) => (
-              <div
-                key={h.id}
-                data-handle={h.id}
-                className="handle"
-                style={{ left: `${h.x * 100}%`, top: `${h.y * 100}%`, cursor: h.cursor }}
-              />
-            ))}
+          style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h, boxShadow: `0 0 0 1px ${accent}, 0 0 0 99999px ${dim}` }}
+        />
+      )}
+
+      {hasSel && sel && style && cap && (
+        <AnnotationLayer
+          ref={annRef}
+          sel={sel}
+          shapes={shapes}
+          tool={tool}
+          style={style}
+          strokeWidths={cap.settings.annotate.strokeWidths}
+          highlighter={{ color: cap.settings.annotate.highlighterColor, width: cap.settings.annotate.highlighterWidth }}
+          stepSize={cap.settings.annotate.stepSize}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onCommit={onCommit}
+          source={source}
+          scale={scale}
+        />
+      )}
+
+      {cap && sel && !drag && (
+        <div className="handles" style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h }}>
+          {HANDLES.map((h) => (
+            <div
+              key={h.id}
+              data-handle={h.id}
+              className="handle"
+              style={{ left: `${h.x * 100}%`, top: `${h.y * 100}%`, cursor: h.cursor }}
+            />
+          ))}
         </div>
       )}
 
@@ -244,7 +395,19 @@ export function Overlay() {
         </div>
       )}
 
-      {showToolbars && <Toolbars selection={sel} screen={screen} settings={cap.settings} onAction={(id) => void runAction(id)} />}
+      {showToolbars && sel && cap && style && (
+        <Toolbars
+          selection={sel}
+          screen={screen}
+          settings={cap.settings}
+          activeTool={tool}
+          color={style.color}
+          pressed={pressed}
+          unavailable={unavailable}
+          styleBar={styleBar}
+          onAction={(id) => void runAction(id)}
+        />
+      )}
     </div>
   )
 }
