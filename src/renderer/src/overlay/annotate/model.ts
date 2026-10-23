@@ -25,6 +25,20 @@ export interface LineShape extends Base {
   points: [number, number, number, number]
   color: string
   width: number
+  /** Arrows: a solid triangle (default) or two strokes. */
+  head?: 'filled' | 'open'
+}
+
+/** The two short strokes of an open arrow head, as [x1, y1, tipX, tipY, x2, y2]. */
+export function openArrowHead(points: LineShape['points'], length: number): number[] {
+  const [x1, y1, x2, y2] = points
+  const a = Math.atan2(y2 - y1, x2 - x1)
+  const spread = Math.PI / 6.5
+  return [
+    x2 - length * Math.cos(a - spread), y2 - length * Math.sin(a - spread),
+    x2, y2,
+    x2 - length * Math.cos(a + spread), y2 - length * Math.sin(a + spread)
+  ]
 }
 
 export interface BoxShape extends Base {

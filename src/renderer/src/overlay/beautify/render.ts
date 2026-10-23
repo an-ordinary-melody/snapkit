@@ -52,20 +52,22 @@ function paintBackground(ctx: CanvasRenderingContext2D, bg: BeautifyBackground, 
 export function drawBeautified(
   src: HTMLCanvasElement,
   bg: BeautifyBackground,
-  state: Pick<BeautifyState, 'padding' | 'radius' | 'shadow'>,
+  state: Pick<BeautifyState, 'padding' | 'radius' | 'shadow' | 'frame'>,
   scale: number,
   image: HTMLImageElement | null,
-  out = document.createElement('canvas')
+  out = document.createElement('canvas'),
+  frameScale = 1
 ): HTMLCanvasElement {
-  const l = beautifyLayout(src.width, src.height, state, scale)
+  const l = beautifyLayout(src.width, src.height, state, scale, frameScale)
   out.width = l.width
   out.height = l.height
   const ctx = out.getContext('2d')!
-  if (l.x > 0) paintBackground(ctx, bg, l.width, l.height, image)
+  ctx.imageSmoothingQuality = 'high' // the screenshot may be scaled down to fit a fixed size
+  if (l.x > 0 || l.y > 0) paintBackground(ctx, bg, l.width, l.height, image)
 
   const shape = () => {
     ctx.beginPath()
-    ctx.roundRect(l.x, l.y, src.width, src.height, l.radius)
+    ctx.roundRect(l.x, l.y, l.drawW, l.drawH, l.radius)
   }
   if (l.shadowBlur > 0) {
     ctx.save()
@@ -80,7 +82,7 @@ export function drawBeautified(
   ctx.save()
   shape()
   ctx.clip()
-  ctx.drawImage(src, l.x, l.y)
+  ctx.drawImage(src, l.x, l.y, l.drawW, l.drawH)
   ctx.restore()
   return out
 }

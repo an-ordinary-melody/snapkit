@@ -25,14 +25,14 @@ in settings.
 - **Copy:** `⌘C` / `Ctrl+C` or `Enter`.
 - **Save:** `⌘S` / `Ctrl+S`. Asks where to save, starting in the last folder you used (`Pictures/Snapkit` the first time). Set `save.askLocation` to `false` to save straight to the folder.
 - **Cancel:** `Esc` or right-click.
-- **Annotate:** pick a tool from the vertical bar, or press its letter: `P` pen, `L` line, `A` arrow, `R` rectangle, `E` ellipse, `H` highlighter, `T` text, `N` numbered step, `B` blur. Press the letter again (or click the tool) to go back to moving the selection. Hold Shift for straight lines at 45° and square boxes. Right-click the rectangle (or ellipse) tool for more shapes: filled rectangle, ellipse, filled ellipse; buttons with a small corner mark have such a menu.
+- **Annotate:** pick a tool from the vertical bar, or press its letter: `P` pen, `L` line, `A` arrow, `R` rectangle, `E` ellipse, `H` highlighter, `T` text, `N` numbered step, `B` blur. Press the letter again (or click the tool) to go back to moving the selection. Hold Shift for straight lines at 45° and square boxes. Right-click the rectangle (or ellipse) tool for more shapes: filled rectangle, ellipse, filled ellipse; right-click the arrow for an open (stroke-only) head. Buttons with a small corner mark have such a menu.
 - **Edit what you drew:** click a shape to select it, then drag to move it, drag its handles to resize, drag an arrow's ends, change its color/width in the style bar, or press Delete. Arrow keys nudge it.
 - **Text:** click to type. `Enter` adds a line; `⌘Enter` / `Ctrl+Enter` or `Esc` finishes (you stay in capture mode). Drag the blue frame to move the box while typing. Click text (or near it) to select and drag it; double-click to edit it again. Style (one at a time): plain, shadow, light background, dark background; plus size.
 - **Style bar:** colors (the rainbow swatch opens a custom color picker; custom colors are remembered until Snapkit quits), stroke width, text options, and blur (default) / pixelate with a strength slider. A blur area updates live while you move or resize it. The palette button shows or hides it.
 - **Undo / redo:** `⌘Z` / `⇧⌘Z` (`Ctrl+Z` / `Ctrl+Shift+Z`).
 - Hover any button for its name and shortcut.
-- **Background (beautify):** the image button in the action bar turns the background on or off for this capture; a green dot means it's on. While it's on, copy and save include it. It starts on or off according to `beautify.applyOnCopy`.
-- **Edit background:** the palette button opens a full editor with a live preview: presets, 16 gradients (edit their colors and angle), solid colors plus a custom color, and padding / corner / shadow sliders. Copy, Save or Done from there; Esc goes back to capture mode. Your last choice is kept until Snapkit quits.
+- **Background (beautify):** the image button in the action bar turns the background on or off for this capture; it's highlighted with a green dot while on. While it's on, copy and save include it. It starts on or off according to `beautify.applyOnCopy`.
+- **Edit background:** the magic-wand button opens a full editor with a live preview and all the drawing tools, so you can finish the image there. Pick a preset, one of 11 gradients (or a custom one: colors and angle) or 11 solid colors (or a custom color), the output size (Auto, 1:1, 16:9, 4:3, 9:16 or a custom size in px), and padding / corners / shadow. The switch at the top previews with or without the background. Copy, Save or Done; Esc goes back to capture mode.
 
 ## Installing the builds
 

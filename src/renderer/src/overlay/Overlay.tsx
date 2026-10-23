@@ -180,7 +180,7 @@ export function Overlay() {
 
   // ---- output -------------------------------------------------------------
   /** The selection with its annotations, at `scale` image px per screen px. */
-  const composeSelection = useCallback((r: Rect, scale: number): HTMLCanvasElement => {
+  const composeSelection = useCallback((r: Rect, scale: number, withAnnotations = true): HTMLCanvasElement => {
     const src = canvasRef.current!
     const srcScale = src.width / window.innerWidth
     const out = document.createElement('canvas')
@@ -188,7 +188,7 @@ export function Overlay() {
     out.height = Math.max(1, Math.round(r.h * scale))
     const ctx = out.getContext('2d')!
     ctx.drawImage(src, r.x * srcScale, r.y * srcScale, r.w * srcScale, r.h * srcScale, 0, 0, out.width, out.height)
-    const ann = annRef.current?.exportCanvas(scale)
+    const ann = withAnnotations && annRef.current?.exportCanvas(scale)
     if (ann) ctx.drawImage(ann, 0, 0, out.width, out.height)
     return out
   }, [])
@@ -260,10 +260,9 @@ export function Overlay() {
     const onKey = (e: KeyboardEvent) => {
       // Typing fields keep their keys; anything else (e.g. a slider that still
       // has focus) must not swallow ⌘C / Esc.
-      const typing = e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLInputElement && e.target.type === 'text')
+      const typing = e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLInputElement && (e.target.type === 'text' || e.target.type === 'number'))
       if (!cap || e.defaultPrevented || typing) return
       if (e.target instanceof HTMLInputElement) e.target.blur()
-      if (editorOpen && !((e.metaKey || e.ctrlKey) && /^[cs]$/i.test(e.key))) return // the editor is on top
       const mod = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
       const selectedShape = shapes.find((x) => x.id === selectedId)
@@ -299,7 +298,7 @@ export function Overlay() {
       } else if (e.key === 'Enter') {
         e.preventDefault()
         void runAction('copy')
-      } else if (sel && e.key.startsWith('Arrow')) {
+      } else if (sel && !editorOpen && e.key.startsWith('Arrow')) {
         // Arrows nudge the selection; Shift = 10px; Alt = resize instead of move.
         e.preventDefault()
         const step = e.shiftKey ? 10 : 1
@@ -395,11 +394,51 @@ export function Overlay() {
   if (!history.future.length) unavailable.add('redo')
   const pressed = new Set<string>(styleOpen ? ['color'] : [])
   const lit = new Set<string>(beautify?.on ? ['beautify'] : [])
+  if (beautify?.on) pressed.add('beautify') // highlighted like an active tool, plus the dot
   const tips = {
     beautify: { text: beautify?.on ? 'Background: on' : 'Background: off', sub: 'Click to turn it ' + (beautify?.on ? 'off' : 'on') + ' for copy & save' }
   }
   const closeEditor = useCallback(() => setEditorOpen(false), [])
-  const composeForEditor = useCallback((scale: number) => composeSelection(sel!, scale), [composeSelection, sel])
+  const composeForEditor = useCallback((scale: number) => composeSelection(sel!, scale, false), [composeSelection, sel])
+
+  // One drawing layer: in capture mode over the selection, or inside the background editor.
+  const annotationLayer = sel && style && cap && (
+    <AnnotationLayer
+      ref={annRef}
+      sel={sel}
+      shapes={shapes}
+      tool={tool}
+      variant={toolVariant}
+      style={style}
+      strokeWidths={cap.settings.annotate.strokeWidths}
+      highlighter={{ color: cap.settings.annotate.highlighterColor, width: cap.settings.annotate.highlighterWidth }}
+      stepSize={cap.settings.annotate.stepSize}
+      selectedId={selectedId}
+      onSelect={setSelectedId}
+      onCommit={onCommit}
+      source={source}
+      scale={scale}
+    />
+  )
+  const toolbars = (docked: boolean) =>
+    sel && cap && style ? (
+      <Toolbars
+        selection={sel}
+        screen={screen}
+        settings={cap.settings}
+        activeTool={tool}
+        color={style.color}
+        pressed={pressed}
+        unavailable={unavailable}
+        styleBar={styleBar}
+        variants={variants}
+        onAction={(id) => void runAction(id)}
+        onVariant={onVariant}
+        lit={lit}
+        tips={tips}
+        docked={docked}
+      />
+    ) : null
 
   let cursor = 'crosshair'
   if (drag?.kind === 'move') cursor = 'move'
@@ -424,24 +463,7 @@ export function Overlay() {
         />
       )}
 
-      {hasSel && sel && style && cap && (
-        <AnnotationLayer
-          ref={annRef}
-          sel={sel}
-          shapes={shapes}
-          tool={tool}
-          variant={toolVariant}
-          style={style}
-          strokeWidths={cap.settings.annotate.strokeWidths}
-          highlighter={{ color: cap.settings.annotate.highlighterColor, width: cap.settings.annotate.highlighterWidth }}
-          stepSize={cap.settings.annotate.stepSize}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onCommit={onCommit}
-          source={source}
-          scale={scale}
-        />
-      )}
+      {hasSel && !editorOpen && annotationLayer}
 
       {cap && sel && !drag && (
         <div className="handles" style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h }}>
@@ -471,30 +493,22 @@ export function Overlay() {
             lastBeautify = next
           }}
           selection={sel}
+          exportScale={scale}
           compose={composeForEditor}
+          annotations={(place) => (
+            // Overlay coordinates, scaled onto the preview.
+            <div className="be-ann" style={{ left: place.left, top: place.top, width: sel.w, height: sel.h, transform: `scale(${place.k})` }}>
+              <div style={{ position: 'absolute', left: -sel.x, top: -sel.y }}>{annotationLayer}</div>
+            </div>
+          )}
+          toolbar={toolbars(true)}
           onClose={closeEditor}
           onCopy={() => void runAction('copy')}
           onSave={() => void runAction('save')}
         />
       )}
 
-      {showToolbars && sel && cap && style && (
-        <Toolbars
-          selection={sel}
-          screen={screen}
-          settings={cap.settings}
-          activeTool={tool}
-          color={style.color}
-          pressed={pressed}
-          unavailable={unavailable}
-          styleBar={styleBar}
-          variants={variants}
-          onAction={(id) => void runAction(id)}
-          onVariant={onVariant}
-          lit={lit}
-          tips={tips}
-        />
-      )}
+      {showToolbars && !editorOpen && toolbars(false)}
     </div>
   )
 }

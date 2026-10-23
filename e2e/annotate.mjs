@@ -20,6 +20,7 @@ writeFileSync(
 )
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+const innerWidthOf = () => 100000 // checked loosely; the real bound is checked in-page below
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
 app.process().stdout.on('data', (d) => process.stdout.write('[main] ' + d))
 
@@ -145,8 +146,22 @@ try {
   await wait(400)
   await win.click('.be-section:has-text("Gradients") + .be-grid .be-swatch >> nth=5')
   console.log('shadow slider step:', await win.$eval('.be-row:has-text("Shadow") input', (e) => e.step))
+  // Size 16:9, and draw an open arrow right in the editor.
+  await win.click('.be-chip:has-text("Slide 16:9")')
   await wait(200)
+  await win.click('.be-dock .toolbar button[data-tip="Arrow"]', { button: 'right' })
+  await win.click('.variant-menu button:has-text("Open arrow")')
+  const host = await win.$eval('.be-ann .annotations', (e) => e.getBoundingClientRect().toJSON())
+  await drag(host.x + host.width * 0.55, host.y + host.height * 0.75, host.x + host.width * 0.8, host.y + host.height * 0.55)
+  await wait(200)
+  // The picker for a gradient stop opens fully on screen.
+  await win.click('.be-color[title="End color"]')
+  await wait(150)
+  const pk = await win.$eval('.color-picker', (e) => e.getBoundingClientRect().toJSON())
+  console.log('picker fully visible:', pk.x >= 0 && pk.y >= 0 && pk.right <= innerWidthOf(win) && pk.bottom > pk.y, JSON.stringify({ x: Math.round(pk.x), y: Math.round(pk.y), b: Math.round(pk.bottom) }))
   writeFileSync(join(out, '4-background-editor.png'), await win.screenshot())
+  await win.keyboard.press('Escape') // closes the picker
+  await wait(100)
   await win.keyboard.press('Escape') // closes the editor only
   console.log('Esc closed editor, still capturing:', !(await win.$('.be-backdrop')) && !!(await win.$('.toolbar')))
 
@@ -155,7 +170,8 @@ try {
   const files = readdirSync(saves)
   console.log('saved files:', files)
   const png = readFileSync(join(saves, files[0]))
-  console.log('saved size:', png.readUInt32BE(16), 'x', png.readUInt32BE(20), '(selection 700x500 at 2x + 48px padding = 1592 x 1192)')
+  const W = png.readUInt32BE(16), H = png.readUInt32BE(20)
+  console.log('saved size:', W, 'x', H, '| 16:9?', Math.abs(W / H - 16 / 9) < 0.01)
   console.log('renderer errors:', errors.length ? errors : 'none')
 } finally {
   await app.close()

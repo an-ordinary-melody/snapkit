@@ -1,5 +1,6 @@
 import { Grid3x3, Minus, Plus, Waves } from 'lucide-react'
 import { useState } from 'react'
+import { Slider } from '../Slider'
 import { parseHex } from './color'
 import { ColorPicker } from './ColorPicker'
 import type { Shape, Style, ToolId } from './model'
@@ -117,15 +118,12 @@ export function StyleBar({ target, filled, style, palette, onChange }: Props) {
             <Grid3x3 size={16} />
           </button>
           {sep}
-          <input
-            className="slider"
-            type="range"
+          <Slider
+            label="Blur strength"
             min={BLUR_RANGE.min}
             max={BLUR_RANGE.max}
             value={style.blurStrength}
-            data-tip="Strength"
-            onChange={(e) => onChange({ blurStrength: Number(e.target.value) }, true)}
-            onPointerUp={(e) => e.currentTarget.blur()} // give the keyboard back to capture mode
+            onChange={(v) => onChange({ blurStrength: v }, true)}
           />
           <span className="value">{style.blurStrength}</span>
         </>

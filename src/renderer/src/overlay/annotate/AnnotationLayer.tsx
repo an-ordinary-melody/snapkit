@@ -4,7 +4,7 @@ import { flushSync } from 'react-dom'
 import { Arrow, Circle, Ellipse, Group, Image as KImage, Label, Layer, Line, Rect as KRect, Stage, Tag, Text, Transformer } from 'react-konva'
 import type { Rect } from '../layout'
 import {
-  boxFromDrag, isMeaningful, moveShape, newId, remove, snap45, stepNumbers, upsert,
+  boxFromDrag, isMeaningful, moveShape, newId, openArrowHead, remove, snap45, stepNumbers, upsert,
   type BlurShape, type LineShape, type Shape, type Style, type TextShape, type ToolId
 } from './model'
 import { obscure } from './obscure'
@@ -52,6 +52,22 @@ const textPad = (s: TextShape) => (s.background ? TEXT_PAD : 0)
 export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function AnnotationLayer(props, ref) {
   const { sel, shapes, tool, style, selectedId, onSelect, onCommit, scale } = props
   const stageRef = useRef<Konva.Stage>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * Screen point -> overlay coordinates. The layer may be shown scaled (in
+   * the background editor), so go through its on-screen box.
+   */
+  const zoom = () => {
+    const r = containerRef.current?.getBoundingClientRect()
+    return r && sel.w ? r.width / sel.w : 1
+  }
+  const toLocal = (cx: number, cy: number): [number, number] => {
+    const r = containerRef.current?.getBoundingClientRect()
+    if (!r) return [cx, cy]
+    const k = zoom()
+    return [sel.x + (cx - r.left) / k, sel.y + (cy - r.top) / k]
+  }
   const uiRef = useRef<Konva.Layer>(null)
   const trRef = useRef<Konva.Transformer>(null)
   const [draft, setDraft] = useState<Shape | null>(null)
@@ -113,8 +129,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
   // ---- drawing ---------------------------------------------------------------
   const startDraw = (evt: PointerEvent) => {
     if (!tool) return false
-    const x0 = evt.clientX
-    const y0 = evt.clientY
+    const [x0, y0] = toLocal(evt.clientX, evt.clientY)
     const id = newId()
 
     if (tool === 'step') {
@@ -145,7 +160,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
         case 'line':
         case 'arrow': {
           const [dx, dy] = shift ? snap45(x - x0, y - y0) : [x - x0, y - y0]
-          return { id, type: tool, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth }
+          const head = tool === 'arrow' && props.variant === 'arrow-open' ? 'open' : undefined
+          return { id, type: tool, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth, head }
         }
         case 'rect':
         case 'ellipse': {
@@ -160,7 +176,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
 
     const draftRef = { current: null as Shape | null }
     const move = (e: PointerEvent) => {
-      draftRef.current = make(e.clientX, e.clientY, e.shiftKey)
+      draftRef.current = make(...toLocal(e.clientX, e.clientY), e.shiftKey)
       setDraft(draftRef.current)
     }
     const up = () => {
@@ -269,6 +285,15 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           return <Line points={s.points} stroke={s.color} strokeWidth={s.width} lineCap="round" hitStrokeWidth={Math.max(12, s.width)} />
         case 'arrow': {
           const head = s.width * 2.5 + 8
+          if (s.head === 'open') {
+            const line = { stroke: s.color, strokeWidth: s.width, lineCap: 'round' as const, lineJoin: 'round' as const, hitStrokeWidth: Math.max(12, s.width) }
+            return (
+              <>
+                <Line points={s.points} {...line} />
+                <Line points={openArrowHead(s.points, head * 1.1)} {...line} />
+              </>
+            )
+          }
           return (
             <Arrow
               points={s.points}
@@ -332,7 +357,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
 
   return (
     <>
-      <div className="annotations" style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h, cursor: containerCursor }}>
+      <div ref={containerRef} className="annotations" style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h, cursor: containerCursor }}>
         <Stage ref={stageRef} width={sel.w} height={sel.h} onPointerDown={onStagePointerDown}>
           <Layer x={-sel.x} y={-sel.y}>
             {shapes.map((s) => renderShape(s))}
@@ -359,7 +384,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           </Layer>
         </Stage>
       </div>
-      {editing && <TextEditor shape={editing} onChange={setEditing} onDone={finishEditing} />}
+      {editing && <TextEditor shape={editing} zoom={zoom} onChange={setEditing} onDone={finishEditing} />}
     </>
   )
 })
@@ -480,7 +505,8 @@ function LineEnds({ shape, onCommit }: { shape: LineShape; onCommit(s: Shape): v
   )
 }
 
-function TextEditor({ shape: s, onChange, onDone }: { shape: TextShape; onChange(s: TextShape): void; onDone(): void }) {
+function TextEditor(props: { shape: TextShape; zoom(): number; onChange(s: TextShape): void; onDone(): void }) {
+  const { shape: s, zoom, onChange, onDone } = props
   const ref = useRef<HTMLTextAreaElement>(null)
   const shapeRef = useRef(s)
   shapeRef.current = s
@@ -496,8 +522,9 @@ function TextEditor({ shape: s, onChange, onDone }: { shape: TextShape; onChange
     e.stopPropagation()
     if (e.target !== e.currentTarget || e.button !== 0) return
     e.preventDefault() // keep the caret in the text box
-    const start = { x: e.clientX, y: e.clientY, sx: shapeRef.current.x, sy: shapeRef.current.y }
-    const move = (ev: PointerEvent) => onChange({ ...shapeRef.current, x: start.sx + ev.clientX - start.x, y: start.sy + ev.clientY - start.y })
+    const start = { x: e.clientX, y: e.clientY, sx: shapeRef.current.x, sy: shapeRef.current.y, k: zoom() }
+    const move = (ev: PointerEvent) =>
+      onChange({ ...shapeRef.current, x: start.sx + (ev.clientX - start.x) / start.k, y: start.sy + (ev.clientY - start.y) / start.k })
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)

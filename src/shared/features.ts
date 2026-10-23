@@ -29,6 +29,8 @@ export interface FeatureDef {
   drawing?: boolean
   /** Alternative forms, chosen by right-clicking the button. The first is the default. */
   variants?: FeatureVariant[]
+  /** Tooltip hint for the right-click menu, e.g. "Right-click for arrow styles". */
+  variantsHint?: string
   /** Whether the feature is on for a fresh install. */
   defaultEnabled: boolean
 }
@@ -36,7 +38,14 @@ export interface FeatureDef {
 export const FEATURES: FeatureDef[] = [
   // Annotation tools (vertical bar)
   { id: 'pen', drawing: true, label: 'Pen', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true },
-  { id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true },
+  {
+    id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true,
+    variants: [
+      { id: 'arrow', label: 'Arrow' },
+      { id: 'arrow-open', label: 'Open arrow' }
+    ],
+    variantsHint: 'Right-click for arrow styles'
+  },
   {
     id: 'rect', drawing: true, label: 'Rectangle', kind: 'tool', hint: 'R', implemented: true, defaultEnabled: true,
     variants: [
@@ -44,7 +53,8 @@ export const FEATURES: FeatureDef[] = [
       { id: 'rect-filled', label: 'Filled rectangle' },
       { id: 'ellipse', label: 'Ellipse' },
       { id: 'ellipse-filled', label: 'Filled ellipse' }
-    ]
+    ],
+    variantsHint: 'Right-click for more shapes'
   },
   { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: true },
   {
@@ -52,7 +62,8 @@ export const FEATURES: FeatureDef[] = [
     variants: [
       { id: 'ellipse', label: 'Ellipse' },
       { id: 'ellipse-filled', label: 'Filled ellipse' }
-    ]
+    ],
+    variantsHint: 'Right-click for more shapes'
   },
   { id: 'highlighter', drawing: true, label: 'Highlighter', kind: 'tool', hint: 'H', implemented: true, defaultEnabled: true },
   { id: 'text', drawing: true, label: 'Text', kind: 'tool', hint: 'T', implemented: true, defaultEnabled: true },

@@ -1,5 +1,5 @@
 import {
-  Check, Circle, Copy, Droplets, Hash, Highlighter, Image, MoveUpRight, Palette, Pencil, Pin, Redo2, Save, Slash, Square, Type, Undo2, X,
+  Check, Circle, Copy, Droplets, Hash, Highlighter, Image, Pencil, Pin, Redo2, Save, Slash, Square, Type, Undo2, WandSparkles, X,
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
@@ -8,8 +8,8 @@ import { visibleFeatures, type Settings } from '@shared/settings'
 import { placeStyleBar, placeToolbars, type Rect, type Size } from './layout'
 
 const ICONS: Record<string, LucideIcon> = {
-  pen: Pencil, line: Slash, arrow: MoveUpRight, rect: Square, ellipse: Circle, highlighter: Highlighter, text: Type,
-  step: Hash, blur: Droplets, undo: Undo2, redo: Redo2, beautify: Image, beautifyEdit: Palette, pin: Pin, save: Save, copy: Copy, close: X
+  pen: Pencil, line: Slash, rect: Square, ellipse: Circle, highlighter: Highlighter, text: Type,
+  step: Hash, blur: Droplets, undo: Undo2, redo: Redo2, beautify: Image, beautifyEdit: WandSparkles, pin: Pin, save: Save, copy: Copy, close: X
 }
 
 /** Icon for a tool variant: the base shape, outlined or filled. */
@@ -20,7 +20,18 @@ const VARIANT_ICONS: Record<string, { Icon: LucideIcon; filled: boolean }> = {
   'ellipse-filled': { Icon: Circle, filled: true }
 }
 
+/** Long diagonal arrow, with a solid or an open head. */
+function ArrowIcon({ size, open }: { size: number; open: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d={open ? 'M4 20 L19 5' : 'M4 20 L15.5 8.5'} />
+      {open ? <path d="M10 5 H19 V14" /> : <path d="M20 4 L11 6.5 L17.5 13 Z" fill="currentColor" />}
+    </svg>
+  )
+}
+
 function FeatureIcon({ id, size = 17 }: { id: string; size?: number }) {
+  if (id === 'arrow' || id === 'arrow-open') return <ArrowIcon size={size} open={id === 'arrow-open'} />
   const v = VARIANT_ICONS[id]
   const Icon = v?.Icon ?? ICONS[id] ?? Square
   return <Icon size={size} strokeWidth={2} fill={v?.filled ? 'currentColor' : 'none'} />
@@ -55,10 +66,15 @@ interface Props {
   lit: Set<string>
   /** Tooltip text for buttons whose tip depends on state. */
   tips: Record<string, { text: string; sub?: string }>
+  /**
+   * Docked in the background editor: the drawing tools in a horizontal row
+   * with the style bar under it, in normal flow; no action bar.
+   */
+  docked?: boolean
 }
 
 export function Toolbars(props: Props) {
-  const { selection, screen, settings, activeTool, color, pressed, unavailable, styleBar, variants, onAction, onVariant, lit, tips } = props
+  const { selection, screen, settings, activeTool, color, pressed, unavailable, styleBar, variants, onAction, onVariant, lit, tips, docked } = props
   const actions = visibleFeatures(settings, 'action')
   const tools = visibleFeatures(settings, 'tool')
   const aSize = { w: barLength(actions.length), h: BAR_THICK }
@@ -88,7 +104,7 @@ export function Toolbars(props: Props) {
         data-id={f.id}
         data-tip={f.implemented ? label : `${label} (coming soon)`}
         data-hint={f.implemented ? f.hint : undefined}
-        data-sub={tips[f.id]?.sub ?? (f.variants ? 'Right-click for more shapes' : undefined)}
+        data-sub={tips[f.id]?.sub ?? (f.variants ? (f.variantsHint ?? 'Right-click for more options') : undefined)}
         aria-disabled={off}
         className={cls}
         onClick={() => !off && onAction(f.id)}
@@ -135,6 +151,42 @@ export function Toolbars(props: Props) {
     onContextMenu: noMenu
   })
 
+  const overlays = (
+    <>
+      {tip && !menu && tip.el.isConnected && <Tooltip {...tip} screen={screen} />}
+      {menu && menu.el.isConnected && (
+        <VariantMenu
+          {...menu}
+          screen={screen}
+          current={variants[menu.feature.id] ?? menu.feature.variants![0].id}
+          onPick={(v) => {
+            setMenu(null)
+            onVariant(menu.feature.id, v)
+          }}
+          onClose={() => setMenu(null)}
+        />
+      )}
+    </>
+  )
+
+  if (docked) {
+    return (
+      <>
+        {tools.length > 0 && (
+          <div className="toolbar docked" onPointerDown={stop} onMouseDown={stop} {...tipHandlers(false)}>
+            {tools.map((f) => button(f, false))}
+          </div>
+        )}
+        {styleBar && (
+          <div className="toolbar style-bar docked" onPointerDown={stop} onMouseDown={stop} {...tipHandlers(false)}>
+            {styleBar}
+          </div>
+        )}
+        {overlays}
+      </>
+    )
+  }
+
   return (
     <>
       {tools.length > 0 && (
@@ -159,19 +211,7 @@ export function Toolbars(props: Props) {
           {styleBar}
         </div>
       )}
-      {tip && !menu && tip.el.isConnected && <Tooltip {...tip} screen={screen} />}
-      {menu && menu.el.isConnected && (
-        <VariantMenu
-          {...menu}
-          screen={screen}
-          current={variants[menu.feature.id] ?? menu.feature.variants![0].id}
-          onPick={(v) => {
-            setMenu(null)
-            onVariant(menu.feature.id, v)
-          }}
-          onClose={() => setMenu(null)}
-        />
-      )}
+      {overlays}
     </>
   )
 }

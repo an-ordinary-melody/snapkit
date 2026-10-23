@@ -20,6 +20,31 @@ describe('beautifyLayout', () => {
   })
 })
 
+describe('frames', () => {
+  const base = { padding: 10, radius: 0, shadow: 0 }
+
+  it('widens a tall capture to 16:9, centered', () => {
+    const l = beautifyLayout(100, 100, { ...base, frame: { kind: 'ratio', w: 16, h: 9 } }, 1)
+    expect(l.height).toBe(120)
+    expect(l.width).toBe(213)
+    expect(l.x).toBe(Math.round((213 - 100) / 2))
+    expect(l.y).toBe(10)
+  })
+
+  it('heightens a wide capture to 1:1', () => {
+    const l = beautifyLayout(300, 100, { ...base, frame: { kind: 'ratio', w: 1, h: 1 } }, 1)
+    expect([l.width, l.height]).toEqual([320, 320])
+    expect(l.y).toBe(110)
+  })
+
+  it('fits a large capture into an exact size, never scaling up', () => {
+    const big = beautifyLayout(2000, 1000, { ...base, frame: { kind: 'size', w: 1020, h: 1020 } }, 1)
+    expect([big.width, big.height, big.drawW, big.drawH]).toEqual([1020, 1020, 1000, 500])
+    const small = beautifyLayout(100, 50, { ...base, frame: { kind: 'size', w: 400, h: 300 } }, 1)
+    expect([small.drawW, small.drawH, small.x, small.y]).toEqual([100, 50, 150, 125])
+  })
+})
+
 describe('gradientLine', () => {
   it('runs left to right at 0° and top to bottom at 90°', () => {
     const round = (v: number[]) => v.map((n) => Math.round(n) || 0)

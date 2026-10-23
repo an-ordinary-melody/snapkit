@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxFromDrag, commit, emptyHistory, isMeaningful, moveShape, redo, remove, snap45, stepNumbers, undo, upsert, type Shape } from './model'
+import { boxFromDrag, commit, emptyHistory, isMeaningful, moveShape, openArrowHead, redo, remove, snap45, stepNumbers, undo, upsert, type Shape } from './model'
 
 const step = (id: string): Shape => ({ id, type: 'step', x: 0, y: 0, size: 20, color: 'red' })
 const rect = (id: string, x = 0): Shape => ({ id, type: 'rect', x, y: 0, w: 10, h: 10, color: 'red', width: 2 })
@@ -76,6 +76,14 @@ describe('shapes', () => {
     expect(isMeaningful({ ...rect('a'), w: 2 } as Shape)).toBe(false)
     expect(isMeaningful({ id: 't', type: 'text', x: 0, y: 0, text: '  ', color: '', fontSize: 1, fontFamily: '', shadow: false, background: '' })).toBe(false)
     expect(isMeaningful(step('s'))).toBe(true)
+  })
+
+  it('draws an open arrow head as two strokes meeting at the tip, behind it', () => {
+    const [ax, ay, tx, ty, bx, by] = openArrowHead([0, 0, 100, 0], 20)
+    expect([tx, ty]).toEqual([100, 0])
+    expect(ax).toBeLessThan(100)
+    expect(bx).toBeCloseTo(ax)
+    expect(ay).toBeCloseTo(-by)
   })
 
   it('moves point-based and box-based shapes', () => {
