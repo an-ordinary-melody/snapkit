@@ -26,6 +26,8 @@ interface Props {
   sel: Rect
   shapes: Shape[]
   tool: ToolId | null
+  /** Chosen variant of the active tool (e.g. 'ellipse-filled' for the rectangle tool). */
+  variant: string | null
   style: Style
   strokeWidths: [number, number, number]
   highlighter: { color: string; width: number }
@@ -146,8 +148,11 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           return { id, type: tool, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth }
         }
         case 'rect':
-        case 'ellipse':
-          return { id, type: tool, ...boxFromDrag(x0, y0, x, y, shift), color: style.color, width: strokeWidth }
+        case 'ellipse': {
+          const v = props.variant ?? tool
+          const type = v.startsWith('ellipse') ? 'ellipse' : 'rect'
+          return { id, type, ...boxFromDrag(x0, y0, x, y, shift), color: style.color, width: strokeWidth, filled: v.endsWith('-filled') }
+        }
         case 'blur':
           return { id, type: 'blur', ...boxFromDrag(x0, y0, x, y, shift), mode: style.blurMode, strength: style.blurStrength }
       }
@@ -205,11 +210,20 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     onDblClick: () => s.type === 'text' && startEditing(s),
     onMouseEnter: () => setCursor('move'),
     onMouseLeave: () => setCursor(null),
+    // Blur areas re-render what's under them while being moved or resized.
+    onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
+      if (s.type === 'blur') setLive({ id: s.id, rect: { x: s.x + e.target.x(), y: s.y + e.target.y(), w: s.w, h: s.h } })
+    },
+    onTransform: (e: Konva.KonvaEventObject<Event>) => {
+      const g = e.target
+      if (s.type === 'blur') setLive({ id: s.id, rect: transformShape(s, g.x(), g.y(), g.scaleX(), g.scaleY()) as BlurShape })
+    },
     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
       const g = e.target
       const dx = g.x()
       const dy = g.y()
       g.position({ x: 0, y: 0 })
+      setLive(null)
       commitShape(moveShape(s, dx, dy))
     },
     onTransformEnd: (e: Konva.KonvaEventObject<Event>) => {
@@ -219,6 +233,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       const gx = g.x()
       const gy = g.y()
       g.setAttrs({ x: 0, y: 0, scaleX: 1, scaleY: 1 })
+      setLive(null)
       commitShape(transformShape(s, gx, gy, sx, sy))
     }
   })
@@ -229,6 +244,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
   }
 
   const [cursor, setCursor] = useState<string | null>(null)
+  const [live, setLive] = useState<{ id: string; rect: Rect } | null>(null)
 
   // ---- render ------------------------------------------------------------------
   const renderShape = (s: Shape, isDraft = false) => {
@@ -268,13 +284,18 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           )
         }
         case 'rect':
-          return <KRect x={s.x} y={s.y} width={s.w} height={s.h} stroke={s.color} strokeWidth={s.width} cornerRadius={2} hitStrokeWidth={Math.max(12, s.width)} fillEnabled={false} />
-        case 'ellipse':
-          return (
-            <Ellipse x={s.x + s.w / 2} y={s.y + s.h / 2} radiusX={s.w / 2} radiusY={s.h / 2} stroke={s.color} strokeWidth={s.width} hitStrokeWidth={Math.max(12, s.width)} fillEnabled={false} />
+        case 'ellipse': {
+          const paint = s.filled
+            ? { fill: s.color, strokeEnabled: false }
+            : { stroke: s.color, strokeWidth: s.width, hitStrokeWidth: Math.max(12, s.width), fillEnabled: false }
+          return s.type === 'rect' ? (
+            <KRect x={s.x} y={s.y} width={s.w} height={s.h} cornerRadius={s.filled ? 4 : 2} {...paint} />
+          ) : (
+            <Ellipse x={s.x + s.w / 2} y={s.y + s.h / 2} radiusX={s.w / 2} radiusY={s.h / 2} {...paint} />
           )
+        }
         case 'blur':
-          return <BlurNode shape={s} source={props.source} scale={scale} />
+          return <BlurNode shape={s} live={live?.id === s.id ? live.rect : null} source={props.source} scale={scale} />
         case 'step': {
           const n = steps.get(s.id) ?? 0
           return (
@@ -372,12 +393,18 @@ function readableOn(hex: string) {
   return lum > 0.6 ? '#111' : '#fff'
 }
 
-function BlurNode({ shape, source, scale }: { shape: BlurShape; source: () => HTMLCanvasElement | null; scale: number }) {
+/**
+ * `live`: where the area is while it's being dragged or resized. The image is
+ * still drawn at the shape's own rect (Konva applies the drag/scale on top),
+ * but its content comes from the live position.
+ */
+function BlurNode({ shape, live, source, scale }: { shape: BlurShape; live: Rect | null; source: () => HTMLCanvasElement | null; scale: number }) {
   const { x, y, w, h, mode, strength } = shape
+  const r = live ?? shape
   const image = useMemo(() => {
     const src = source()
-    return src && src.width > 1 ? obscure(src, { x, y, w, h }, scale, mode, strength ?? 12) : undefined
-  }, [x, y, w, h, mode, strength, scale, source])
+    return src && src.width > 1 ? obscure(src, { x: r.x, y: r.y, w: r.w, h: r.h }, scale, mode, strength ?? 12) : undefined
+  }, [r.x, r.y, r.w, r.h, mode, strength, scale, source])
   // `fill` makes the whole area clickable (images aren't hit-testable otherwise).
   return image ? (
     <KImage image={image} x={x} y={y} width={w} height={h} fill="transparent" />

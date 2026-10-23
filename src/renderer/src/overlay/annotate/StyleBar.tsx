@@ -12,10 +12,12 @@ const COLORED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse',
 /** Nothing to show for this target. */
 export const hasStyleOptions = (t: StyleTarget) => COLORED.has(t) || t === 'blur'
 
-const TEXT_BACKGROUNDS = [
-  { value: '', label: 'No background' },
-  { value: '#ffffff', label: 'Light background' },
-  { value: '#111111', label: 'Dark background' }
+/** One choice at a time; plain text first. */
+const TEXT_STYLES = [
+  { label: 'Plain', shadow: false, background: '' },
+  { label: 'Shadow', shadow: true, background: '' },
+  { label: 'Light background', shadow: false, background: '#ffffff' },
+  { label: 'Dark background', shadow: false, background: '#111111' }
 ]
 
 export const BLUR_RANGE = { min: 4, max: 40 }
@@ -25,13 +27,15 @@ let recentCustom: string[] = []
 
 interface Props {
   target: StyleTarget
+  /** The target is a filled shape (no stroke width to choose). */
+  filled: boolean
   style: Style
   palette: string[]
   /** `continuous`: part of a drag (slider, picker), merged into one undo step. */
   onChange(patch: Partial<Style>, continuous?: boolean): void
 }
 
-export function StyleBar({ target, style, palette, onChange }: Props) {
+export function StyleBar({ target, filled, style, palette, onChange }: Props) {
   const [picking, setPicking] = useState(false)
   const sep = <div className="sep" />
   const lower = palette.map((c) => c.toLowerCase())
@@ -67,7 +71,7 @@ export function StyleBar({ target, style, palette, onChange }: Props) {
         </>
       )}
 
-      {STROKED.has(target) && (
+      {STROKED.has(target) && !filled && (
         <>
           {sep}
           {[0, 1, 2].map((i) => (
@@ -89,16 +93,17 @@ export function StyleBar({ target, style, palette, onChange }: Props) {
             <Plus size={15} />
           </button>
           {sep}
-          <button className={style.shadow ? 'active' : ''} data-tip="Shadow" onClick={() => onChange({ shadow: !style.shadow })}>
-            <span className="glyph shadowed">A</span>
-          </button>
-          {TEXT_BACKGROUNDS.map((b) => (
-            <button key={b.label} className={style.textBackground === b.value ? 'active' : ''} data-tip={b.label} onClick={() => onChange({ textBackground: b.value })}>
-              <span className="glyph boxed" style={{ background: b.value || 'transparent', color: b.value === '#ffffff' ? '#111' : '#fff' }}>
-                A
-              </span>
-            </button>
-          ))}
+          {TEXT_STYLES.map((t) => {
+            const on = style.shadow === t.shadow && style.textBackground === t.background
+            const glyph = t.background ? 'glyph boxed' : t.shadow ? 'glyph shadowed' : 'glyph'
+            return (
+              <button key={t.label} className={on ? 'active' : ''} data-tip={t.label} onClick={() => onChange({ shadow: t.shadow, textBackground: t.background })}>
+                <span className={glyph} style={t.background ? { background: t.background, color: t.background === '#ffffff' ? '#111' : '#fff' } : undefined}>
+                  A
+                </span>
+              </button>
+            )
+          })}
         </>
       )}
 
@@ -119,6 +124,7 @@ export function StyleBar({ target, style, palette, onChange }: Props) {
             value={style.blurStrength}
             data-tip="Strength"
             onChange={(e) => onChange({ blurStrength: Number(e.target.value) }, true)}
+            onPointerUp={(e) => e.currentTarget.blur()} // give the keyboard back to capture mode
           />
           <span className="value">{style.blurStrength}</span>
         </>

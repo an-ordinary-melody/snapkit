@@ -56,6 +56,17 @@ function createOverlay(display: Display): BrowserWindow {
   win.setOpacity(0)
   overlayUrl(win)
   win.on('closed', () => overlays.delete(display.id))
+  // Diagnostics: overlay errors and crashes go to main.log.
+  win.webContents.on('console-message', (_e, level, message, line, source) => {
+    if (level >= 3) log(`[overlay ${display.id}] ${message} (${source.split('/').pop()}:${line})`)
+  })
+  win.webContents.on('render-process-gone', (_e, details) => {
+    log(`[overlay ${display.id}] renderer gone: ${details.reason} (exit ${details.exitCode})`)
+    if (active) endCapture()
+    if (!win.isDestroyed()) win.destroy()
+    overlays.set(display.id, createOverlay(display))
+  })
+  win.on('unresponsive', () => log(`[overlay ${display.id}] unresponsive`))
   return win
 }
 
@@ -91,7 +102,14 @@ function releaseFocus() {
 }
 
 export async function startCapture(t0 = Date.now()) {
-  if (active) return
+  if (active) {
+    // A capture is open: nothing to do, unless it got stuck with nothing on
+    // screen (e.g. a renderer failure), in which case start over.
+    const showing = [...overlays.values()].some((w) => !w.isDestroyed() && w.isVisible() && w.getOpacity() > 0 && !w.webContents.isCrashed())
+    if (showing) return log('hotkey ignored: capture already open')
+    log('capture was stuck with no overlay showing; starting over')
+    endCapture()
+  }
   active = true
   const id = ++session
   const settings = getSettings()

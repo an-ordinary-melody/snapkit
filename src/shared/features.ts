@@ -9,6 +9,11 @@
 
 export type FeatureKind = 'tool' | 'action'
 
+export interface FeatureVariant {
+  id: string
+  label: string
+}
+
 export interface FeatureDef {
   id: string
   label: string
@@ -22,6 +27,8 @@ export interface FeatureDef {
    * buttons that act immediately (color, undo, redo).
    */
   drawing?: boolean
+  /** Alternative forms, chosen by right-clicking the button. The first is the default. */
+  variants?: FeatureVariant[]
   /** Whether the feature is on for a fresh install. */
   defaultEnabled: boolean
 }
@@ -31,8 +38,22 @@ export const FEATURES: FeatureDef[] = [
   { id: 'pen', drawing: true, label: 'Pen', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true },
   { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: true },
   { id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true },
-  { id: 'rect', drawing: true, label: 'Rectangle', kind: 'tool', hint: 'R', implemented: true, defaultEnabled: true },
-  { id: 'ellipse', drawing: true, label: 'Ellipse', kind: 'tool', hint: 'E', implemented: true, defaultEnabled: false },
+  {
+    id: 'rect', drawing: true, label: 'Rectangle', kind: 'tool', hint: 'R', implemented: true, defaultEnabled: true,
+    variants: [
+      { id: 'rect', label: 'Rectangle' },
+      { id: 'rect-filled', label: 'Filled rectangle' },
+      { id: 'ellipse', label: 'Ellipse' },
+      { id: 'ellipse-filled', label: 'Filled ellipse' }
+    ]
+  },
+  {
+    id: 'ellipse', drawing: true, label: 'Ellipse', kind: 'tool', hint: 'E', implemented: true, defaultEnabled: false,
+    variants: [
+      { id: 'ellipse', label: 'Ellipse' },
+      { id: 'ellipse-filled', label: 'Filled ellipse' }
+    ]
+  },
   { id: 'highlighter', drawing: true, label: 'Highlighter', kind: 'tool', hint: 'H', implemented: true, defaultEnabled: true },
   { id: 'text', drawing: true, label: 'Text', kind: 'tool', hint: 'T', implemented: true, defaultEnabled: true },
   { id: 'step', drawing: true, label: 'Numbered step', kind: 'tool', hint: 'N', implemented: true, defaultEnabled: false },

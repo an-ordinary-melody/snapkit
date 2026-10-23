@@ -35,6 +35,8 @@ export interface BoxShape extends Base {
   h: number
   color: string
   width: number
+  /** Solid fill instead of an outline. */
+  filled?: boolean
 }
 
 export interface BlurShape extends Base {

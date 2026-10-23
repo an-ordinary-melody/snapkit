@@ -75,13 +75,30 @@ try {
   await wait(150)
   writeFileSync(join(out, '1-drawn.png'), await win.screenshot())
 
+  // Text styles are one choice, Plain first; picking Shadow leaves only Shadow highlighted.
+  await m.click(640, 520); await wait(150) // select "Hello Snapkit"
+  const order = await win.$$eval('.style-bar button[data-tip]', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Shadow|background/.test(t)))
+  await win.click('.style-bar button[data-tip="Shadow"]')
+  const active = await win.$$eval('.style-bar button.active', (bs) => bs.map((b) => b.dataset.tip).filter((t) => /Plain|Shadow|background/.test(t)))
+  console.log('text styles:', order.join(' | '), '→ active after Shadow:', active)
+  await win.keyboard.press('Escape')
+
+  // Right-click the rectangle tool: menu of shapes; right-click must not end the capture.
+  await win.click('.toolbar button[data-tip="Rectangle"]', { button: 'right' })
+  await wait(150)
+  console.log('shape menu:', await win.$$eval('.variant-menu button', (bs) => bs.map((b) => b.textContent)))
+  await win.click('.variant-menu button:has-text("Filled ellipse")')
+  await drag(260, 420, 330, 470)
+  console.log('rect button now:', await win.$eval('.toolbar button.active', (b) => b.dataset.tip + ' / ' + b.dataset.sub))
+  await tool('Filled ellipse') // tool off
+
   // Tooltip on hover
   await win.hover('.toolbar button[data-tip="Arrow"]')
   await wait(500)
   console.log('tooltip:', await win.$eval('.tip', (e) => e.textContent).catch(() => 'none'))
 
   // Blur strength slider on the selected blur area
-  await tool("Text"); await wait(100) // text tool off
+  await wait(100) // no tool active
   await m.click(770, 590); await wait(150)
   await win.$eval('.style-bar input.slider', (el) => {
     const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
@@ -90,7 +107,10 @@ try {
   await wait(150)
   console.log('blur strength:', await win.$eval('.style-bar .value', (e) => e.textContent))
   writeFileSync(join(out, '1b-blur-strength.png'), await win.screenshot())
-  await win.keyboard.press('Escape')
+  // Live preview: mid-drag, the blur shows what's under its new position.
+  await m.move(770, 590); await m.down(); await m.move(700, 560, { steps: 3 }); await m.move(620, 520, { steps: 3 }); await wait(100)
+  writeFileSync(join(out, '1c-blur-mid-drag.png'), await win.screenshot())
+  await m.up(); await win.keyboard.press('Meta+z') // put it back (undo also deselects)
 
   // Style a selected shape: click the arrow (no tool) and make it thick + green.
   await m.click(350, 250); await wait(150)

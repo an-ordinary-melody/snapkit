@@ -37,8 +37,9 @@ const MIN_SIZE = 4
 
 const DRAWING_TOOLS = new Set(FEATURES.filter((f) => f.drawing).map((f) => f.id))
 
-/** Style choices survive between captures (until Snapkit quits). */
+/** Style and tool variant choices survive between captures (until Snapkit quits). */
 let lastStyle: Style | null = null
+let lastVariants: Record<string, string> = {}
 
 function initialStyle(s: Settings): Style {
   const a = s.annotate
@@ -103,6 +104,7 @@ export function Overlay() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [style, setStyle] = useState<Style | null>(null)
   const [styleOpen, setStyleOpen] = useState(true)
+  const [variants, setVariants] = useState<Record<string, string>>(lastVariants)
   const onCommit = useCallback((next: Shape[], mergeKey?: string) => setHistory((h) => commit(h, next, mergeKey)), [])
   const source = useCallback(() => canvasRef.current, [])
 
@@ -196,10 +198,15 @@ export function Overlay() {
       if (!sel) return
       if (id === 'copy' || id === 'save') {
         busy.current = true
-        flushSync(() => setSelectedId(null))
-        const png = await cropToPng(sel)
-        if (id === 'copy') api.copy(cap.session, png)
-        else api.save(cap.session, png)
+        try {
+          flushSync(() => setSelectedId(null))
+          const png = await cropToPng(sel)
+          if (id === 'copy') api.copy(cap.session, png)
+          else api.save(cap.session, png)
+        } catch (err) {
+          console.error(`${id} failed:`, err instanceof Error ? err.stack : err) // shows up in main.log
+          busy.current = false // let the user try again (or Esc)
+        }
       }
     },
     [cap, sel, cropToPng]
@@ -215,7 +222,11 @@ export function Overlay() {
   // ---- keyboard -------------------------------------------------------------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!cap || e.defaultPrevented || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return
+      // Typing fields keep their keys; anything else (e.g. a slider that still
+      // has focus) must not swallow ⌘C / Esc.
+      const typing = e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLInputElement && e.target.type === 'text')
+      if (!cap || e.defaultPrevented || typing) return
+      if (e.target instanceof HTMLInputElement) e.target.blur()
       const mod = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
       const selectedShape = shapes.find((x) => x.id === selectedId)
@@ -319,6 +330,13 @@ export function Overlay() {
     [style, cap, shapes, selectedId, onCommit]
   )
 
+  const onVariant = useCallback((featureId: string, variantId: string) => {
+    annRef.current?.finishEditing()
+    setSelectedId(null)
+    setTool(featureId as ToolId)
+    setVariants((v) => (lastVariants = { ...v, [featureId]: variantId }))
+  }, [])
+
   // ---- render ---------------------------------------------------------------
   const s = cap?.settings
   const dim = `rgba(0,0,0,${s?.capture.dimOpacity ?? 0.45})`
@@ -329,9 +347,11 @@ export function Overlay() {
 
   const selectedShape = shapes.find((x) => x.id === selectedId)
   const styleTarget: StyleTarget | null = selectedShape?.type ?? tool
+  const toolVariant = tool ? (variants[tool] ?? null) : null
+  const filled = selectedShape ? 'filled' in selectedShape && !!selectedShape.filled : !!toolVariant?.endsWith('-filled')
   const styleBar =
     cap && style && styleOpen && styleTarget && hasStyleOptions(styleTarget) && s?.features.color !== false ? (
-      <StyleBar target={styleTarget} style={style} palette={cap.settings.annotate.palette} onChange={onStyleChange} />
+      <StyleBar target={styleTarget} filled={filled} style={style} palette={cap.settings.annotate.palette} onChange={onStyleChange} />
     ) : null
   const unavailable = new Set<string>()
   if (!history.past.length) unavailable.add('undo')
@@ -367,6 +387,7 @@ export function Overlay() {
           sel={sel}
           shapes={shapes}
           tool={tool}
+          variant={toolVariant}
           style={style}
           strokeWidths={cap.settings.annotate.strokeWidths}
           highlighter={{ color: cap.settings.annotate.highlighterColor, width: cap.settings.annotate.highlighterWidth }}
@@ -408,7 +429,9 @@ export function Overlay() {
           pressed={pressed}
           unavailable={unavailable}
           styleBar={styleBar}
+          variants={variants}
           onAction={(id) => void runAction(id)}
+          onVariant={onVariant}
         />
       )}
     </div>

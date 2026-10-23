@@ -73,7 +73,7 @@ export const DEFAULT_SETTINGS: Settings = {
     strokeWidth: 1,
     highlighterColor: '#fde047',
     highlighterWidth: 18,
-    blurMode: 'pixelate',
+    blurMode: 'blur',
     blurStrength: 12,
     stepSize: 28,
     text: {
