@@ -81,12 +81,12 @@ try {
   console.log('mode:', await st.evaluate(() => document.documentElement.dataset.mode), '| saved:', saved().appearance?.mode)
   await st.click('button[aria-label="Liquid Glass"]')
   await wait(200)
-  console.log('glass off:', await st.evaluate(() => document.documentElement.dataset.glass), '| saved:', saved().appearance?.glass)
+  console.log('glass toggled on (default is off):', await st.evaluate(() => document.documentElement.dataset.glass), '| saved:', saved().appearance?.glass)
   // Windows that are already open (the history panel stays loaded) follow at once.
   const hist = windowFor('history')
   console.log('history window glass:', await hist.evaluate(() => document.documentElement.dataset.glass), '| mode', await hist.evaluate(() => document.documentElement.dataset.mode))
   writeFileSync(join(out, 'dark-solid-appearance.png'), await st.screenshot())
-  await st.click('button[aria-label="Liquid Glass"]') // back on: dark glass
+  await st.click('button[aria-label="Liquid Glass"]') // back off: dark solid
   for (const name of ['General', 'Appearance', 'Toolbar', 'Tools', 'Background']) {
     await section(name)
     writeFileSync(join(out, `dark-${name.toLowerCase()}.png`), await st.screenshot())

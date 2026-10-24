@@ -209,7 +209,7 @@ export const DEFAULT_SETTINGS: Settings = {
       fontSize: 20,
       style: 'stroke',
       strokeColor: '#ffffff',
-      strokeWidth: 3,
+      strokeWidth: 2,
       background: '#ffffff',
       shadow: 0.1
     }
@@ -218,15 +218,15 @@ export const DEFAULT_SETTINGS: Settings = {
     afterCopy: false
   },
   appearance: {
-    glass: true,
+    glass: false,
     mode: 'dark',
-    accent: ''
+    accent: '#0a84ff'
   },
   beautify: {
     applyOnCopy: false,
     preset: 'ocean',
     presets: [
-      { id: 'ocean', name: 'Ocean', background: { type: 'gradient', from: '#4f8cff', to: '#a855f7', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
+      { id: 'ocean', name: 'Ember', background: { type: 'gradient', from: '#f83600', to: '#f9d423', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
       { id: 'sunset', name: 'Sunset', background: { type: 'gradient', from: '#fb923c', to: '#ec4899', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
       { id: 'mint', name: 'Mint', background: { type: 'gradient', from: '#34d399', to: '#06b6d4', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
       { id: 'light', name: 'Light', background: { type: 'solid', color: '#eef0f3' }, padding: 40, radius: 10, shadow: 0.2 },
