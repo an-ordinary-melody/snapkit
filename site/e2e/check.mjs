@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromium } from 'playwright-core'
+import { chromium, devices, webkit } from 'playwright-core'
 
 const dist = fileURLToPath(new URL('../dist', import.meta.url))
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.xml': 'application/xml' }
@@ -27,8 +27,16 @@ if (!base) {
 }
 
 const results = []
+// Polls fn in the page until it returns true (false after timeout). Not page.waitForFunction: that evaluates
+// strings, which the site's CSP forbids, and WebKit applies the CSP even with bypassCSP.
+const until = async (page, fn, arg = null, timeout = 12000) => {
+  for (const end = Date.now() + timeout; Date.now() < end; await page.waitForTimeout(250)) {
+    if (await page.evaluate(fn, arg).catch(() => false)) return true
+  }
+  return false
+}
 // A demo's React island is interactive once Astro drops its `ssr` attribute.
-const hydrated = (page, sel) => page.waitForFunction((s) => !!document.querySelector(s)?.closest('astro-island:not([ssr])'), sel, { timeout: 15000 })
+const hydrated = (page, sel) => until(page, (s) => !!document.querySelector(s)?.closest('astro-island:not([ssr])'), sel, 15000)
 
 const check = (label, ok, detail = '') => {
   results.push({ label, ok })
@@ -36,10 +44,17 @@ const check = (label, ok, detail = '') => {
 }
 
 const browser = await chromium.launch({ channel: 'chrome' })
+// Safari's engine, on an iPhone profile (needs `npx playwright-core install webkit` once).
+const safari = await webkit.launch()
 try {
-  for (const [name, viewport] of [['desktop', { width: 1280, height: 860 }], ['phone', { width: 375, height: 812 }]]) {
+  const runs = [
+    ['desktop', browser, { viewport: { width: 1280, height: 860 } }],
+    ['phone', browser, { viewport: { width: 375, height: 812 } }],
+    ['iPhone Safari', safari, devices['iPhone 15']]
+  ]
+  for (const [name, engine, options] of runs) {
     // Playwright's waiting helpers evaluate strings, which the site's CSP forbids; the strict pass below runs with CSP on.
-    const page = await browser.newPage({ viewport, bypassCSP: true })
+    const page = await engine.newPage({ ...options, bypassCSP: true })
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
     page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
@@ -54,13 +69,36 @@ try {
 
     // The hero loops through capture mode and ends with the copy into the corner preview.
     await page.locator('[data-stage]').scrollIntoViewIfNeeded()
-    const reached = await page.waitForFunction(() => document.querySelector('[data-stage]').classList.contains('m-copy'), null, { timeout: 12000 }).then(() => true, () => false)
+    const reached = await until(page, () => document.querySelector('[data-stage]').classList.contains('m-copy'))
     check(`${name}: hero demo plays to the copy`, reached)
 
     // Annotate demo draws its shapes; background demo reacts to a preset.
     await page.locator('.an').scrollIntoViewIfNeeded()
-    const drawn = await page.waitForFunction(() => document.querySelectorAll('.an .on').length >= 4, null, { timeout: 8000 }).then(() => true, () => false)
+    const drawn = await until(page, () => document.querySelectorAll('.an .on').length >= 4, null, 8000)
     check(`${name}: annotate demo draws`, drawn)
+
+    // Each scaled drawing exactly fills its box (iOS Safari once drew them at the wrong size, off-screen).
+    for (const sel of ['.an-shot', '.bgd-view .scaled']) {
+      await page.locator(sel).scrollIntoViewIfNeeded()
+      await page.waitForTimeout(300)
+    }
+    const misfits = await page.$$eval('.scaled', (els) =>
+      els
+        .filter((el) => !el.closest('astro-island[ssr]')) // a demo still waiting to load further down
+        .map((el) => {
+          const box = el.getBoundingClientRect(), inner = el.querySelector('.scaled-in').getBoundingClientRect()
+          return Math.abs(box.width - inner.width) > 2 || Math.abs(box.height - inner.height) > 2 ? `${Math.round(inner.width)}×${Math.round(inner.height)} in ${Math.round(box.width)}×${Math.round(box.height)}` : null
+        })
+        .filter(Boolean)
+    )
+    check(`${name}: scaled demos fill their boxes`, misfits.length === 0, misfits.join(', '))
+    const fills = () =>
+      page.$$eval('.fx .scaled', (els) =>
+        els.every((el) => {
+          const box = el.getBoundingClientRect(), inner = el.querySelector('.scaled-in').getBoundingClientRect()
+          return Math.abs(box.width - inner.width) <= 2 && Math.abs(box.height - inner.height) <= 2
+        })
+      )
     await page.locator('.bgd').scrollIntoViewIfNeeded()
     await hydrated(page, '.bgd')
     const before = await page.$eval('.bgd-frame', (el) => el.style.background)
@@ -103,6 +141,10 @@ try {
       const demo = await page.locator('.fx-demo > *').count()
       if (title && demo) shown++
     }
+    await tabs.nth(0).click()
+    const captureFits = await fills()
+    await page.getByRole('tab', { name: 'Background editor' }).click()
+    check(`${name}: feature demos (capture, editor) fill their boxes`, captureFits && (await fills()))
     check(`${name}: all ${count} feature tabs show a demo`, count === 7 && shown === count, `${shown}/${count}`)
 
     const entries = await page.$$eval('.timeline > li', (l) => l.length)
@@ -194,6 +236,7 @@ try {
   check('share image is served', og.byteLength > 10000)
 } finally {
   await browser.close()
+  await safari.close()
   server?.close()
 }
 

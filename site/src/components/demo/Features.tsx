@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
 import data from '../../data/backgrounds.json'
+import Scaled from './Scaled'
 import { Desk, PlanCard } from './Shot'
 import Toolbar, { ArrowIcon, TOOLS } from './Toolbar'
 
@@ -20,10 +21,10 @@ const K = ({ children }: { children: ReactNode }) => <kbd className="kbd">{child
 function CaptureDemo() {
   return (
     <div className="fx-capture">
-      <div className="fx-mini-screen scaled" style={{ ['--w' as string]: '960px', aspectRatio: '960 / 600' }}>
-        <div className="scaled-in" style={{ width: 960, height: 600 }}>
+      <div className="fx-mini-screen" style={{ aspectRatio: '960 / 600' }}>
+        <Scaled w={960} h={600}>
           <Desk />
-        </div>
+        </Scaled>
         <div className="fx-nudge">
           <span className="size-label" style={{ left: 0, top: -24 }}>
             480 × 300
@@ -109,11 +110,9 @@ function EditorDemo() {
   return (
     <div className="fx-editor">
       <div className="fx-ed-view" style={{ background: grad(g) }}>
-        <div className="scaled" style={{ ['--w' as string]: '472px', aspectRatio: '472 / 262', width: '72%' }}>
-          <div className="scaled-in">
-            <PlanCard style={{ boxShadow: '0 20px 50px rgba(0,0,0,.3)', borderRadius: 12 }} />
-          </div>
-        </div>
+        <Scaled w={472} h={262} style={{ width: '72%' }}>
+          <PlanCard style={{ boxShadow: '0 20px 50px rgba(0,0,0,.3)', borderRadius: 12 }} />
+        </Scaled>
         <span className="fx-zoom">100%</span>
       </div>
       <div className="fx-ed-side">

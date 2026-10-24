@@ -145,7 +145,7 @@ cd site
 nvm use            # or put Node 22 first on PATH
 npm install
 npm run dev        # http://localhost:4321
-npm run build && npm run check   # build, then check it in Chrome (demos, links, phone width, console)
+npm run build && npm run check   # build, then check it in Chrome and in Safari's engine on an iPhone profile
 ```
 
 - The changelog comes from `release-notes/*.md` and the background presets from `src/shared/settings.ts`:
@@ -153,6 +153,7 @@ npm run build && npm run check   # build, then check it in Chrome (demos, links,
   Only versions published on GitHub show up.
 - The download buttons point at the newest GitHub release, looked up at build time. The release job calls a
   Vercel deploy hook (repository secret `VERCEL_DEPLOY_HOOK`) so the site rebuilds after each release.
+- `npm run check` needs Chrome and, once, `npx playwright-core install webkit` (Safari's engine).
 - Roadmap: `site/src/data/roadmap.json`. Share image: `node scripts/og.mjs` with the site running.
 - `?moment=m-bg` (or `m-copy`, …) freezes the hero demo at that moment.
 - Security: `scripts/csp.mjs` runs after every build and adds a Content-Security-Policy to each page (only this

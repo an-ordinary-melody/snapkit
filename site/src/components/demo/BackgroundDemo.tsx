@@ -2,6 +2,7 @@
 import { Shuffle } from 'lucide-react'
 import { useState } from 'react'
 import data from '../../data/backgrounds.json'
+import Scaled from './Scaled'
 import { CARD, PlanCard } from './Shot'
 
 type Bg = { type: 'gradient'; from: string; to: string; angle: number } | { type: 'solid'; color: string }
@@ -48,8 +49,7 @@ export default function BackgroundDemo() {
   return (
     <div className="bgd">
       <div className="bgd-view">
-        <div className="scaled" style={{ ['--w' as string]: `${W}px`, aspectRatio: `${W} / ${H}`, maxWidth: r === 1 ? 420 : undefined, margin: '0 auto' }}>
-          <div className="scaled-in bgd-frame" style={{ width: W, height: H, background: css(bg) }}>
+        <Scaled w={W} h={H} innerClassName="bgd-frame" style={{ maxWidth: r === 1 ? 420 : undefined, margin: '0 auto' }} innerStyle={{ background: css(bg) }}>
             <PlanCard
               style={{
                 position: 'absolute',
@@ -59,8 +59,7 @@ export default function BackgroundDemo() {
                 boxShadow: `0 ${8 + shadow * 24}px ${16 + shadow * 60}px rgba(0,0,0,${shadow * 0.9})`
               }}
             />
-          </div>
-        </div>
+        </Scaled>
         <span className="bgd-size">
           {Math.round(W * 2)} × {Math.round(H * 2)}
         </span>
