@@ -15,7 +15,9 @@ writeFileSync(
     hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12' },
     save: { folder: saves, askLocation: false },
     notifications: { onSave: false },
-    features: { ellipse: true, step: true, redo: true }
+    features: { ellipse: true, step: true, redo: true },
+    // The same text size on every OS (Windows defaults to 32), so the layout below is the same.
+    annotate: { text: { fontSize: 20 } }
   })
 )
 

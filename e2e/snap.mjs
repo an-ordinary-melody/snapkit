@@ -62,7 +62,9 @@ try {
   console.log('editor drag -> rects', JSON.stringify(await rects()), '| guides while dragging', guides)
   // The Text tool may still be on from capture mode; clicking it again would turn it off.
   if (!(await win.$('.be-dock .toolbar button.active[data-id="text"]'))) await win.click('.be-dock .toolbar button[data-tip="Text"]')
-  await m.click(650, 400); await wait(300)
+  // Inside the image, whatever the screen size.
+  const img = await win.$eval('.be-canvas canvas', (c) => c.getBoundingClientRect().toJSON())
+  await m.click(img.x + img.width * 0.6, img.y + img.height * 0.3); await wait(300)
   await win.keyboard.type('Editor text')
   await typingDrag('editor:')
   writeFileSync(join(out, 'snap-editor.png'), await win.screenshot())

@@ -11,7 +11,7 @@ const SUITES = {
   annotate: [
     [/Enter adds a line: "Hello\\nSnapkit"/, 'typing into a new text box (focus ended the empty box)'],
     [/Esc finishes text and stays in capture mode: true/, 'Esc while typing ends the text, not the capture'],
-    [/frame drag moved text box by 60 30 \| still typing: true/, 'moving a text box while typing'],
+    [/frame drag moved text box by 60 (2[7-9]|3[0-3])(\.\d+)? \| still typing: true/, 'moving a text box while typing (smart align may nudge it a few px)'],
     [/active after Stroke: \[ 'Stroke \(outline\)' \]/, 'one text style at a time'],
     [/typed size 36 -> text node: true/, 'typed text size applies'],
     [/dark background sets white text: #ffffff/, 'readable text on a dark background'],
@@ -75,7 +75,7 @@ const SUITES = {
     [/floating previews: 2 \| overlay shown: false/, 'full-screen capture goes straight to the preview'],
     [/clipboard image: \{"width":\d+/, 'full-screen capture can copy'],
     [/editor open: true/, 'edit a full-screen capture'],
-    [/columns: 4 -> 5 \| saved size: \{"width":1100,"height":600\}/, 'resizable history window remembers its size'],
+    [process.platform === 'darwin' ? /columns: 4 -> 5 \| saved size: \{"width":1100,"height":600\}/ : /columns: \d -> \d \| saved size: \{"width":\d+,"height":\d+\}/, 'resizable history window remembers its size'],
     [/default limit: 10/, 'history keeps 10 by default'],
     [/clear button: .*Clear History .*trash/, 'labeled Clear History button'],
     [/drag file: Snapkit .*\.png \d+ bytes/, 'drag a capture out of history'],

@@ -43,6 +43,7 @@ try {
   const cols = () => h.$eval('.hist-grid', (g) => getComputedStyle(g).gridTemplateColumns.split(' ').length)
   const before = await cols()
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('#history')).setSize(1100, 600))
+  // (On a screen smaller than that, the window is as big as it can get.)
   await wait(900)
   console.log('columns:', before, '->', await cols(), '| saved size:', JSON.stringify(JSON.parse(readFileSync(join(profile, 'settings.json'), 'utf8')).history?.panel))
   console.log('default limit:', await h.evaluate(() => window.snapkit.settingsGet().then((s) => s.defaults.history.maxCount)))
