@@ -1,0 +1,229 @@
+---
+// The hero: headline, downloads, and a looping demo of capture mode on a fake 960 × 600 screen.
+// The script adds one class per moment (m-keys, m-dim, m-drag, …) and CSS does the rest.
+import { Code2, Laptop, SlidersHorizontal } from 'lucide-react'
+import type { Latest } from '../lib/release'
+import { Desk } from './demo/Shot'
+import Toolbar, { ACTIONS, TOOLS } from './demo/Toolbar'
+import Download from './Download.astro'
+
+interface Props { latest: Latest }
+const { latest } = Astro.props
+---
+<section class="hero" id="top">
+  <div class="wrap hero-text">
+    <span class="eyebrow"><i class="dot"></i> Screenshot tool for macOS and Windows</span>
+    <h1>Screenshots, <span class="serif">your way.</span></h1>
+    <p class="lead">
+      Capture, annotate, blur, add a background and copy, in a few keystrokes.
+      Free and open source, with every tool and shortcut yours to change.
+    </p>
+    <div id="download"><Download latest={latest} /></div>
+  </div>
+
+  <div class="wrap">
+    <div class="stage" data-stage>
+      <div class="screen-box">
+        <div class="screen" aria-hidden="true">
+          <Desk />
+          <div class="dim"></div>
+          <div class="lift">
+            <div class="frame"></div>
+            <div class="sel">
+              <div class="sel-desk"><Desk /></div>
+              <svg class="arrow" viewBox="0 0 500 290" width="500" height="290">
+                <path class="arrow-line" d="M470 104 L424 190" pathLength="1" />
+                <path class="arrow-head" d="M-15 -8 L0 0 L-15 8" transform="translate(424 190) rotate(118.1)" />
+              </svg>
+              <span class="step-badge s-one" style="left:222px;top:31px">1</span>
+              <span class="step-badge s-two" style="left:299px;top:190px">2</span>
+              <div class="blur-box" style="left:36px;top:202px;width:264px;height:44px"></div>
+            </div>
+            <div class="handles"></div>
+          </div>
+          <span class="size-label">1000 × 580</span>
+          <Toolbar items={TOOLS} vertical tagged className="tools-v" />
+          <Toolbar items={ACTIONS} tagged className="tools-h" />
+          <svg class="cursor" width="22" height="22" viewBox="0 0 22 22">
+            <path d="M11 1v20M1 11h20" stroke="#fff" stroke-width="3" />
+            <path d="M11 1v20M1 11h20" stroke="#111" stroke-width="1.2" />
+          </svg>
+          <div class="preview-chrome"><span>Copy</span><span>Edit</span></div>
+          <div class="toast">Copied to clipboard</div>
+        </div>
+        <p class="sr-only">
+          Animation: pressing Option Shift Z dims the screen, an area is selected, an arrow, two numbered steps and a blur
+          are added, a gradient background wraps the result, and it is copied into a small preview in the corner.
+        </p>
+      </div>
+
+      <div class="hchip hchip-keys k-capture"><span class="kbd">⌥</span><span class="kbd">⇧</span><span class="kbd">Z</span> Capture</div>
+      <div class="hchip hchip-copy k-copy"><span class="kbd">⌘</span><span class="kbd">C</span> Copy</div>
+      <div class="hchip chip c-free"><span class="ic" style="background:#22c55e"><Code2 /></span>Free &amp; open source</div>
+      <div class="hchip chip c-os"><span class="ic" style="background:#111"><Laptop /></span>macOS + Windows</div>
+      <div class="hchip chip c-opt"><span class="ic" style="background:linear-gradient(135deg,#1e8bff,#4a2bef)"><SlidersHorizontal /></span>Every tool optional</div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const MOMENTS: [string, number][] = [
+    ['m-keys', 500], ['m-dim', 700], ['m-drag', 1100], ['m-tools', 2250], ['m-arrow', 2900], ['m-step1', 3700], ['m-step2', 4150],
+    ['m-blur', 4700], ['m-bg', 5500], ['m-lift', 6400], ['m-copy', 7600]
+  ]
+  const LOOP = 10600
+
+  for (const stage of document.querySelectorAll<HTMLElement>('[data-stage]')) {
+    const box = stage.querySelector<HTMLElement>('.screen-box')!
+    const fit = () => stage.style.setProperty('--s', String(box.clientWidth / 960))
+    fit()
+    new ResizeObserver(fit).observe(box)
+
+    // ?moment=m-bg freezes the demo at that moment (for checking frames and the OG image).
+    const fixed = new URLSearchParams(location.search).get('moment')
+    const still = fixed ?? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'm-bg' : null)
+    if (still) {
+      const upTo = MOMENTS.findIndex(([m]) => m === still)
+      stage.classList.add('m-instant', ...MOMENTS.slice(0, upTo + 1).map(([m]) => m))
+      continue
+    }
+
+    let timers: number[] = []
+    let running = false
+    const play = () => {
+      stage.classList.add('m-instant')
+      stage.classList.remove(...MOMENTS.map(([m]) => m))
+      void stage.offsetWidth
+      stage.classList.remove('m-instant', 'm-fade')
+      timers = MOMENTS.map(([m, t]) => window.setTimeout(() => stage.classList.add(m), t))
+      timers.push(window.setTimeout(() => stage.classList.add('m-fade'), LOOP - 500))
+      timers.push(window.setTimeout(play, LOOP))
+    }
+    const stop = () => { timers.forEach(clearTimeout); timers = [] }
+    new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !running) { running = true; play() }
+      else if (!e.isIntersecting && running) { running = false; stop() }
+    }).observe(stage)
+  }
+</script>
+
+<style>
+  .hero { padding: 72px 0 40px; }
+  .hero-text { display: grid; justify-items: center; text-align: center; gap: 20px; margin-bottom: 56px; }
+  h1 { font-size: clamp(44px, 8vw, 84px); letter-spacing: -.045em; line-height: 1; }
+  h1 .serif { font-size: 1.1em; letter-spacing: -.02em; }
+  .hero-text .lead { margin-bottom: 8px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .stage {
+    --s: .5; position: relative; padding: clamp(12px, 4vw, 48px); border-radius: 28px; background: var(--stage);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .screen-box { position: relative; width: 100%; max-width: 960px; margin: 0 auto; aspect-ratio: 960 / 600; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-l); }
+  .screen { position: absolute; left: 0; top: 0; width: 960px; height: 600px; transform: scale(var(--s)); transform-origin: 0 0; transition: opacity .45s ease; }
+  .stage.m-fade .screen { opacity: 0; }
+  .stage.m-instant * { transition: none !important; animation: none !important; }
+
+  /* Every animated piece starts hidden; the moment classes reveal it. */
+  .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .5); opacity: 0; transition: opacity .25s ease; }
+  .stage.m-dim .dim { opacity: 1; }
+  .stage.m-lift .dim { opacity: 0; transition-duration: .5s; }
+  .screen > :global(.desk) { transition: filter .6s ease, opacity .6s ease; }
+  .stage.m-lift .screen > :global(.desk) { filter: blur(10px) saturate(.6); opacity: .55; }
+  .stage.m-copy .screen > :global(.desk) { filter: none; opacity: 1; }
+
+  .lift { position: absolute; inset: 0; transform-origin: 500px 295px; transition: transform .8s cubic-bezier(.2, .8, .2, 1); }
+  .stage.m-lift .lift { transform: translate(-20px, -5px) scale(1.06); }
+  .stage.m-copy .lift { transform: translate(338px, 227px) scale(.28); transition-duration: .7s; }
+
+  .sel {
+    position: absolute; left: 250px; top: 150px; width: 0; height: 0; overflow: hidden; outline: 1px solid rgba(255, 255, 255, .9);
+    opacity: 0; transition: width .95s cubic-bezier(.4, 0, .2, 1), height .95s cubic-bezier(.4, 0, .2, 1), border-radius .5s ease, box-shadow .5s ease;
+  }
+  .stage.m-drag .sel { opacity: 1; width: 500px; height: 290px; }
+  .stage.m-bg .sel { outline-color: transparent; border-radius: 10px; box-shadow: 0 18px 40px rgba(60, 20, 0, .35); }
+  .sel-desk { position: absolute; left: -250px; top: -150px; width: 960px; height: 600px; }
+
+  .frame {
+    position: absolute; left: 214px; top: 114px; width: 572px; height: 362px; border-radius: 16px; opacity: 0; transform: scale(.96);
+    background: linear-gradient(135deg, #f83600, #f9d423); transition: opacity .45s ease, transform .45s ease;
+  }
+  .stage.m-bg .frame { opacity: 1; transform: none; }
+
+  .handles { position: absolute; left: 250px; top: 150px; width: 500px; height: 290px; opacity: 0; transition: opacity .2s ease; }
+  .handles::before, .handles::after {
+    content: ''; position: absolute; width: 9px; height: 9px; background: #fff; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+  }
+  .handles::before { left: -5px; top: -5px; }
+  .handles::after { right: -5px; bottom: -5px; }
+  .stage.m-tools .handles { opacity: 1; }
+  .stage.m-bg .handles { opacity: 0; }
+
+  .size-label { left: 250px; top: 124px; opacity: 0; transition: opacity .2s ease; }
+  .stage.m-drag .size-label { opacity: 1; }
+  .stage.m-tools .size-label { opacity: 0; }
+
+  .screen :global(.tools-v), .screen :global(.tools-h) { position: absolute; opacity: 0; transform: scale(.97); transition: opacity .2s ease, transform .2s ease; }
+  .screen :global(.tools-v) { left: 760px; top: 150px; }
+  .screen :global(.tools-h) { left: 540px; top: 450px; }
+  .stage.m-tools :global(.tools-v), .stage.m-tools :global(.tools-h) { opacity: 1; transform: none; }
+  .stage.m-lift :global(.tools-v), .stage.m-lift :global(.tools-h) { opacity: 0; }
+  .stage.m-arrow:not(.m-step1) :global([data-tool='arrow']),
+  .stage.m-step1:not(.m-blur) :global([data-tool='step']),
+  .stage.m-blur:not(.m-bg) :global([data-tool='blur']) { background: var(--ui-active); color: #fff; }
+  .stage.m-bg :global([data-tool='beautify'])::after {
+    content: ''; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 1.5px #fff;
+  }
+
+  .arrow { position: absolute; inset: 0; overflow: visible; fill: none; stroke: #ff3b30; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+  .arrow-line { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .45s ease-out; }
+  .arrow-head { opacity: 0; transition: opacity .1s ease .4s; }
+  .stage.m-arrow .arrow-line { stroke-dashoffset: 0; }
+  .stage.m-arrow .arrow-head { opacity: 1; }
+
+  .s-one, .s-two { transform: scale(0); transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+  .stage.m-step1 .s-one, .stage.m-step2 .s-two { transform: none; }
+
+  .blur-box { opacity: 0; transition: opacity .35s ease; }
+  .stage.m-blur .blur-box { opacity: 1; }
+
+  .cursor { position: absolute; left: 239px; top: 139px; opacity: 0; transition: left .95s cubic-bezier(.4, 0, .2, 1), top .95s cubic-bezier(.4, 0, .2, 1), opacity .2s; }
+  .stage.m-dim .cursor { opacity: 1; }
+  .stage.m-drag .cursor { left: 739px; top: 429px; }
+  .stage.m-tools .cursor { opacity: 0; }
+
+  .preview-chrome {
+    position: absolute; left: 758px; top: 471px; width: 160px; height: 101px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    opacity: 0; transition: opacity .3s ease .6s;
+  }
+  .preview-chrome span { padding: 4px 9px; border-radius: 999px; background: rgba(20, 20, 22, .82); color: #fff; font: 600 11px/1.2 var(--font); }
+  .stage.m-copy .preview-chrome { opacity: 1; }
+
+  .toast {
+    position: absolute; left: 50%; top: 44px; padding: 8px 14px; border-radius: 999px; background: rgba(20, 20, 22, .85); color: #fff;
+    font: 550 13px/1.2 var(--font); transform: translate(-50%, -12px); opacity: 0; transition: opacity .25s ease, transform .25s ease;
+  }
+  .stage.m-copy .toast { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Chips around the stage */
+  .hchip { position: absolute; z-index: 2; }
+  .hchip-keys, .hchip-copy {
+    display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px 8px 8px; border-radius: 14px; font-size: 13px; font-weight: 550; color: var(--fg-2);
+    background: var(--chip); box-shadow: var(--shadow-m), inset 0 0 0 1px var(--line);
+  }
+  .hchip-keys .kbd, .hchip-copy .kbd { transition: transform .12s ease, box-shadow .12s ease, background .12s; }
+  .stage.m-keys:not(.m-drag) .hchip-keys .kbd, .stage.m-copy:not(.m-fade) .hchip-copy .kbd {
+    transform: translateY(2px); box-shadow: inset 0 0 0 1px var(--line-strong); background: var(--bg-soft);
+  }
+  .k-capture { left: -10px; top: 22%; transform: rotate(-3deg); }
+  .k-copy { right: -10px; bottom: 16%; transform: rotate(3deg); }
+  .c-free { right: -14px; top: 12%; transform: rotate(2deg); }
+  .c-os { left: -14px; bottom: 26%; transform: rotate(-2deg); }
+  .c-opt { left: 50%; bottom: -18px; transform: translateX(-50%); }
+  @media (max-width: 900px) {
+    .k-capture, .k-copy { display: none; }
+    .c-free { top: -14px; right: 12px; }
+    .c-os { left: 12px; bottom: -16px; }
+    .c-opt { display: none; }
+  }
+</style>

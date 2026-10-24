@@ -1,0 +1,121 @@
+[
+  {
+    "version": "0.2.0-beta.5",
+    "date": "2026-10-24",
+    "intro": "Fifth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**New look:** Snapkit has its own icon now, the snapping hand. On macOS 26 and later the app icon is a real Liquid Glass icon (light, dark and tinted looks); older macOS and Windows get the same icon flat. The menu-bar icon (Mac) and tray icon (Windows) use it too.",
+        "sub": []
+      },
+      {
+        "text": "**Quick area capture** (Settings → General → After a capture, off by default): the area you draw is copied the moment you let go, with no adjusting or drawing step.",
+        "sub": []
+      },
+      {
+        "text": "**Editor zoom, continued:**",
+        "sub": [
+          "On a Mac, scrolling up (⌘ + scroll) now zooms in, like on Windows; a trackpad pinch works as before.",
+          "Hold **Space** and drag to move around a zoomed-in image, like Photoshop's hand tool.",
+          "Fast scrolling or pinching zooms the full amount (quick steps used to be partly lost)."
+        ]
+      },
+      {
+        "text": "**Scrollbars** are thin and rounded with no background strip, in the theme's colors (the settings window had a white strip in the dark theme).",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.2.0-beta.4",
+    "date": "2026-10-24",
+    "intro": "Fourth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**Zoom in the background editor:** Ctrl + scroll zooms the preview around the mouse pointer (on a Mac also ⌘ + scroll or a trackpad pinch), and you can scroll around when zoomed in. **Ctrl + 0** (⌘0) fits it back to the window; Ctrl + / Ctrl − zoom in steps, and the % badge in the corner also fits. The image and your drawings are redrawn sharp at every zoom level.",
+        "sub": []
+      },
+      {
+        "text": "**Windows: text is 26 px by default** (was 32). macOS stays at 20 px. Changeable in Settings → Tools.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.2.0-beta.3",
+    "date": "2026-10-24",
+    "intro": "Third beta of Snapkit, a fast screenshot tool for macOS and Windows. This one is mostly Windows fixes.",
+    "items": [
+      {
+        "text": "**Shortcuts held by another app now come back.** If another app is using one of Snapkit's shortcuts, Snapkit keeps trying and takes it as soon as that app quits (before, it stayed dead until Snapkit restarted). Settings → Shortcuts marks a shortcut another app holds right now, and a taken capture shortcut at startup shows a notification instead of a blocking error box.",
+        "sub": []
+      },
+      {
+        "text": "**Editor on small or scaled screens (e.g. Windows at 150%):** the editor's tools no longer run past its edges, where they couldn't be clicked; they wrap onto a second row.",
+        "sub": []
+      },
+      {
+        "text": "**Windows: text is 32 px by default** (easier to read at Windows' usual display scaling). macOS stays at 20 px. Changeable in Settings → Tools.",
+        "sub": []
+      },
+      {
+        "text": "Behind the scenes: the end-to-end tests now also run on Windows, at 100% and 150% display scaling.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.2.0-beta.2",
+    "date": "2026-10-24",
+    "intro": "Second beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**Smaller downloads:** the Mac installer is 77 MB (was 93 MB) and the Windows installer 71 MB (was 78 MB). Snapkit now ships only Chromium's English language files and uses stronger DMG compression.",
+        "sub": []
+      },
+      {
+        "text": "**Full-screen capture is now `⌘⇧9`** (was `⌘⇧5`, which is also macOS's own screenshot toolbar). If you never changed it, it switches by itself; you can pick another in Settings → Shortcuts.",
+        "sub": []
+      },
+      {
+        "text": "Behind the scenes: an end-to-end test run with about 100 checks, one for each bug fixed so far, now has to pass before every release.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.2.0-beta.1",
+    "date": "2026-10-24",
+    "intro": "First public beta of Snapkit, a fast screenshot tool for macOS and Windows: hotkey → frozen screen → select → annotate → ⌘C.",
+    "items": [
+      {
+        "text": "**Capture:** `⌥⇧Z` for an area, `⌘⇧5` for the whole screen (straight to the floating preview), from the menu bar too.",
+        "sub": []
+      },
+      {
+        "text": "**Annotate:** pencil, arrows (one-way or two-way), shapes, highlighter, text, numbered steps and blur. Smart alignment while moving; edit text in place.",
+        "sub": []
+      },
+      {
+        "text": "**Background:** gradient, color or image backgrounds with padding, corners, shadow and fixed output sizes.",
+        "sub": []
+      },
+      {
+        "text": "**Floating preview and pins:** copy, edit or pin the last capture; pins float above everything.",
+        "sub": []
+      },
+      {
+        "text": "**History:** `⌘⇧1` opens your recent captures (copy again, edit, pin, save, star, drag out as a file). Keeps 10 by default, up to 30.",
+        "sub": []
+      },
+      {
+        "text": "**Settings:** `⌘⇧2`. Light, Gray, Dark or System theme, optional Liquid Glass, every shortcut and tool configurable.",
+        "sub": []
+      },
+      {
+        "text": "Launch at login and update notifications (this beta is offered newer betas).",
+        "sub": []
+      }
+    ]
+  }
+]

@@ -1,0 +1,195 @@
+{
+  "presets": [
+    {
+      "id": "ocean",
+      "name": "Ember",
+      "background": {
+        "type": "gradient",
+        "from": "#f83600",
+        "to": "#f9d423",
+        "angle": 135
+      },
+      "padding": 48,
+      "radius": 12,
+      "shadow": 0.35
+    },
+    {
+      "id": "sunset",
+      "name": "Sunset",
+      "background": {
+        "type": "gradient",
+        "from": "#fb923c",
+        "to": "#ec4899",
+        "angle": 135
+      },
+      "padding": 48,
+      "radius": 12,
+      "shadow": 0.35
+    },
+    {
+      "id": "mint",
+      "name": "Mint",
+      "background": {
+        "type": "gradient",
+        "from": "#34d399",
+        "to": "#06b6d4",
+        "angle": 135
+      },
+      "padding": 48,
+      "radius": 12,
+      "shadow": 0.35
+    },
+    {
+      "id": "light",
+      "name": "Light",
+      "background": {
+        "type": "solid",
+        "color": "#eef0f3"
+      },
+      "padding": 40,
+      "radius": 10,
+      "shadow": 0.2
+    },
+    {
+      "id": "dark",
+      "name": "Dark",
+      "background": {
+        "type": "solid",
+        "color": "#18181b"
+      },
+      "padding": 40,
+      "radius": 10,
+      "shadow": 0.5
+    }
+  ],
+  "gradients": [
+    [
+      "#f5f7fa",
+      "#c3cfe2"
+    ],
+    [
+      "#a1c4fd",
+      "#c2e9fb"
+    ],
+    [
+      "#ffecd2",
+      "#fcb69f"
+    ],
+    [
+      "#e0c3fc",
+      "#8ec5fc"
+    ],
+    [
+      "#a8edea",
+      "#fed6e3"
+    ],
+    [
+      "#d4fc79",
+      "#96e6a1"
+    ],
+    [
+      "#f6d365",
+      "#fda085"
+    ],
+    [
+      "#ee9ca7",
+      "#ffdde1"
+    ],
+    [
+      "#ff5f6d",
+      "#ffc371"
+    ],
+    [
+      "#f83600",
+      "#f9d423"
+    ],
+    [
+      "#f093fb",
+      "#f5576c"
+    ],
+    [
+      "#fc466b",
+      "#3f5efb"
+    ],
+    [
+      "#4facfe",
+      "#00f2fe"
+    ],
+    [
+      "#43cea2",
+      "#185a9d"
+    ],
+    [
+      "#38ef7d",
+      "#11998e"
+    ],
+    [
+      "#5ee7df",
+      "#b490ca"
+    ],
+    [
+      "#4f8cff",
+      "#a855f7"
+    ],
+    [
+      "#fb923c",
+      "#ec4899"
+    ],
+    [
+      "#34d399",
+      "#06b6d4"
+    ],
+    [
+      "#7f7fd5",
+      "#86a8e7"
+    ],
+    [
+      "#667eea",
+      "#764ba2"
+    ],
+    [
+      "#8e2de2",
+      "#4a00e0"
+    ],
+    [
+      "#30cfd0",
+      "#330867"
+    ],
+    [
+      "#bdc3c7",
+      "#2c3e50"
+    ],
+    [
+      "#232526",
+      "#414345"
+    ],
+    [
+      "#0f2027",
+      "#2c5364"
+    ],
+    [
+      "#141e30",
+      "#243b55"
+    ],
+    [
+      "#42275a",
+      "#734b6d"
+    ],
+    [
+      "#870000",
+      "#190a05"
+    ],
+    [
+      "#000428",
+      "#004e92"
+    ],
+    [
+      "#3a1c71",
+      "#d76d77"
+    ],
+    [
+      "#434343",
+      "#000000"
+    ]
+  ]
+}

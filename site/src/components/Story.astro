@@ -1,0 +1,34 @@
+---
+import { GITHUB } from '../lib/release'
+---
+<section class="story" id="why">
+  <div class="wrap story-in">
+    <span class="eyebrow"><i class="dot"></i> A note from the maker</span>
+    <h2>Why a screenshot app <span class="serif">in 2026?</span></h2>
+    <div class="story-body">
+      <p>Taking screenshots is something I do all the time, and so do many people.</p>
+      <p>
+        There are plenty of screenshot tools out there, and some are arguably more polished. I'd probably have stuck with
+        Lightshot if it didn't look set to have compatibility problems with upcoming macOS versions. So I built one that
+        fits my own workflow and comes with the extra tools I need.
+      </p>
+      <p>
+        The aim: good defaults that cover most people's everyday needs (hopefully), while staying very customizable and
+        extensible.
+      </p>
+      <p class="story-last">
+        And it's all <a href={GITHUB}>open source</a>. If it still isn't quite right for you, fork it and ask Claude or
+        ChatGPT to build the version you need.
+      </p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .story { background: var(--bg-soft); border-block: 1px solid var(--line); }
+  .story-in { max-width: 720px; display: grid; gap: 22px; }
+  .story-body { display: grid; gap: 18px; font-size: clamp(17px, 2.1vw, 20px); line-height: 1.6; color: var(--fg-2); letter-spacing: -.005em; }
+  .story-body p:first-child { font-size: 1.15em; color: var(--fg); font-weight: 500; }
+  .story-last { padding-top: 18px; border-top: 1px dashed var(--line-strong); }
+  .story-last a { color: var(--fg); text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent); text-underline-offset: 3px; text-decoration-thickness: 2px; }
+</style>

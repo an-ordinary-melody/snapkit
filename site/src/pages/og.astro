@@ -1,0 +1,51 @@
+---
+// The 1200 × 630 share image. `node scripts/og.mjs` screenshots this page into public/og.png.
+import '../styles/global.css'
+import '../styles/demo.css'
+import { PlanCard } from '../components/demo/Shot'
+---
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Snapkit share image</title>
+  </head>
+  <body>
+    <div class="og">
+      <div class="og-text">
+        <div class="og-brand"><img src="/logo.svg" alt="" width="56" height="56" /> Snapkit</div>
+        <h1>Screenshots, <span class="serif">your way.</span></h1>
+        <p>Free and open source screenshot tool<br />for macOS and Windows</p>
+      </div>
+      <div class="og-shot">
+        <div class="og-card">
+        <PlanCard />
+        <span class="step-badge" style="left:214px;top:22px">1</span>
+        <span class="step-badge" style="left:290px;top:178px">2</span>
+        <div class="blur-box" style="left:22px;top:188px;width:264px;height:44px"></div>
+        <svg viewBox="0 0 472 262" width="472" height="262">
+          <path d="M452 84 L414 176" />
+          <path d="M-15 -8 L0 0 L-15 8" transform="translate(414 176) rotate(112.4)" />
+        </svg>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+<style>
+  body { margin: 0; }
+  .og { width: 1200px; height: 630px; display: grid; grid-template-columns: 1fr 600px; align-items: center; padding: 0 0 0 72px; background: #fff; overflow: hidden; }
+  .og-brand { display: flex; align-items: center; gap: 16px; font-size: 34px; font-weight: 650; letter-spacing: -.02em; }
+  .og-brand img { border-radius: 13px; }
+  h1 { font-size: 76px; line-height: 1; letter-spacing: -.045em; margin: 40px 0 24px; }
+  h1 .serif { font-size: 1.1em; }
+  p { font-size: 26px; line-height: 1.35; color: #71717a; }
+  .og-shot {
+    position: relative; height: 630px; display: grid; place-items: center; background: linear-gradient(135deg, #f83600, #f9d423);
+  }
+  .og-card { position: relative; width: 472px; height: 262px; transform: scale(1.08); }
+  .og-card .plan { box-shadow: 0 24px 60px rgba(80, 20, 0, .35); border-radius: 12px; }
+  .og-card svg { position: absolute; inset: 0; overflow: visible; fill: none; stroke: #ff3b30; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+</style>

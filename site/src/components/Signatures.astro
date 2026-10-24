@@ -1,0 +1,175 @@
+---
+import AnnotateDemo from './demo/AnnotateDemo'
+import BackgroundDemo from './demo/BackgroundDemo'
+import WorkflowDemo from './demo/WorkflowDemo'
+---
+<section class="sig" id="signatures">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow"><i class="dot"></i> Three things Snapkit does well</span>
+      <h2>Small tool, <span class="serif">big defaults.</span></h2>
+    </div>
+
+    <div class="sig-row">
+      <div class="sig-text">
+        <span class="sig-n">01</span>
+        <h3>Your workflow, your settings</h3>
+        <p>
+          Copy the moment you let go, or stop to draw. Add your background to every copy, keep a floating preview, save
+          without a dialog. Every tool, toolbar button and shortcut can be moved, changed or turned off.
+        </p>
+        <ul class="sig-list">
+          <li>Shortcuts for capture, full screen, history and settings, a letter for each tool</li>
+          <li>Show, hide and reorder every toolbar button</li>
+          <li>Light, Gray, Dark or System theme, optional Liquid Glass</li>
+        </ul>
+      </div>
+      <div class="panel"><WorkflowDemo client:visible /></div>
+    </div>
+
+    <div class="sig-row flip">
+      <div class="sig-text">
+        <span class="sig-n">02</span>
+        <h3>Annotate. Blur. Numbered steps.</h3>
+        <p>
+          Arrows, boxes, highlighter and text with a stroke or a background. Steps count themselves, and blur hides an email
+          or a token in one drag. Every shape stays editable until you copy, and lines up with the others as you move it.
+        </p>
+        <ul class="sig-list">
+          <li>One key per tool: <kbd class="kbd">A</kbd> <kbd class="kbd">R</kbd> <kbd class="kbd">T</kbd> <kbd class="kbd">N</kbd> <kbd class="kbd">B</kbd></li>
+          <li>Blur or pixelate, with a strength slider</li>
+          <li>Smart align guides while you drag</li>
+        </ul>
+      </div>
+      <div class="panel"><AnnotateDemo client:visible /></div>
+    </div>
+
+    <div class="sig-row">
+      <div class="sig-text">
+        <span class="sig-n">03</span>
+        <h3>Background presets, fully yours</h3>
+        <p>
+          Wrap a capture in a gradient or a color with one click, ready for a tweet, a slide or a doc. Pick a preset, or tune
+          padding, corners, shadow and output size, and make it the default for every copy. Try it:
+        </p>
+        <ul class="sig-list">
+          <li>32 gradients and 32 colors to start from, all editable</li>
+          <li>Fixed output sizes: Auto, 1:1, 16:9, 4:3, 9:16 or custom</li>
+          <li>A full editor with live preview, zoom and every drawing tool</li>
+        </ul>
+      </div>
+      <div class="panel"><BackgroundDemo client:visible /></div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .sig-row { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(28px, 5vw, 64px); align-items: center; }
+  .sig-row + .sig-row { margin-top: clamp(64px, 9vw, 112px); }
+  .sig-row.flip { grid-template-columns: 7fr 5fr; }
+  .sig-row.flip .sig-text { order: 2; }
+  .sig-text { display: grid; gap: 14px; }
+  .sig-n { font: 500 13px/1 var(--mono); color: var(--muted); }
+  .sig-text h3 { font-size: clamp(26px, 3.2vw, 34px); letter-spacing: -.03em; line-height: 1.1; }
+  .sig-text p { color: var(--muted); }
+  .sig-list { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 10px; font-size: 15px; color: var(--fg-2); }
+  .sig-list li { position: relative; padding-left: 18px; }
+  .sig-list li::before { content: ''; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); }
+  .sig-list .kbd { min-width: 22px; height: 22px; font-size: 12px; }
+  @media (max-width: 860px) {
+    .sig-row, .sig-row.flip { grid-template-columns: 1fr; }
+    .sig-row.flip .sig-text { order: 0; }
+  }
+
+  /* 01 Workflow */
+  :global(.wf) { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { :global(.wf) { grid-template-columns: 1fr; } }
+  :global(.wf-settings), :global(.wf-flow) { background: var(--card); border-radius: 16px; box-shadow: var(--shadow-s), inset 0 0 0 1px var(--line); padding: 14px; }
+  :global(.wf-head) { font-size: 12px; font-weight: 600; color: var(--muted); margin: 2px 4px 10px; text-transform: uppercase; letter-spacing: .04em; }
+  :global(.wf-row) { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-radius: 10px; cursor: pointer; }
+  :global(.wf-row:hover) { background: var(--bg-soft); }
+  :global(.wf-row + .wf-row) { border-top: 1px solid var(--line); }
+  :global(.wf-row > span) { display: grid; gap: 1px; flex: 1; min-width: 0; }
+  :global(.wf-row b) { font-size: 14px; font-weight: 550; }
+  :global(.wf-row small) { font-size: 12px; color: var(--muted); }
+  :global(.wf-row input) { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  :global(.wf-switch) { width: 36px; height: 22px; flex: none; border-radius: 999px; background: var(--line-strong); position: relative; transition: background .2s; }
+  :global(.wf-switch::after) { content: ''; position: absolute; left: 2px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+  :global(.wf-row input:checked + .wf-switch) { background: var(--accent); }
+  :global(.wf-row input:checked + .wf-switch::after) { transform: translateX(14px); }
+  :global(.wf-row input:focus-visible + .wf-switch) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  :global(.wf-flow ol) { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  :global(.wf-flow li) {
+    position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; background: var(--bg-soft);
+    font-size: 14px; font-weight: 550; animation: wf-in .3s ease both;
+  }
+  :global(.wf-flow li.is-accent) { background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: color-mix(in srgb, var(--accent) 70%, var(--fg)); }
+  :global(.wf-n) { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-strong); flex: none; }
+  :global(.wf-label) { flex: 1; }
+  :global(.wf-keys) { display: flex; gap: 3px; }
+  :global(.wf-keys .kbd), :global(.wf-save .kbd) { min-width: 20px; height: 20px; font-size: 11px; padding: 0 5px; border-radius: 5px; }
+  :global(.wf-next) { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%) rotate(90deg); color: var(--muted); z-index: 1; display: none; }
+  :global(.wf-save) { margin-top: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  @keyframes wf-in { from { opacity: 0; transform: translateY(4px); } }
+
+  /* 02 Annotate */
+  :global(.an) { display: grid; gap: 16px; }
+  :global(.an-shot) { border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #e0c3fc, #8ec5fc); box-shadow: var(--shadow-s); }
+  :global(.an-svg) { position: absolute; inset: 0; overflow: visible; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  :global(.an-rect) { stroke: #ff3b30; stroke-width: 4; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .5s ease; }
+  :global(.an-rect.on) { stroke-dashoffset: 0; }
+  :global(.an-hl) { fill: #ffe066; opacity: 0; mix-blend-mode: multiply; transform-origin: 40px 0; transform: scaleX(0); transition: transform .45s ease, opacity .1s; }
+  :global(.an-hl.on) { opacity: .75; transform: none; }
+  :global(.an-arrow) { stroke: #ff3b30; stroke-width: 5; }
+  :global(.an-arrow path:first-child) { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .4s ease-out; }
+  :global(.an-arrow .head) { opacity: 0; transition: opacity .1s ease .35s; }
+  :global(.an-arrow.on path:first-child) { stroke-dashoffset: 0; }
+  :global(.an-arrow.on .head) { opacity: 1; }
+  :global(.an-text) {
+    position: absolute; font: 700 26px/1 var(--font); color: #ff3b30; -webkit-text-stroke: 6px #fff; paint-order: stroke fill; letter-spacing: -.01em;
+    opacity: 0; transform: translateY(4px); transition: opacity .25s, transform .25s; white-space: nowrap;
+  }
+  :global(.an-text.on) { opacity: 1; transform: none; }
+  :global(.an-pop) { transform: scale(0); transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+  :global(.an-pop.on) { transform: none; }
+  :global(.an-blur) { opacity: 0; transition: opacity .35s, backdrop-filter .3s; cursor: help; }
+  :global(.an-blur.on) { opacity: 1; }
+  :global(.an-blur.on:hover) { backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); box-shadow: inset 0 0 0 2px #ff3b30; }
+  :global(.an-tools) { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  :global(.an-tool) {
+    display: grid; justify-items: center; gap: 4px; padding: 10px 4px 8px; border-radius: 12px; background: var(--card);
+    box-shadow: inset 0 0 0 1px var(--line); font-size: 11.5px; color: var(--muted); transition: background .2s, color .2s, box-shadow .2s;
+  }
+  :global(.an-tool kbd) { font: 600 11px/1 var(--font); padding: 3px 6px; border-radius: 5px; background: var(--bg-soft); color: var(--fg-2); box-shadow: inset 0 0 0 1px var(--line); }
+  :global(.an-tool .an-ic) { color: var(--fg); }
+  :global(.an-tool.is-active) { background: var(--ui-active); color: #fff; box-shadow: none; }
+  :global(.an-tool.is-active .an-ic) { color: #fff; }
+  :global(.an-tool.is-active kbd) { background: rgba(255,255,255,.2); color: #fff; box-shadow: none; }
+  @media (max-width: 480px) { :global(.an-name) { display: none; } }
+
+  /* 03 Background */
+  :global(.bgd) { display: grid; gap: 18px; }
+  :global(.bgd-view) { position: relative; }
+  :global(.bgd-view .scaled) { border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-m); transition: aspect-ratio .3s; }
+  :global(.bgd-frame) { transition: background .4s; }
+  :global(.bgd-frame .plan) { transition: left .3s, top .3s, border-radius .2s, box-shadow .2s; }
+  :global(.bgd-size) { position: absolute; right: 8px; bottom: 8px; padding: 3px 7px; border-radius: 6px; background: rgba(20,20,22,.75); color: #fff; font: 500 11px/1.2 var(--font); font-variant-numeric: tabular-nums; }
+  :global(.bgd-controls) { display: grid; gap: 14px; background: var(--card); border-radius: 16px; padding: 14px; box-shadow: var(--shadow-s), inset 0 0 0 1px var(--line); }
+  :global(.bgd-presets) { display: flex; flex-wrap: wrap; gap: 6px; }
+  :global(.bgd-preset) { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 11px 0 5px; border-radius: 999px; border: 0; background: var(--bg-soft); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 550; cursor: pointer; }
+  :global(.bgd-preset:hover) { box-shadow: inset 0 0 0 1px var(--line-strong); }
+  :global(.bgd-preset i) { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
+  :global(.bgd-swatches) { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+  :global(.bgd-swatch) { aspect-ratio: 1; border: 0; border-radius: 8px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: transform .12s; padding: 0; }
+  :global(.bgd-swatch:hover) { transform: scale(1.06); }
+  :global(.bgd-swatch[aria-pressed='true']) { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
+  :global(.bgd-random) { display: grid; place-items: center; background: var(--bg-soft); color: var(--fg-2); box-shadow: inset 0 0 0 1px var(--line); }
+  :global(.bgd-sliders) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 480px) { :global(.bgd-sliders) { grid-template-columns: 1fr; } }
+  :global(.bgd-sliders label) { display: grid; grid-template-columns: 1fr auto; gap: 4px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  :global(.bgd-sliders output) { font-variant-numeric: tabular-nums; color: var(--fg-2); }
+  :global(.bgd-sliders input) { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+  :global(.bgd-sizes) { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--bg-soft); box-shadow: inset 0 0 0 1px var(--line); justify-self: start; }
+  :global(.bgd-sizes button) { border: 0; background: transparent; height: 28px; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 550; color: var(--muted); cursor: pointer; }
+  :global(.bgd-sizes button[aria-pressed='true']) { background: var(--card); color: var(--fg); box-shadow: var(--shadow-s); }
+</style>

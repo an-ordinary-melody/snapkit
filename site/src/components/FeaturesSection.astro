@@ -1,0 +1,156 @@
+---
+import Features from './demo/Features'
+---
+<section id="features" class="feat">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow"><i class="dot"></i> Everything in detail</span>
+      <h2>All the tools, <span class="serif">none in the way.</span></h2>
+      <p class="lead">Each one can be turned off in Settings, so your toolbar only has what you use.</p>
+    </div>
+    <Features client:visible />
+  </div>
+</section>
+
+<style>
+  :global(.fx) { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; }
+  :global(.fx-tabs) { display: grid; gap: 2px; position: sticky; top: 88px; }
+  :global(.fx-tabs button) {
+    display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 14px; border: 0; border-radius: 12px; background: transparent;
+    font-size: 15px; font-weight: 550; color: var(--muted); cursor: pointer; text-align: left; transition: background .15s, color .15s;
+  }
+  :global(.fx-tabs button:hover) { color: var(--fg); background: var(--bg-soft); }
+  :global(.fx-tabs button[aria-selected='true']) { color: var(--fg); background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); }
+  :global(.fx-panel) {
+    display: grid; gap: 20px; padding: clamp(18px, 3vw, 32px); border-radius: 24px; background: var(--stage); box-shadow: inset 0 0 0 1px var(--line);
+    min-height: 520px; align-content: start; animation: fx-in .3s ease;
+  }
+  @keyframes fx-in { from { opacity: 0; transform: translateY(6px); } }
+  :global(.fx-copy) { display: grid; gap: 8px; max-width: 640px; }
+  :global(.fx-copy h3) { font-size: 24px; letter-spacing: -.025em; }
+  :global(.fx-copy p) { color: var(--muted); }
+  :global(.fx-copy .kbd), :global(.fx-caption .kbd) { min-width: 20px; height: 20px; font-size: 11px; padding: 0 5px; border-radius: 5px; vertical-align: 1px; }
+  :global(.fx-caption) { font-size: 13px; color: var(--muted); }
+  :global(.fx-keys) { display: inline-flex; gap: 3px; align-items: center; color: var(--muted); }
+  :global(.fx-keys .kbd) { min-width: 22px; height: 22px; font-size: 12px; padding: 0 6px; border-radius: 6px; }
+  :global(.fx-keys small) { margin-left: 6px; font-size: 12px; }
+  @media (max-width: 860px) {
+    :global(.fx) { grid-template-columns: 1fr; }
+    :global(.fx-tabs) { position: static; display: flex; overflow-x: auto; gap: 6px; padding-bottom: 4px; scrollbar-width: none; margin: 0 -16px; padding-inline: 16px; }
+    :global(.fx-tabs button) { flex: none; height: 38px; font-size: 14px; background: var(--bg-soft); }
+    :global(.fx-panel) { min-height: 0; }
+  }
+
+  /* Capture */
+  :global(.fx-capture) { display: grid; gap: 16px; }
+  :global(.fx-mini-screen) {
+    position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-m);
+    background: radial-gradient(120% 90% at 15% 10%, #8ec5fc 0%, #6d8cf5 45%, #5b4bd8 100%);
+  }
+  :global(.fx-nudge) {
+    position: absolute; left: 24%; top: 25%; width: 52%; height: 48%; outline: 1px solid #fff;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.45); animation: fx-nudge 4s ease-in-out infinite;
+  }
+  @keyframes fx-nudge { 0%, 20% { transform: none; } 30%, 50% { transform: translateX(-6%); } 60%, 80% { transform: translate(-6%, -8%); } }
+  :global(.fx-modes) { display: grid; gap: 8px; }
+  :global(.fx-modes > div) { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; flex-wrap: wrap; }
+  :global(.fx-modes b) { font-weight: 600; flex: 1; }
+
+  /* Annotate */
+  :global(.fx-tools) { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  :global(.fx-tool) { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 10px; padding: 12px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+  :global(.fx-tool b) { font-size: 14px; font-weight: 600; }
+  :global(.fx-tool .kbd) { min-width: 22px; height: 22px; font-size: 12px; }
+  :global(.fx-tool small) { grid-column: 2 / -1; font-size: 12px; color: var(--muted); }
+  :global(.fx-tool-ic) { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--ui-bg); color: var(--ui-fg); grid-row: span 2; }
+  :global(.fx-tool-wide) { grid-column: 1 / -1; grid-template-columns: auto auto 1fr; }
+  :global(.fx-tool-wide small) { grid-column: auto; }
+
+  /* Smart align */
+  :global(.fx-align) { position: relative; height: 340px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+  :global(.fx-box) { position: absolute; display: flex; align-items: center; gap: 8px; padding: 0 14px; height: 44px; border-radius: 8px; font-size: 14px; font-weight: 600; box-shadow: inset 0 0 0 2px #ff3b30; color: #ff3b30; background: color-mix(in srgb, #ff3b30 6%, var(--card)); }
+  :global(.fx-box-a) { left: 10%; top: 16%; width: 160px; }
+  :global(.fx-box-c) { right: 10%; top: 56%; width: 150px; }
+  :global(.fx-box-b) { left: 10%; top: 56%; width: 170px; animation: fx-drag 4.5s cubic-bezier(.4, 0, .2, 1) infinite; box-shadow: inset 0 0 0 2px var(--ui-active); color: var(--ui-active); background: color-mix(in srgb, var(--ui-active) 6%, var(--card)); }
+  @keyframes fx-drag { 0% { transform: translate(110px, 50px); } 35%, 75% { transform: none; } 100% { transform: translate(110px, 50px); } }
+  :global(.fx-guide) { position: absolute; background: var(--guide); opacity: 0; animation: fx-guide 4.5s infinite; }
+  :global(.fx-guide-v) { left: 10%; top: 0; bottom: 0; width: 1px; }
+  :global(.fx-guide-h) { left: 0; right: 0; top: calc(56% + 22px); height: 1px; }
+  @keyframes fx-guide { 0%, 33% { opacity: 0; } 36%, 72% { opacity: 1; } 76%, 100% { opacity: 0; } }
+  :global(.fx-align .fx-caption) { position: absolute; left: 16px; right: 16px; bottom: 14px; }
+
+  /* Text */
+  :global(.fx-text) { position: relative; display: grid; gap: 14px; justify-items: start; padding: 28px; border-radius: 14px; min-height: 300px; align-content: center; }
+  :global(.fx-t) { font: 700 26px/1.15 var(--font); letter-spacing: -.01em; filter: drop-shadow(0 2px 3px rgba(0,0,0,.1)); }
+  :global(.fx-t-plain) { color: #ff3b30; }
+  :global(.fx-t-stroke) { color: #ff3b30; -webkit-text-stroke: 6px #fff; paint-order: stroke fill; }
+  :global(.fx-t-light) { color: #111; background: #fff; padding: 4px 10px; border-radius: 6px; }
+  :global(.fx-t-dark) { color: #fff; background: #111; padding: 4px 10px; border-radius: 6px; }
+  :global(.fx-text .fx-caption) { color: #1e293b; opacity: .75; margin-top: 8px; }
+
+  /* Editor */
+  :global(.fx-editor) { display: grid; grid-template-columns: 1.3fr 1fr; border-radius: 14px; overflow: hidden; background: #1c1c1f; box-shadow: var(--shadow-m); color: #f2f2f4; }
+  @media (max-width: 640px) { :global(.fx-editor) { grid-template-columns: 1fr; } }
+  :global(.fx-ed-view) { position: relative; display: grid; place-items: center; min-height: 260px; padding: 20px; transition: background .4s; }
+  :global(.fx-zoom) { position: absolute; right: 10px; bottom: 10px; font-size: 11px; padding: 3px 7px; border-radius: 6px; background: rgba(20,20,22,.7); }
+  :global(.fx-ed-side) { display: grid; gap: 12px; padding: 16px; align-content: start; font-size: 13px; }
+  :global(.fx-seg) { display: inline-flex; gap: 2px; padding: 3px; border-radius: 9px; background: rgba(127,127,127,.15); justify-self: start; font-size: 13px; }
+  :global(.fx-seg > *) { padding: 4px 10px; border-radius: 7px; color: inherit; opacity: .7; cursor: pointer; }
+  :global(.fx-seg > .on) { background: rgba(255,255,255,.14); opacity: 1; }
+  :global(.fx-seg > .off) { opacity: .35; cursor: default; }
+  :global(.fx-seg input) { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  :global(.fx-hex) { display: flex; gap: 6px; align-items: center; }
+  :global(.fx-hex span) { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 7px; background: rgba(255,255,255,.08); font: 500 12px var(--mono); }
+  :global(.fx-hex i) { width: 14px; height: 14px; border-radius: 4px; }
+  :global(.fx-hex button) { margin-left: auto; border: 0; width: 28px; height: 28px; border-radius: 7px; background: rgba(255,255,255,.08); color: inherit; display: grid; place-items: center; cursor: pointer; }
+  :global(.fx-hue) { height: 10px; border-radius: 5px; background: linear-gradient(90deg, red, #ff0, lime, cyan, blue, #f0f, red); }
+  :global(.fx-grid) { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; }
+  :global(.fx-grid button) { aspect-ratio: 1; border: 0; padding: 0; border-radius: 6px; cursor: pointer; }
+  :global(.fx-grid button[aria-pressed='true']) { box-shadow: 0 0 0 2px #1c1c1f, 0 0 0 3.5px #fff; }
+
+  /* Preview & pins */
+  :global(.fx-preview) { display: grid; gap: 14px; }
+  :global(.fx-plain) { background: linear-gradient(160deg, #e9edf5, #cfd8e8); }
+  :global(.fx-pin) { position: absolute; left: 10%; top: 12%; width: 42%; border-radius: 10px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,.25); opacity: .92; }
+  :global(.fx-pin-bar) { display: flex; gap: 10px; align-items: center; padding: 6px 10px; background: rgba(28,28,31,.92); color: #f2f2f4; font-size: 11px; }
+  :global(.fx-sep) { width: 1px; height: 12px; background: rgba(255,255,255,.2); }
+  :global(.fx-pin-img), :global(.fx-thumb) { position: relative; aspect-ratio: 16 / 10; }
+  :global(.fx-pin-img i), :global(.fx-thumb i), :global(.fx-hist-item i) { position: absolute; inset: 16%; border-radius: 5px; background: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.2); }
+  :global(.fx-thumb) { position: absolute; right: 4%; bottom: 6%; width: 30%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.5); animation: fx-thumb 5s ease infinite; }
+  @keyframes fx-thumb { 0% { transform: translateX(130%); } 12%, 100% { transform: none; } }
+  :global(.fx-thumb-btns) { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  :global(.fx-thumb-btns span) { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: rgba(20,20,22,.85); color: #fff; font-size: 11px; font-weight: 600; }
+  :global(.fx-thumb-pin) { position: absolute; right: 5px; top: 5px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(20,20,22,.85); color: #fff; }
+
+  /* History */
+  :global(.fx-history) { border-radius: 14px; padding: 14px; background: #1c1c1f; color: #f2f2f4; box-shadow: var(--shadow-m); display: grid; gap: 12px; }
+  :global(.fx-hist-head) { display: flex; align-items: center; justify-content: space-between; }
+  :global(.fx-history .kbd) { background: #2a2a2e; color: #e4e4e7; box-shadow: inset 0 0 0 1px #3a3a40, 0 2px 0 #3a3a40; }
+  :global(.fx-hist-grid) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  :global(.fx-hist-item) { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; }
+  :global(.fx-hist-item.sel) { box-shadow: 0 0 0 2px #1c1c1f, 0 0 0 4px var(--accent); }
+  :global(.fx-star) { position: absolute; right: 6px; top: 6px; }
+  :global(.fx-hist-keys) { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: #a1a1aa; }
+  :global(.fx-hist-keys .kbd) { min-width: 20px; height: 20px; font-size: 11px; padding: 0 5px; border-radius: 5px; margin-right: 3px; }
+  @media (max-width: 480px) { :global(.fx-hist-grid) { grid-template-columns: repeat(2, 1fr); } }
+
+  /* Theme */
+  :global(.fx-theme) { display: grid; gap: 14px; }
+  :global(.fx-theme-view) { position: relative; display: grid; place-items: center; min-height: 240px; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-m); }
+  :global(.fx-theme-shapes i) { position: absolute; border-radius: 50%; background: rgba(255,255,255,.55); }
+  :global(.fx-theme-shapes i:nth-child(1)) { width: 120px; height: 120px; left: 20%; top: 20%; }
+  :global(.fx-theme-shapes i:nth-child(2)) { width: 70px; height: 70px; right: 25%; bottom: 18%; background: #4f46e5; }
+  :global(.fx-theme-shapes i:nth-child(3)) { width: 40px; height: 40px; right: 40%; top: 18%; background: #111; }
+  :global(.fx-theme-view .tb) { position: relative; transition: background .3s, color .3s; }
+  :global(.tb-glass) { backdrop-filter: blur(14px) saturate(1.8); -webkit-backdrop-filter: blur(14px) saturate(1.8); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 0 0 .5px rgba(255,255,255,.4), 0 8px 24px rgba(0,0,0,.2) !important; }
+  :global(.fx-theme-ctl) { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+  :global(.fx-theme-ctl .fx-seg) { background: var(--bg-soft); }
+  :global(.fx-theme-ctl .fx-seg > .on) { background: var(--card); box-shadow: var(--shadow-s); }
+  :global(.fx-accents) { display: flex; gap: 8px; }
+  :global(.fx-accents button) { width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer; padding: 0; }
+  :global(.fx-accents button[aria-checked='true']) { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px currentColor; color: var(--fg-2); }
+  :global(.fx-glass) { position: relative; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 550; cursor: pointer; }
+  :global(.fx-glass input) { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  :global(.fx-glass input:checked + .wf-switch) { background: var(--accent); }
+  :global(.fx-glass input:checked + .wf-switch::after) { transform: translateX(14px); }
+</style>

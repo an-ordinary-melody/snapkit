@@ -133,6 +133,26 @@ Theme: `appearance.mode` is `dark` (default), `gray` (a lighter dark), `light` o
 
 Settings are stored in `settings.json` in the app's data folder (`~/Library/Application Support/Snapkit` on macOS). Only values you change are written there; everything else follows the defaults in `src/shared/settings.ts`.
 
+## Website
+
+The landing page lives in `site/` (Astro, React islands for the demos) and deploys on Vercel
+(free Hobby plan) as a project with Root Directory `site`.
+
+```bash
+cd site
+npm install
+npm run dev        # http://localhost:4321
+npm run build && npm run check   # build, then check it in Chrome (demos, links, phone width, console)
+```
+
+- The changelog comes from `release-notes/*.md` and the background presets from `src/shared/settings.ts`:
+  `scripts/sync-data.mjs` copies them into `site/src/data/` on every dev/build run (commit the result).
+  Only versions published on GitHub show up.
+- The download buttons point at the newest GitHub release, looked up at build time. The release job calls a
+  Vercel deploy hook (repository secret `VERCEL_DEPLOY_HOOK`) so the site rebuilds after each release.
+- Roadmap: `site/src/data/roadmap.json`. Share image: `node scripts/og.mjs` with the site running.
+- `?moment=m-bg` (or `m-copy`, …) freezes the hero demo at that moment.
+
 ## License
 
 [MIT](LICENSE)

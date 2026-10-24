@@ -1,0 +1,42 @@
+---
+import '../styles/demo.css'
+import Base from '../layouts/Base.astro'
+import Hero from '../components/Hero.astro'
+import Changelog from '../components/Changelog.astro'
+import Faq from '../components/Faq.astro'
+import FeaturesSection from '../components/FeaturesSection.astro'
+import Footer from '../components/Footer.astro'
+import Nav from '../components/Nav.astro'
+import Signatures from '../components/Signatures.astro'
+import Story from '../components/Story.astro'
+import { latestRelease } from '../lib/release'
+
+const latest = latestRelease()
+---
+<Base
+  title="Snapkit: a free, customizable screenshot tool for macOS and Windows"
+  description="Capture, annotate, blur, number steps and add a background in a few keystrokes. Free and open source, for macOS and Windows, with every tool and shortcut yours to change."
+>
+  <Nav />
+  <main>
+    <Hero latest={latest} />
+    <Signatures />
+    <Story />
+    <FeaturesSection />
+    <Faq />
+    <Changelog />
+  </main>
+  <Footer latest={latest} />
+  <script>
+    // Put the visitor's OS first in every download row.
+    const win = /Windows/i.test(navigator.userAgent)
+    if (win) {
+      for (const row of document.querySelectorAll('[data-dl]')) {
+        const w = row.querySelector('[data-os="win"]')!, m = row.querySelector('[data-os="mac"]')!
+        row.prepend(w)
+        w.classList.replace('btn-secondary', 'btn-primary')
+        m.classList.replace('btn-primary', 'btn-secondary')
+      }
+    }
+  </script>
+</Base>

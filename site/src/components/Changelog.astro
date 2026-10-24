@@ -1,0 +1,96 @@
+---
+import roadmap from '../data/roadmap.json'
+import { GITHUB, releaseNotes } from '../lib/release'
+
+const notes = releaseNotes()
+// "**Bold:** rest" in the release notes → <b>Bold:</b> rest; `code` → <code>.
+const md = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>')
+const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
+---
+<section id="changelog" class="log">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow"><i class="dot"></i> Changelog and roadmap</span>
+      <h2>Shipped, and <span class="serif">what's next.</span></h2>
+    </div>
+    <div class="log-grid">
+      <div class="log-col">
+        <h3>Changelog</h3>
+        <ol class="timeline">
+          {notes.map((n, i) => (
+            <li>
+              <details open={i < 2}>
+                <summary>
+                  <span class="ver">v{n.version}</span>
+                  {i === 0 && <span class="tag">Latest</span>}
+                  <time datetime={n.date}>{fmt(n.date!)}</time>
+                </summary>
+                <p class="intro">{n.intro}</p>
+                <ul>
+                  {n.items.map((it) => (
+                    <li>
+                      <Fragment set:html={md(it.text)} />
+                      {it.sub.length > 0 && <ul class="sub">{it.sub.map((x) => <li set:html={md(x)} />)}</ul>}
+                    </li>
+                  ))}
+                </ul>
+                <a class="more" href={n.url}>Release page →</a>
+              </details>
+            </li>
+          ))}
+        </ol>
+        <a class="all" href={`${GITHUB}/releases`}>All releases on GitHub</a>
+      </div>
+      <div class="log-col">
+        <h3>Roadmap</h3>
+        <div class="road">
+          {roadmap.map((r) => (
+            <div class="road-item">
+              <span class="tag">{r.state}</span>
+              <b>{r.title}</b>
+              <p>{r.body}</p>
+            </div>
+          ))}
+          <p class="road-note">Have an idea? <a href={`${GITHUB}/issues`}>Open an issue</a>, or fork it and build it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .log-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 860px) { .log-grid { grid-template-columns: 1fr; } }
+  .log-col { padding: clamp(18px, 3vw, 28px); border-radius: 24px; background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); display: grid; gap: 18px; }
+  .log-col h3 { font-size: 18px; }
+  .timeline { list-style: none; margin: 0; padding: 0 0 0 18px; display: grid; gap: 10px; border-left: 1px solid var(--line-strong); }
+  .timeline > li { position: relative; }
+  .timeline > li::before { content: ''; position: absolute; left: -23px; top: 20px; width: 9px; height: 9px; border-radius: 50%; background: var(--card); box-shadow: inset 0 0 0 2px var(--line-strong); }
+  .timeline > li:first-child::before { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  details { border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+  summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+  summary::-webkit-details-marker { display: none; }
+  .ver { font-weight: 650; font-size: 15px; font-variant-numeric: tabular-nums; }
+  time { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .tag { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--card)); color: color-mix(in srgb, var(--accent) 75%, var(--fg)); justify-self: start; }
+  .intro { padding: 0 14px; font-size: 14px; color: var(--muted); }
+  details ul { list-style: disc; margin: 10px 0 0; padding: 0 14px 0 32px; display: grid; gap: 8px; font-size: 14px; color: var(--fg-2); }
+  details ul.sub { margin-top: 6px; padding: 0 0 0 18px; gap: 4px; color: var(--muted); list-style: '– '; }
+  details ul :global(b) { font-weight: 600; color: var(--fg); }
+  details :global(code) { font: 12.5px var(--mono); padding: 1px 5px; border-radius: 5px; background: var(--bg-soft); }
+  .more { display: inline-block; margin: 10px 14px 14px; font-size: 13px; color: var(--muted); text-decoration: none; }
+  .more:hover, .all:hover { color: var(--fg); }
+  .all { font-size: 14px; color: var(--muted); }
+  .road { display: grid; gap: 10px; }
+  .road-item { display: grid; gap: 6px; padding: 16px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+  .road-item b { font-size: 16px; letter-spacing: -.01em; }
+  .road-item p { font-size: 14px; color: var(--muted); }
+  .road-note { font-size: 14px; color: var(--muted); padding: 4px 2px; }
+  .road-note a { color: var(--fg); }
+  @media (max-width: 480px) {
+    .timeline { padding-left: 14px; }
+    .timeline > li::before { left: -19px; }
+    details ul { padding-right: 10px; padding-left: 26px; }
+  }
+</style>

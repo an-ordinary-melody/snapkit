@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    paths-ignore: ['site/**', 'docs/**'] # the website deploys on Vercel; tags always build
   pull_request:
   workflow_dispatch:
 
@@ -52,6 +53,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions: { contents: write }
+    env:
+      VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
     steps:
       - uses: actions/checkout@v7 # for release-notes/<tag>.md
       - uses: actions/download-artifact@v8
@@ -63,3 +66,8 @@ jobs:
           # A tag with a dash (v0.2.0-beta.1) is a beta: a GitHub pre-release.
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
+      # The website (site/) reads the newest release when it builds: rebuild it so the
+      # download buttons and changelog show this one. Skipped until the secret is set.
+      - name: Redeploy the website
+        if: env.VERCEL_DEPLOY_HOOK != ''
+        run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK" > /dev/null

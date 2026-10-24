@@ -1,0 +1,50 @@
+---
+import type { Latest } from '../lib/release'
+import { GITHUB } from '../lib/release'
+import Download from './Download.astro'
+
+interface Props { latest: Latest }
+const { latest } = Astro.props
+---
+<section class="cta">
+  <div class="wrap">
+    <div class="cta-box">
+      <img src="/logo.svg" alt="" width="64" height="64" />
+      <h2>Ready to <span class="serif">snap?</span></h2>
+      <p class="lead">Free for macOS and Windows. Takes a minute to install.</p>
+      <Download latest={latest} />
+    </div>
+  </div>
+</section>
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span class="foot-brand"><img src="/logo.svg" alt="" width="20" height="20" /> Snapkit</span>
+    <nav aria-label="Footer">
+      <a href={GITHUB}>GitHub</a>
+      <a href={`${GITHUB}/issues`}>Issues</a>
+      <a href={`${GITHUB}/releases`}>Releases</a>
+      <a href={`${GITHUB}/blob/main/LICENSE`}>MIT License</a>
+    </nav>
+    <span class="foot-note">Free and open source, made by one person who takes a lot of screenshots.</span>
+  </div>
+</footer>
+
+<style>
+  .cta { padding-top: 32px; }
+  .cta-box {
+    display: grid; justify-items: center; text-align: center; gap: 16px; padding: clamp(40px, 7vw, 80px) 20px; border-radius: 28px;
+    background: radial-gradient(80% 120% at 50% 0%, color-mix(in srgb, var(--brand-a) 14%, var(--stage)), var(--stage));
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .cta-box img { border-radius: 15px; box-shadow: var(--shadow-m); margin-bottom: 8px; }
+  .cta-box .lead { margin-bottom: 10px; }
+  .foot { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 14px; color: var(--muted); }
+  .foot-in { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
+  .foot-brand { display: flex; align-items: center; gap: 8px; color: var(--fg); font-weight: 600; }
+  .foot-brand img { border-radius: 5px; }
+  .foot nav { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .foot a { text-decoration: none; }
+  .foot a:hover { color: var(--fg); }
+  .foot-note { margin-left: auto; font-size: 13px; }
+  @media (max-width: 720px) { .foot-note { margin-left: 0; } }
+</style>

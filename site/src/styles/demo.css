@@ -1,0 +1,93 @@
+/* Pieces shared by every demo: the app's toolbars, the plan card, the fake screen. */
+
+.tb {
+  display: inline-flex; gap: 2px; padding: 4px; border-radius: 11px; background: var(--ui-bg); color: var(--ui-fg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .28), inset 0 0 0 .5px rgba(255, 255, 255, .12);
+}
+.tb-v { flex-direction: column; }
+.tb-btn {
+  position: relative; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px;
+  transition: background .2s ease, color .2s ease;
+}
+.tb-btn.is-active { background: var(--ui-active); color: #fff; }
+.tb-color { width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.tb-dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 1.5px #fff; }
+
+/* The plan card (always light: it is a screenshot of someone's web page). */
+.plan {
+  width: 472px; height: 262px; border-radius: 14px; background: #fff; color: #111827; padding: 22px 24px; text-align: left;
+  font-family: var(--font); box-shadow: 0 1px 2px rgba(17, 24, 39, .06), inset 0 0 0 1px #e5e7eb; position: relative; overflow: hidden;
+}
+.plan-ghost { padding: 0; }
+.plan-ghost::before, .plan-ghost::after { content: ''; position: absolute; left: 24px; height: 10px; border-radius: 5px; background: #eef0f3; }
+.plan-ghost::before { top: 26px; width: 160px; }
+.plan-ghost::after { top: 50px; width: 260px; }
+.plan-title { font-size: 20px; font-weight: 650; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; line-height: 1.2; }
+.plan-badge { font-size: 11px; font-weight: 600; letter-spacing: 0; padding: 3px 8px; border-radius: 999px; background: #eef2ff; color: #4f46e5; }
+.plan-price { margin-top: 8px; font-size: 13px; color: #6b7280; }
+.plan-price b { font-size: 30px; color: #111827; letter-spacing: -.03em; font-weight: 700; margin-right: 2px; }
+.plan-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 3px; font-size: 13px; color: #374151; }
+.plan-list li { display: flex; align-items: center; gap: 8px; }
+.plan-list svg { color: #16a34a; }
+.plan-email {
+  position: absolute; left: 24px; top: 190px; width: 260px; height: 40px; border-radius: 9px; padding: 0 12px;
+  display: flex; align-items: center; font-size: 14px; color: #111827; box-shadow: inset 0 0 0 1px #d1d5db; background: #fff;
+}
+.plan-btn {
+  position: absolute; left: 300px; top: 190px; width: 148px; height: 40px; border-radius: 9px; display: grid; place-items: center;
+  font-size: 14px; font-weight: 600; color: #fff; background: #2563eb; box-shadow: 0 1px 2px rgba(37, 99, 235, .4);
+}
+
+/* The fake 960 × 600 screen */
+.desk {
+  position: absolute; inset: 0; width: 960px; height: 600px; overflow: hidden; font-family: var(--font);
+  background: radial-gradient(120% 90% at 15% 10%, #8ec5fc 0%, #6d8cf5 45%, #5b4bd8 100%);
+}
+.desk-menubar {
+  position: absolute; inset: 0 0 auto; height: 26px; display: flex; align-items: center; gap: 18px; padding: 0 14px;
+  font-size: 12.5px; color: #fff; background: rgba(20, 20, 40, .22); backdrop-filter: blur(20px);
+}
+.desk-apple { width: 12px; height: 12px; border-radius: 50% 50% 45% 45%; background: #fff; }
+.desk-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.desk-win {
+  position: absolute; left: 60px; top: 50px; width: 840px; height: 525px; border-radius: 12px; overflow: hidden;
+  background: #f9fafb; box-shadow: 0 20px 60px rgba(20, 20, 60, .35), 0 0 0 .5px rgba(0, 0, 0, .2);
+}
+.desk-titlebar {
+  height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #f1f2f4; border-bottom: 1px solid #e5e7eb;
+}
+.desk-titlebar i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+.desk-titlebar i:nth-child(2) { background: #febc2e; }
+.desk-titlebar i:nth-child(3) { background: #28c840; }
+.desk-url {
+  margin: 0 auto; transform: translateX(-30px); width: 300px; height: 24px; border-radius: 7px; background: #e4e6ea; font-size: 12px;
+  color: #4b5563; display: grid; place-items: center;
+}
+.desk-side { position: absolute; left: 0; top: 38px; bottom: 0; width: 170px; padding: 18px 12px; display: grid; align-content: start; gap: 4px; border-right: 1px solid #eceef1; font-size: 13px; color: #6b7280; }
+.desk-side span { padding: 6px 10px; border-radius: 7px; }
+.desk-side .on { background: #e9edf5; color: #111827; font-weight: 550; }
+.desk-brand { font-weight: 800; color: #111827 !important; letter-spacing: -.03em; font-size: 16px; margin-bottom: 8px; }
+.desk-main { position: absolute; left: 204px; top: 52px; }
+.desk-h { font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: #111827; }
+.desk-sub { font-size: 13px; color: #6b7280; margin-top: 2px; }
+
+/* Annotations drawn like the app's */
+.step-badge {
+  position: absolute; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 700 15px/1 var(--font);
+  color: #fff; background: #ff3b30; box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(0, 0, 0, .3);
+}
+.blur-box {
+  position: absolute; border-radius: 4px; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+  background: rgba(255, 255, 255, .08);
+}
+.size-label {
+  position: absolute; padding: 3px 6px; border-radius: 4px; background: rgba(20, 20, 22, .85); color: #fff;
+  font: 500 11px/1.2 var(--font); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* A fixed-size drawing scaled to its container's width (no script): --w is the drawing's width in px. */
+.scaled { container-type: inline-size; position: relative; width: 100%; }
+.scaled > .scaled-in { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: scale(tan(atan2(100cqw, var(--w)))); }
+
+/* Gray panel that holds a demo, like the hero stage */
+.panel { position: relative; border-radius: 24px; background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); padding: clamp(16px, 4vw, 36px); }

@@ -1,0 +1,12 @@
+[
+  {
+    "title": "Custom image backgrounds",
+    "body": "Put your own picture behind a screenshot, next to the gradients and colors. The editor already has a spot for it.",
+    "state": "Next"
+  },
+  {
+    "title": "Performance",
+    "body": "Capture mode that opens faster and uses less memory, including native capture engines (ScreenCaptureKit on macOS, DXGI on Windows).",
+    "state": "Next"
+  }
+]
