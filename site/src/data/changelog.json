@@ -2,13 +2,14 @@
   {
     "title": "Polish and a new look",
     "from": "0.2.0-beta.2",
-    "upTo": "0.2.0-beta.5",
+    "upTo": "0.2.0-beta.6",
     "items": [
       "New snapping-hand icon, with Liquid Glass on macOS 26",
       "Quick area capture: copied the moment you let go",
       "Editor zoom: ⌘ + scroll or pinch, hold Space to pan",
       "Smaller installers, sharper text on scaled Windows screens",
-      "Shortcuts held by another app come back on their own"
+      "Shortcuts held by another app come back on their own",
+      "Windows: the floating preview stays on top after every capture"
     ]
   },
   {

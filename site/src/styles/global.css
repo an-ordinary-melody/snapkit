@@ -106,6 +106,9 @@ h2 { font-size: clamp(32px, 5vw, 52px); }
 h2 .serif { font-size: 1.08em; }
 h3 { font-size: 20px; letter-spacing: -.015em; line-height: 1.25; }
 p { margin: 0; }
+/* No lone word on the last line: headings split evenly, body text avoids orphans. */
+h1, h2, h3, summary, .entry-title, .fx-copy h3 { text-wrap: balance; }
+p, li, .lead, .chip { text-wrap: pretty; }
 .lead { color: var(--muted); font-size: clamp(16px, 2vw, 18px); max-width: 620px; }
 
 section { padding: 96px 0; }

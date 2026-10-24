@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.2.0-beta.6",
+    "date": "2026-10-24",
+    "intro": "Sixth beta of Snapkit, a fast screenshot tool for macOS and Windows. A Windows fix.",
+    "items": [
+      {
+        "text": "**Windows: the floating preview stays on top after an area capture.** With the floating preview on, the preview was created after copying but ended up behind the window you went back to (it only showed after minimizing something). It now stays on top, as it already did after a full-screen capture.",
+        "sub": []
+      },
+      {
+        "text": "Behind the scenes: a Windows test now asks Windows itself whether the preview is on top of the app you return to, at 100% and 150% display scaling.",
+        "sub": []
+      }
+    ]
+  },
+  {
     "version": "0.2.0-beta.5",
     "date": "2026-10-24",
     "intro": "Fifth beta of Snapkit, a fast screenshot tool for macOS and Windows.",

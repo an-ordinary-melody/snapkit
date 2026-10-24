@@ -125,6 +125,38 @@ try {
     await page.close()
   }
 
+  // No lone word on the last line of any heading, paragraph or list item, at phone, tablet and desktop widths.
+  for (const width of [375, 768, 1280]) {
+    const page = await browser.newPage({ viewport: { width, height: 900 }, bypassCSP: true })
+    await page.goto(base + '/', { waitUntil: 'networkidle' })
+    await page.evaluate(() => document.fonts.ready)
+    // Open every closed answer so its text is measured too.
+    await page.evaluate(() => document.querySelectorAll('details').forEach((d) => (d.open = true)))
+    const orphans = await page.evaluate(() => {
+      const found = []
+      for (const el of document.querySelectorAll('h1, h2, h3, p, li, summary, .lead, .entry-title')) {
+        if (!el.offsetParent || el.closest('[aria-hidden="true"]')) continue
+        const words = []
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+          for (const m of n.textContent.matchAll(/\S+/g)) {
+            const r = document.createRange()
+            r.setStart(n, m.index)
+            r.setEnd(n, m.index + m[0].length)
+            const rect = r.getClientRects()[0]
+            if (rect) words.push({ text: m[0], top: rect.top })
+          }
+        }
+        if (words.length < 4) continue
+        const last = words.at(-1), prev = words.at(-2)
+        if (last.top - prev.top > 4) found.push(`"…${prev.text} / ${last.text}" in <${el.tagName.toLowerCase()}> ${el.textContent.trim().slice(0, 40)}`)
+      }
+      return found
+    })
+    check(`${width}px: no lone word on a last line`, orphans.length === 0, orphans.join(' | '))
+    await page.close()
+  }
+
   // Strict pass: the real Content-Security-Policy, nothing blocked, demos still running.
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })

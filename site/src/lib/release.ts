@@ -50,6 +50,10 @@ export type Entry = { title: string; label: string; upTo: string; date: string; 
  */
 export function changelog(curated: { title: string; from: string; upTo: string; items: string[] }[]): Entry[] {
   const out = releaseNotes()
+  // "0.2.0-beta.2" → "2"; versions that aren't betas keep their number.
+  const beta = (v: string) => v.match(/-beta\.(\d+)$/)?.[1]
+  const label = (from: string, upTo: string) =>
+    beta(from) && beta(upTo) ? `Beta ${beta(from)}${from === upTo ? '' : `–${beta(upTo)}`}` : from === upTo ? `v${upTo}` : `v${from} – v${upTo}`
   const newest = curated[0]?.upTo
   const newer = out.slice(0, Math.max(0, out.findIndex((n) => n.version === newest)))
   const auto = newer.map((n) => ({
@@ -61,10 +65,6 @@ export function changelog(curated: { title: string; from: string; upTo: string; 
     url: n.url
   }))
   const date = (v: string) => out.find((n) => n.version === v)?.date ?? (notes as Note[]).find((n) => n.version === v)?.date ?? ''
-  // "0.2.0-beta.2" → "2"; versions that aren't betas keep their number.
-  const beta = (v: string) => v.match(/-beta\.(\d+)$/)?.[1]
-  const label = (from: string, upTo: string) =>
-    beta(from) && beta(upTo) ? `Beta ${beta(from)}${from === upTo ? '' : `–${beta(upTo)}`}` : from === upTo ? `v${upTo}` : `v${from} – v${upTo}`
   const mine = curated
     .filter((c) => !published || out.some((n) => n.version === c.upTo))
     .map((c) => ({
