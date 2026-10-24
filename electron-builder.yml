@@ -1,5 +1,13 @@
 appId: com.charios.snapkit
 productName: Snapkit
+# What Windows shows as the app's name and publisher (Startup apps, Task Manager, Installed apps,
+# the exe's Details tab): its file description comes from "description" and its publisher from
+# "author", so both are just "Snapkit" in the packaged app. package.json keeps the long description.
+extraMetadata:
+  description: Snapkit
+  author:
+    name: Snapkit
+    email: son@charios.com
 directories:
   buildResources: build
   output: dist
