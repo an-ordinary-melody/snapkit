@@ -9,6 +9,7 @@ const profile = join(out, 'profile')
 mkdirSync(profile, { recursive: true })
 writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12' }, notifications: { onCopy: false } }))
 
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
 const floating = (view) =>
@@ -42,7 +43,7 @@ try {
   console.log('preview toggle starts:', await ov.$eval('.toolbar button[data-id="pin"]', (b) => b.dataset.tip))
   await ov.click('.toolbar button[data-id="pin"]')
   console.log('after click:', await ov.$eval('.toolbar button[data-id="pin"]', (b) => b.dataset.tip), '| dot:', !!(await ov.$('.toolbar button[data-id="pin"] .on-dot')))
-  await ov.keyboard.press('Meta+c')
+  await ov.keyboard.press(MOD + '+c')
   await wait(1200)
   let thumbs = await floating('thumb')
   const t = thumbs[0]
@@ -90,7 +91,7 @@ try {
   // Next capture starts with the preview off (the setting's default).
   const ov2 = await capture()
   console.log('next capture starts:', await ov2.$eval('.toolbar button[data-id="pin"]', (b) => b.dataset.tip))
-  await ov2.keyboard.press('Meta+c')
+  await ov2.keyboard.press(MOD + '+c')
   await wait(800)
   console.log('no preview when off:', (await floating('thumb')).length === 0, '| pin still visible:', (await floating('pin'))[0]?.visible)
 

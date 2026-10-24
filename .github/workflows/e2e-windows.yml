@@ -1,0 +1,32 @@
+name: E2E (Windows)
+
+# Runs end-to-end suites on a real Windows machine, by hand (Actions → E2E (Windows) → Run workflow).
+on:
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: Suites to run (space-separated)
+        default: pin fullscreen hotkeys regressions
+        required: false
+
+jobs:
+  e2e:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - name: Run suites
+        shell: bash
+        run: node e2e/run-all.mjs ${{ github.event.inputs.suites }} --out e2e-out
+      - name: Main-process log
+        if: always()
+        shell: bash
+        run: cat "$APPDATA/Snapkit/logs/main.log" 2>/dev/null || find "$APPDATA" -name "main.log" -path "*Snapkit*" -exec cat {} \; 2>/dev/null || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: e2e-windows
+          path: e2e-out
