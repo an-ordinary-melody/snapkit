@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300" role="img" aria-label="Snapkit">
-<title>Snapkit</title>
-<defs><linearGradient id="logo-stacked-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1E8BFF"/><stop offset="1" stop-color="#4A2BEF"/></linearGradient><linearGradient id="logo-stacked-hand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E6EBFF"/></linearGradient></defs>
-<g transform="translate(75 20) scale(1.5)">
-  <rect x="0" y="0" width="100" height="100" rx="22" fill="url(#logo-stacked-bg)"/>
-  <g transform="translate(14 14) scale(0.72)"><g fill="url(#logo-stacked-hand)" stroke="url(#logo-stacked-hand)"><path d="M23 66c0-11 8-19 19-20l14-1c7 0 12 5 12 12v4c0 13-11 24-24 24h-3C30 85 23 77 23 66Z"/><path d="M33 62 27.5 38" fill="none" stroke-width="15" stroke-linecap="round"/><path d="M45 58 74 35" fill="none" stroke-width="14.5" stroke-linecap="round"/><path d="M52 70 70 57" fill="none" stroke-width="13" stroke-linecap="round"/></g><g stroke="#3463F6"><path d="M50.5 63.8 64.5 53" fill="none" stroke-width="2.6" stroke-linecap="round"/></g><g fill="none" stroke="url(#logo-stacked-hand)" stroke-width="4.6" stroke-linecap="round"><path d="M36.5 26 33 18"/><path d="M45 22.5 45.8 13"/><path d="M53 27 59.5 20.5"/></g></g>
-</g>
-<text x="150" y="250" font-size="62" font-family="'Plus Jakarta Sans','Manrope','Inter','SF Pro Rounded','SF Pro Display',system-ui,sans-serif" font-weight="700" letter-spacing="-0.02em" fill="#0D1330" text-anchor="middle">snapkit</text>
-</svg>
