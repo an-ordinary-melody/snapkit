@@ -183,8 +183,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
         case 'line':
         case 'arrow': {
           const [dx, dy] = shift ? snap45(x - x0, y - y0) : [x - x0, y - y0]
-          // Open head unless the filled variant was picked (open is the default).
-          const head = kind === 'arrow' && props.variant !== 'arrow' ? 'open' : undefined
+          // New arrows have an open head (filled heads only appear in older captures).
+          const head = kind === 'arrow' ? 'open' : undefined
           return { id, type: kind, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth, head }
         }
         case 'rect':

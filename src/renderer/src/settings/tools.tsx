@@ -185,17 +185,6 @@ export function ToolsSection({ snap, set }: SectionProps) {
             onChange={(i) => setA({ strokeWidth: Number(i) })}
           />
         </Row>
-        <Row label="Arrow style">
-          <Segmented
-            label="Arrow style"
-            value={v.arrow ?? 'arrow-open'}
-            options={[
-              { value: 'arrow-open', label: 'Open' },
-              { value: 'arrow', label: 'Filled' }
-            ]}
-            onChange={(arrow) => set({ toolVariants: { ...v, arrow } })}
-          />
-        </Row>
         <Row label="Rectangle tool draws" desc="Right-click the tool to switch while capturing.">
           <select className="st-select" value={v.rect ?? 'rect'} onChange={(e) => set({ toolVariants: { ...v, rect: e.target.value } })} aria-label="Rectangle tool default">
             {rectVariants.map((r) => (

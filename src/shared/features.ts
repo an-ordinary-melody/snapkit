@@ -44,12 +44,6 @@ export const FEATURES: FeatureDef[] = [
   { id: 'pen', drawing: true, label: 'Pencil', kind: 'tool', hint: 'P', implemented: true, defaultEnabled: true, tipNote: 'Hold Shift for a straight line' },
   {
     id: 'arrow', drawing: true, label: 'Arrow', kind: 'tool', hint: 'A', implemented: true, defaultEnabled: true,
-    variants: [
-      { id: 'arrow-open', label: 'Arrow' },
-      { id: 'arrow', label: 'Filled arrow' }
-    ],
-    groupLabel: 'Arrows',
-    variantsHint: 'Right-click for arrow styles',
     tipNote: 'Hold Shift to snap to 45°'
   },
   {

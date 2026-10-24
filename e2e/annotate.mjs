@@ -166,11 +166,12 @@ try {
   console.log('color tab -> solid swatches:', (await win.$$('.be-swatch[aria-label^="Color"]')).length)
   await win.click('.be-tab:has-text("Gradient")')
   console.log('shadow slider step:', await win.$eval('.be-row:has-text("Shadow") input', (e) => e.step))
-  // Size 16:9, and draw an open arrow right in the editor.
+  // Size 16:9, and draw an arrow right in the editor (no styles menu: it's always open-headed).
   await win.click('.be-chip:has-text("Slide 16:9")')
   await wait(200)
   await win.click('.be-dock .toolbar button[data-tip="Arrow"]', { button: 'right' })
-  await win.click('.variant-menu button:has-text("Filled arrow")')
+  console.log('arrow styles menu:', !!(await win.$('.variant-menu')))
+  await win.click('.be-dock .toolbar button[data-tip="Arrow"]')
   const host = await win.$eval('.be-ann .annotations', (e) => e.getBoundingClientRect().toJSON())
   await drag(host.x + host.width * 0.55, host.y + host.height * 0.75, host.x + host.width * 0.8, host.y + host.height * 0.55)
   await wait(200)
