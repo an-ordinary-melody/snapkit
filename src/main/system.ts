@@ -1,6 +1,6 @@
 import { app, net, Notification, shell } from 'electron'
 import { IPC, type LoginItemState, type UpdateCheck } from '@shared/ipc'
-import { compareVersions } from '@shared/version'
+import { compareVersions, pickRelease, type ReleaseInfo } from '@shared/version'
 import { log } from './log'
 import { ipcHandle, ipcOn } from './security'
 import { getSettings, updateSettings } from './settings'
@@ -47,17 +47,19 @@ export async function checkForUpdates(manual = false): Promise<UpdateCheck> {
   let result: UpdateCheck
   try {
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw new Error('not a GitHub "owner/repo"')
-    const res = await net.fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+    // The release list, not /releases/latest: that one skips betas (prereleases).
+    const res = await net.fetch(`https://api.github.com/repos/${repo}/releases?per_page=30`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': `Snapkit/${current}` },
       signal: AbortSignal.timeout(10_000)
     })
-    if (res.status === 404) {
+    type Release = ReleaseInfo & { html_url?: string; assets?: { name: string; browser_download_url: string }[] }
+    const r = res.ok ? pickRelease((await res.json()) as Release[], current) : null
+    if (res.status === 404 || (res.ok && !r)) {
       result = { status: 'unavailable', current, message: 'No release has been published yet.' }
-    } else if (!res.ok) {
+    } else if (!r) {
       result = { status: 'error', current, message: `GitHub answered ${res.status}.` }
     } else {
-      const r = (await res.json()) as { tag_name?: string; html_url?: string; name?: string; assets?: { name: string; browser_download_url: string }[] }
-      const version = (r.tag_name ?? '').replace(/^v/, '')
+      const version = r.tag_name.replace(/^v/, '')
       // The installer for this OS, when the release has one; else the release page.
       const ext = isMac ? '.dmg' : process.platform === 'win32' ? '.exe' : ''
       const asset = ext ? r.assets?.find((a) => a.name.toLowerCase().endsWith(ext)) : undefined

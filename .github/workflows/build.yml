@@ -53,9 +53,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
+      - uses: actions/checkout@v7 # for release-notes/<tag>.md
       - uses: actions/download-artifact@v8
         with: { path: artifacts }
       - uses: softprops/action-gh-release@v3
         with:
           files: artifacts/**/*
+          body_path: release-notes/${{ github.ref_name }}.md
+          # A tag with a dash (v0.2.0-beta.1) is a beta: a GitHub pre-release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true

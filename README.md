@@ -42,10 +42,14 @@ in settings.
 
 Download the latest installer from the [Releases](https://github.com/sonbq-fsc/snapkit/releases) page.
 Every push to `main` also builds both installers (the **Actions** tab → latest run →
-**Artifacts**). Tagging a version (`git tag v0.2.0 && git push --tags`) creates a
-Release with the installers attached.
+**Artifacts**).
 
-**Updates:** Snapkit checks the latest GitHub release once a day (Settings → About)
+**Releasing:** set the version in `package.json` (`npm version 0.2.0-beta.2 --no-git-tag-version`),
+write `release-notes/v<version>.md`, commit, then tag and push (`git tag v0.2.0-beta.2 && git push origin v0.2.0-beta.2`).
+CI builds both installers and publishes the Release with those notes. A version with a dash
+(`-beta.1`) is published as a GitHub pre-release.
+
+**Updates:** Snapkit checks GitHub releases once a day (Settings → About; betas are offered only to people running a beta)
 and shows a notification and an "Update available" item in the menu-bar menu.
 It downloads the new installer for you to open; nothing installs by itself.
 **Launch at login** is in Settings → General; on macOS 13+ you may need to allow
