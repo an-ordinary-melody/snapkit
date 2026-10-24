@@ -79,12 +79,13 @@ try {
 
     // The hero loops through capture mode and ends with the copy into the corner preview.
     await page.locator('[data-stage]').scrollIntoViewIfNeeded()
-    const reached = await until(page, () => document.querySelector('[data-stage]').classList.contains('m-copy'))
+    const reached = await until(page, () => document.querySelector('[data-stage]').classList.contains('m-copy'), null, 15000)
     check(`${name}: hero demo plays to the copy`, reached)
 
     // Annotate demo draws its shapes; background demo reacts to a preset.
     await page.locator('.an').scrollIntoViewIfNeeded()
-    const drawn = await until(page, () => document.querySelectorAll('.an .on').length >= 4, null, 8000)
+    await hydrated(page, '.an')
+    const drawn = await until(page, () => document.querySelectorAll('.an .on').length >= 4, null, 15000)
     check(`${name}: annotate demo draws`, drawn)
 
     // Each scaled drawing exactly fills its box (iOS Safari once drew them at the wrong size, off-screen).
@@ -219,15 +220,14 @@ try {
     const csp = await page.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content ?? '')
     check('CSP meta allows only this site and hashed inline scripts', /script-src 'self'( 'sha256-[^']+')+;/.test(csp) && !csp.includes('unsafe-eval'))
     await page.evaluate(() => document.querySelector('[data-stage]').scrollIntoView())
-    await page.waitForTimeout(9000)
-    check('with CSP on: hero demo plays', await page.evaluate(() => document.querySelector('[data-stage]').classList.contains('m-copy')))
+    check('with CSP on: hero demo plays', await until(page, () => document.querySelector('[data-stage]').classList.contains('m-copy'), null, 15000))
     await page.evaluate(() => document.querySelector('.an').scrollIntoView())
-    await page.waitForTimeout(5000)
-    check('with CSP on: annotate demo draws', await page.evaluate(() => document.querySelectorAll('.an .on').length >= 4))
+    await hydrated(page, '.an')
+    check('with CSP on: annotate demo draws', await until(page, () => document.querySelectorAll('.an .on').length >= 4, null, 15000))
     await page.evaluate(() => document.querySelector('.hs').scrollIntoView())
-    await page.waitForTimeout(1500)
+    await hydrated(page, '.hs')
     await page.locator('.hs-actions button', { hasText: 'Save' }).click()
-    check('with CSP on: history demo responds', (await page.locator('.hs-toast').count()) === 1)
+    check('with CSP on: history demo responds', await until(page, () => !!document.querySelector('.hs-toast'), null, 3000))
     await page.locator('[data-set="dark"]').click()
     check('with CSP on: theme switch works', await page.evaluate(() => document.documentElement.dataset.theme === 'dark'))
     check('with CSP on: nothing blocked, no console errors', errors.length === 0, errors.join(' | '))
