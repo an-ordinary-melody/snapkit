@@ -7,7 +7,7 @@ import { getSettings } from './settings'
 import { copyPng, savePng } from './output'
 import { log } from './log'
 import { ipcHandle, ipcOn } from './security'
-import { createThumb, hasPins, linkThumbToHistory } from './pin'
+import { createThumb, hasPins, keepPinsOnTop, linkThumbToHistory } from './pin'
 import { addToHistory } from './history'
 
 const isMac = process.platform === 'darwin'
@@ -140,6 +140,7 @@ function endCapture() {
     // show() can't flash the previous screenshot.
     waitFor(IPC.cleared, win, null, 150).then(() => {
       if (!active && session === endedSession && !win.isDestroyed()) win.hide()
+      keepPinsOnTop() // Windows: a preview shown while this window was up can lose its on-top place
     })
   }
 }

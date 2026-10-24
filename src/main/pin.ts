@@ -34,6 +34,22 @@ const pins = new Map<number, Pin>()
 
 export const hasPins = () => pins.size > 0
 
+/**
+ * Windows: put the floating windows back on top. Windows can drop a window's
+ * always-on-top flag when it's shown while capture mode's full-screen window
+ * is up, and the preview then sinks behind the app the user goes back to
+ * (until they minimize something). Re-applying it fixes the stacking.
+ */
+export function keepPinsOnTop() {
+  if (isMac) return
+  for (const p of pins.values()) {
+    if (p.win.isDestroyed() || !p.win.isVisible()) continue
+    p.win.setAlwaysOnTop(false)
+    p.win.setAlwaysOnTop(true, 'floating')
+    p.win.moveTop()
+  }
+}
+
 const ZOOM_MIN = 0.1
 const ZOOM_MAX = 5
 const OPACITY_MIN = 0.15
@@ -221,6 +237,7 @@ export function registerPinIpc() {
     p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(p.png), appearance: getSettings().appearance })
     sendState(p)
     p.win.showInactive() // don't take focus from the app the user is in
+    keepPinsOnTop()
     log(`[pin] ${p.kind} shown at ${JSON.stringify(p.win.getBounds())}, visible ${p.win.isVisible()}`)
   })
   ipcOn(IPC.pinMoveBy, (e, dx: number, dy: number) => {
