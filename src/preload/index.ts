@@ -41,6 +41,7 @@ const api: SnapkitApi = {
   historyUsage: () => ipcRenderer.invoke(IPC.historyUsage),
   historyReveal: () => ipcRenderer.send(IPC.historyReveal),
   historyDragOut: (id) => ipcRenderer.send(IPC.historyDragOut, id),
+  onAppearance: (cb) => ipcRenderer.on(IPC.appearanceChanged, (_e, a) => cb(a)),
   historyClose: () => ipcRenderer.send(IPC.historyClose),
 
   loginItemGet: () => ipcRenderer.invoke(IPC.loginItemGet),

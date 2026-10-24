@@ -82,6 +82,9 @@ export function registerSettingsIpc(setHotkey: (name: HotkeyName, accelerator: s
   // Keep the window in sync with changes made anywhere (e.g. the last save folder).
   onSettingsChange((s, prev) => {
     nativeTheme.themeSource = s.appearance.mode
+    if (JSON.stringify(s.appearance) !== JSON.stringify(prev.appearance)) {
+      for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(IPC.appearanceChanged, s.appearance)
+    }
     if (!win || win.isDestroyed()) return
     if (isMac && s.appearance.glass !== prev.appearance.glass) win.setVibrancy(s.appearance.glass ? 'sidebar' : null)
     win.webContents.send(IPC.settingsChanged, snapshot())

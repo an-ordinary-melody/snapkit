@@ -28,10 +28,9 @@ export function General({ snap, set }: SectionProps) {
       </Group>
 
       <Group title="Saving">
-        <Row label="Ask where to save" desc="Off: save straight to the folder below.">
+        <Row label="Ask where to save" desc="Off: save straight to the screenshots folder.">
           <Toggle label="Ask where to save" value={s.save.askLocation} onChange={(v) => set({ save: { askLocation: v } })} />
         </Row>
-        <NameBuilder rule={s.save.name} next={s.save.nextNumber} set={set} />
         <Row label="Screenshots folder" desc={s.save.folder || `${snap.defaultSaveFolder} (default)`}>
           <button
             className="st-btn"
@@ -49,6 +48,7 @@ export function General({ snap, set }: SectionProps) {
             </button>
           )}
         </Row>
+        <NameBuilder rule={s.save.name} next={s.save.nextNumber} set={set} />
       </Group>
 
       <Group title="Notifications">

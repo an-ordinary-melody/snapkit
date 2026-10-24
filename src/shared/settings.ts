@@ -175,7 +175,7 @@ export const DEFAULT_SETTINGS: Settings = {
   toolKeys: {},
   toolVariants: {},
   capture: {
-    dimOpacity: 0.6,
+    dimOpacity: 0.75,
     showSizeLabel: true,
     accentColor: '#3b82f6',
     engine: 'auto',
@@ -219,7 +219,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   appearance: {
     glass: true,
-    mode: 'system',
+    mode: 'dark',
     accent: ''
   },
   beautify: {

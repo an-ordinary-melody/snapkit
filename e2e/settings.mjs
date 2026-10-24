@@ -38,6 +38,8 @@ try {
   // General starts with Startup; history keeps up to 30 (10 by default).
   await section('General')
   console.log('general groups:', await st.$$eval('.st-group > h3', (t) => t.map((e) => e.textContent).slice(0, 3).join(' | ')))
+  console.log('saving rows:', await st.evaluate(() => [...[...document.querySelectorAll('.st-group')].find((g) => g.querySelector('h3')?.textContent === 'Saving').querySelectorAll('.st-label > span')].map((e) => e.textContent).slice(0, 3).join(' | ')))
+  console.log('dim default:', await st.evaluate(() => window.snapkit.settingsGet().then((x) => x.defaults.capture.dimOpacity + ' / mode ' + x.defaults.appearance.mode)))
   console.log('history keep slider:', await st.$eval('input[aria-label="Captures to keep"]', (e) => `${e.value} of ${e.max}`))
   // Open settings is a global hotkey, registered from the start.
   await section('Shortcuts')
@@ -80,6 +82,9 @@ try {
   await st.click('button[aria-label="Liquid Glass"]')
   await wait(200)
   console.log('glass off:', await st.evaluate(() => document.documentElement.dataset.glass), '| saved:', saved().appearance?.glass)
+  // Windows that are already open (the history panel stays loaded) follow at once.
+  const hist = windowFor('history')
+  console.log('history window glass:', await hist.evaluate(() => document.documentElement.dataset.glass), '| mode', await hist.evaluate(() => document.documentElement.dataset.mode))
   writeFileSync(join(out, 'dark-solid-appearance.png'), await st.screenshot())
   await st.click('button[aria-label="Liquid Glass"]') // back on: dark glass
   for (const name of ['General', 'Appearance', 'Toolbar', 'Tools', 'Background']) {
@@ -94,6 +99,7 @@ try {
   await rows.filter({ hasText: 'Text' }).dragTo(rows.filter({ hasText: 'Pencil' }))
   await wait(300)
   console.log('highlighter off:', saved().features?.highlighter === false, '| order starts:', (saved().toolbarOrder ?? []).slice(0, 3).join(', '))
+  console.log('tool rows:', await st.$$eval('.st-group:has-text("Tools (vertical bar)") .st-reorder', (rs) => rs.map((r) => r.querySelector('.st-label span:not(.st-feature-icon)')?.textContent)))
   console.log('group rows:', await st.$$eval('.st-reorder.group', (rs) => rs.map((r) => r.querySelector('.st-label span:not(.st-feature-icon)')?.textContent + ' (' + r.querySelectorAll('.st-variant').length + ')')))
   await st.click('button[aria-label="Move Arrow down"]')
   await wait(200)

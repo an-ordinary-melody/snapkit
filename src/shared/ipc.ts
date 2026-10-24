@@ -147,6 +147,7 @@ export const IPC = {
   historyUsage: 'history:usage',
   historyReveal: 'history:reveal',
   historyDragOut: 'history:drag-out',
+  appearanceChanged: 'appearance:changed',
   historyClose: 'history:close',
   // system
   loginItemGet: 'system:login-item-get',
@@ -229,6 +230,8 @@ export interface SnapkitApi {
   historyReveal(): void
   /** Drag an entry into another app as a PNG file. Call from dragstart. */
   historyDragOut(id: string): void
+  /** Theme changes (light/dark, Liquid Glass, accent), for windows that are already open. */
+  onAppearance(cb: (a: Settings['appearance']) => void): void
   /** Close the history panel. */
   historyClose(): void
 

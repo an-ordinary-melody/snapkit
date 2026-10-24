@@ -7,7 +7,7 @@ import { clearHistory, deleteEntry, historyDir, historyDoc, historyFile, history
 import { returnFocus, startEdit } from './overlay'
 import { savePng } from './output'
 import { createPin } from './pin'
-import { getSettings, updateSettings } from './settings'
+import { getSettings, onSettingsChange, updateSettings } from './settings'
 import { ipcHandle, ipcOn } from './security'
 
 const isMac = process.platform === 'darwin'
@@ -97,6 +97,10 @@ function hidePanel(giveFocusBack: boolean) {
 }
 
 export function registerHistoryIpc() {
+  // The native frosted backing follows Liquid Glass too (the panel stays loaded between opens).
+  onSettingsChange((s, prev) => {
+    if (isMac && panel && !panel.isDestroyed() && s.appearance.glass !== prev.appearance.glass) panel.setVibrancy(s.appearance.glass ? 'popover' : null)
+  })
   onHistoryChange((items) => {
     for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(IPC.historyChanged, items)
   })

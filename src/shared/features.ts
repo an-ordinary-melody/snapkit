@@ -37,6 +37,8 @@ export interface FeatureDef {
   tipNote?: string
   /** Whether the feature is on for a fresh install. */
   defaultEnabled: boolean
+  /** Already part of another tool's menu (the Shapes group), so not listed in Settings → Toolbar. */
+  inGroup?: boolean
 }
 
 export const FEATURES: FeatureDef[] = [
@@ -66,9 +68,9 @@ export const FEATURES: FeatureDef[] = [
     tipNote: 'Hold Shift for a square'
   },
   // Also the last shape in the rectangle tool's menu, so off by default.
-  { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: false },
+  { id: 'line', drawing: true, label: 'Line', kind: 'tool', hint: 'L', implemented: true, defaultEnabled: false, inGroup: true },
   {
-    id: 'ellipse', drawing: true, label: 'Ellipse', kind: 'tool', hint: 'E', implemented: true, defaultEnabled: false,
+    id: 'ellipse', drawing: true, label: 'Ellipse', kind: 'tool', hint: 'E', implemented: true, defaultEnabled: false, inGroup: true,
     variants: [
       { id: 'ellipse', label: 'Ellipse' },
       { id: 'ellipse-filled', label: 'Filled ellipse' }

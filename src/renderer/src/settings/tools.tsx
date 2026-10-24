@@ -12,7 +12,7 @@ const fullOrder = (s: Settings) => [...s.toolbarOrder, ...FEATURES.map((f) => f.
 export function ToolbarSection({ snap, set }: SectionProps) {
   const s = snap.settings
   const order = fullOrder(s)
-  const byKind = (kind: 'tool' | 'action') => order.map((id) => FEATURES.find((f) => f.id === id)).filter((f): f is FeatureDef => !!f && f.kind === kind)
+  const byKind = (kind: 'tool' | 'action') => order.map((id) => FEATURES.find((f) => f.id === id)).filter((f): f is FeatureDef => !!f && f.kind === kind && !f.inGroup)
   const enabled = (f: FeatureDef) => s.features[f.id] ?? f.defaultEnabled
 
   /** Reorder within one bar; the other bar keeps its order. */
