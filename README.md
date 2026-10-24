@@ -138,8 +138,11 @@ Settings are stored in `settings.json` in the app's data folder (`~/Library/Appl
 The landing page lives in `site/` (Astro, React islands for the demos) and deploys on Vercel
 (free Hobby plan) as a project with Root Directory `site`.
 
+The site needs Node 22.23.4 or newer (`site/.nvmrc`; the app itself still builds on Node 20):
+
 ```bash
 cd site
+nvm use            # or put Node 22 first on PATH
 npm install
 npm run dev        # http://localhost:4321
 npm run build && npm run check   # build, then check it in Chrome (demos, links, phone width, console)
