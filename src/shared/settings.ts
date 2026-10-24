@@ -157,7 +157,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
     capture: 'Alt+Shift+Z',
     history: 'CommandOrControl+Shift+1',
-    fullscreen: 'CommandOrControl+Shift+5',
+    fullscreen: 'CommandOrControl+Shift+9',
     settings: 'CommandOrControl+Shift+2'
   },
   updates: {

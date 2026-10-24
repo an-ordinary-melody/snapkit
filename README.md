@@ -21,7 +21,7 @@ in settings.
 ## Using it
 
 - **Capture:** `⌥⇧Z` on macOS or `Alt+Shift+Z` on Windows, or click the tray icon. (A capture hotkey set to a capture-mode shortcut such as `⌘⇧Z`, Redo, steps aside while capturing.)
-- **Full screen:** `⌘⇧5` (`Ctrl+Shift+5`; on macOS turn off the system's own ⌘⇧5 screenshot shortcut in System Settings → Keyboard → Keyboard Shortcuts → Screenshots if it opens instead), or Capture Full Screen in the menu bar, grabs the whole screen under the pointer straight into the floating preview (Copy, Edit, Pin from there) and history, with no selection step. It can also copy right away (Settings → General). Change or turn off the shortcut in Settings → Shortcuts.
+- **Full screen:** `⌘⇧9` (`Ctrl+Shift+9`), or Capture Full Screen in the menu bar, grabs the whole screen under the pointer straight into the floating preview (Copy, Edit, Pin from there) and history, with no selection step. It can also copy right away (Settings → General). Change or turn off the shortcut in Settings → Shortcuts.
 - **Select:** drag to select. Drag inside the selection to move it, and drag the handles to resize. Arrow keys nudge the selection (hold Shift for 10px; hold Alt to resize).
 - **Copy:** `⌘C` / `Ctrl+C` or `Enter`.
 - **Save:** `⌘S` / `Ctrl+S`. Asks where to save, starting in the last folder you used (`Pictures/Snapkit` the first time). Set `save.askLocation` to `false` to save straight to the folder.

@@ -10,7 +10,7 @@ mkdirSync(profile, { recursive: true })
 writeFileSync(join(profile, 'settings.json'), '{}') // all defaults
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
-const KEYS = ['Alt+Shift+Z', 'CommandOrControl+Shift+5', 'CommandOrControl+Shift+2', 'CommandOrControl+Shift+1']
+const KEYS = ['Alt+Shift+Z', 'CommandOrControl+Shift+9', 'CommandOrControl+Shift+2', 'CommandOrControl+Shift+1']
 const registered = () => app.evaluate(({ globalShortcut }, keys) => keys.map((k) => `${k.replace('CommandOrControl+Shift+', '⌘⇧').replace('Alt+Shift+', '⌥⇧')}:${globalShortcut.isRegistered(k)}`).join(' '), KEYS)
 
 try {

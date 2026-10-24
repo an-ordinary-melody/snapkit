@@ -83,7 +83,7 @@ const SUITES = {
     [/after clear all: 0 \| errors: none/, 'clear all']
   ],
   hotkeys: [
-    [/defaults registered: ⌥⇧Z:true ⌘⇧5:true ⌘⇧2:true ⌘⇧1:true/, 'default shortcuts'],
+    [/defaults registered: ⌥⇧Z:true ⌘⇧9:true ⌘⇧2:true ⌘⇧1:true/, 'default shortcuts'],
     [/while capturing: .*\| ⌘⇧Z: false/, 'a capture-mode shortcut steps aside (⌘⇧Z = Redo)'],
     [/0px 0px 0px 1.5px/, 'selection outline width'],
     [/⌘⇧Z registered again: true/, 'shortcut comes back after capture'],
