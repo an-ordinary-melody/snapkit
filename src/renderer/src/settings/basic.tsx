@@ -16,6 +16,9 @@ export function General({ snap, set }: SectionProps) {
       <LaunchAtLogin />
 
       <Group title="After a capture">
+        <Row label="Quick area capture" desc="Copy the area as soon as you finish drawing it, skipping the adjust-and-annotate step. Off: adjust, draw, then copy.">
+          <Toggle label="Quick area capture" value={s.capture.quickCopy} onChange={(quickCopy) => set({ capture: { quickCopy } })} />
+        </Row>
         <Row label="Full-screen capture also copies" desc="Off: it only goes to the floating preview and history.">
           <Toggle label="Full-screen capture also copies" value={s.capture.fullscreenCopy} onChange={(fullscreenCopy) => set({ capture: { fullscreenCopy } })} />
         </Row>

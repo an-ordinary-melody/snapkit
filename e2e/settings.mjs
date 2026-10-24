@@ -39,6 +39,7 @@ try {
   // General starts with Startup; history keeps up to 30 (10 by default).
   await section('General')
   console.log('general groups:', await st.$$eval('.st-group > h3', (t) => t.map((e) => e.textContent).slice(0, 3).join(' | ')))
+  console.log('quick area capture switch:', await st.$eval('button[aria-label="Quick area capture"]', (e) => e.getAttribute('aria-checked')).catch(() => 'missing'))
   console.log('saving rows:', await st.evaluate(() => [...[...document.querySelectorAll('.st-group')].find((g) => g.querySelector('h3')?.textContent === 'Saving').querySelectorAll('.st-label > span')].map((e) => e.textContent).slice(0, 3).join(' | ')))
   console.log('dim default:', await st.evaluate(() => window.snapkit.settingsGet().then((x) => x.defaults.capture.dimOpacity + ' / mode ' + x.defaults.appearance.mode)))
   console.log('history keep slider:', await st.$eval('input[aria-label="Captures to keep"]', (e) => `${e.value} of ${e.max}`))

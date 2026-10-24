@@ -67,6 +67,8 @@ export interface Settings {
     engine: string
     /** Full-screen capture also copies to the clipboard. */
     fullscreenCopy: boolean
+    /** Quick area capture: the first area drawn is copied right away, with no adjusting or drawing step. */
+    quickCopy: boolean
   }
   save: {
     /** Empty string = default folder (Pictures/Snapkit). */
@@ -180,7 +182,8 @@ export const DEFAULT_SETTINGS: Settings = {
     showSizeLabel: true,
     accentColor: '#3b82f6',
     engine: 'auto',
-    fullscreenCopy: false
+    fullscreenCopy: false,
+    quickCopy: false
   },
   save: {
     folder: '',

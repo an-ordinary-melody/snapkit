@@ -514,10 +514,20 @@ export function Overlay() {
     else setSel(resizeRect(drag.start, drag.handle, dx, dy, screen))
   }
 
+  // Quick area capture: the area just drawn is copied once React has rendered it.
+  const [quickCopyDue, setQuickCopyDue] = useState(false)
   const onPointerUp = () => {
-    if (drag?.kind === 'create' && sel && (sel.w < MIN_SIZE || sel.h < MIN_SIZE)) setSel(null)
+    if (drag?.kind === 'create' && sel) {
+      if (sel.w < MIN_SIZE || sel.h < MIN_SIZE) setSel(null)
+      else if (cap?.settings.capture.quickCopy) setQuickCopyDue(true)
+    }
     setDrag(null)
   }
+  useEffect(() => {
+    if (!quickCopyDue || drag || !sel) return
+    setQuickCopyDue(false)
+    void runAction('copy')
+  }, [quickCopyDue, drag, sel, runAction])
 
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()

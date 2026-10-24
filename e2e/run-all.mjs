@@ -38,6 +38,9 @@ const SUITES = {
     [/Space hand pans: true .*\| draws nothing: true \| hand gone on release: true/, 'Space + drag pans the zoomed editor (hand tool)'],
     [/pinch zooms in: true/, 'trackpad pinch zooms in'],
     [/Ctrl\+0 fits again: true \| still in editor: true/, 'Ctrl + 0 fits the editor preview again'],
+    [/quick area capture copies the drawn area: true/, 'Quick area capture copies the first area drawn'],
+    [/a click does not quick-copy: true/, 'Quick area capture ignores a click'],
+    [/off: drawing keeps capture mode open: true/, 'Quick area capture off by default behaves as before'],
     [/scrollbars have no track: true/, 'thin themed scrollbars without a background strip'],
     [/editor tools fit a small screen: true/, 'editor tools clipped on a small or scaled screen (Windows 150%)'],
     [/renderer errors: none/, 'no page errors']
@@ -111,6 +114,7 @@ const SUITES = {
   ],
   settings: [
     [/general groups: Startup \| After a capture \| Saving/, 'Startup first'],
+    [/quick area capture switch: false/, 'Quick area capture switch, off by default'],
     [/saving rows: Ask where to save \| Screenshots folder \| File name/, 'folder right after Ask where to save'],
     [/dim default: 0.75 \/ mode dark/, 'defaults: 75% dim, Dark'],
     [/history keep slider: 10 of 30/, 'history keeps 10, up to 30'],

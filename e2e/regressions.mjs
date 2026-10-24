@@ -126,6 +126,34 @@ try {
     })
   })
   console.log('editor tools fit a small screen:', fits)
+  // Back to full size for what follows.
+  await app.evaluate(({ BrowserWindow, screen }) => BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('#overlay')).setBounds(screen.getPrimaryDisplay().bounds))
+  // Quick area capture: with it on, the first area drawn is copied right away and capture mode closes.
+  // Leave whatever capture is still open (the small-screen check above ends inside one).
+  for (let i = 0; i < 3 && (await capturing()); i++) { await win.keyboard.press('Escape'); await wait(400) }
+  const quick = async (on) => {
+    await win.evaluate((v) => window.snapkit.settingsUpdate({ capture: { quickCopy: v } }), on)
+    await app.evaluate(({ clipboard }) => clipboard.clear())
+    await app.evaluate(({ app }) => app.emit('second-instance', {}, []))
+    await wait(1200)
+    await m.move(300, 200); await m.down(); await m.move(500, 350, { steps: 5 }); await m.up()
+    await wait(1200)
+    return { capturing: await capturing(), clip: await app.evaluate(({ clipboard }) => clipboard.readImage().getSize()) }
+  }
+  const qOn = await quick(true)
+  const scale = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().scaleFactor)
+  console.log('quick area capture copies the drawn area:', !qOn.capturing && qOn.clip.width === Math.round(200 * scale) && qOn.clip.height === Math.round(150 * scale), JSON.stringify(qOn))
+  // A click (no real area) doesn't copy.
+  await app.evaluate(({ app }) => app.emit('second-instance', {}, []))
+  await wait(1200)
+  await app.evaluate(({ clipboard }) => clipboard.clear())
+  await m.click(600, 400); await wait(800)
+  console.log('a click does not quick-copy:', (await capturing()) && (await app.evaluate(({ clipboard }) => clipboard.readImage().isEmpty())))
+  await win.keyboard.press('Escape'); await wait(500)
+  const qOff = await quick(false)
+  console.log('off: drawing keeps capture mode open:', qOff.capturing && qOff.clip.width === 0)
+  await win.keyboard.press('Escape'); await wait(500)
+
   // Scrollbars: thin and themed, with no track or background strip.
   console.log('scrollbars have no track:', await win.evaluate(() => [...document.styleSheets].flatMap((ss) => [...ss.cssRules]).some((r) => r.selectorText?.includes('::-webkit-scrollbar-track') && /transparent/.test(r.cssText))))
   console.log('renderer errors:', errors.length ? errors : 'none')
