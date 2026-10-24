@@ -237,7 +237,7 @@ const TABS: Tab[] = [
   },
   {
     id: 'editor', label: 'Background editor', Icon: WandSparkles, title: 'A full editor when you need it',
-    body: <>Live preview with every drawing tool, editable hex values, a hue slider and a random button, 32 gradient and 32 color presets, output sizes, and zoom with <K>⌘</K>+scroll. Try the swatches.</>,
+    body: <>Live preview with every drawing tool, editable hex values, a hue slider and a random button, 30+ gradient presets, output sizes, and zoom with <K>⌘</K>+scroll. Try the swatches.</>,
     demo: EditorDemo
   },
   {
