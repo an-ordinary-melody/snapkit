@@ -10,6 +10,7 @@ mkdirSync(profile, { recursive: true })
 writeFileSync(join(profile, 'settings.json'), '{}') // all defaults
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
+let closed = false
 const KEYS = ['Alt+Shift+Z', 'CommandOrControl+Shift+9', 'CommandOrControl+Shift+2', 'CommandOrControl+Shift+1']
 const registered = () => app.evaluate(({ globalShortcut }, keys) => keys.map((k) => `${k.replace('CommandOrControl+Shift+', '⌘⇧').replace('Alt+Shift+', '⌥⇧')}:${globalShortcut.isRegistered(k)}`).join(' '), KEYS)
 
@@ -50,6 +51,30 @@ try {
   console.log('held switch knob, glass on:', await knob())
   writeFileSync(join(out, 'switch-held.png'), await st.screenshot({ clip: { x: sw.x - 20, y: sw.y - 15, width: sw.width + 40, height: sw.height + 30 } }))
   await st.mouse.up()
-} finally {
   await app.close()
+  closed = true
+
+  // A shortcut another app holds when Snapkit starts: Snapkit says so, then takes it once that app quits.
+  const { spawn } = await import('child_process')
+  const electronBin = (await import('electron')).default
+  const holder = spawn(electronBin, ['e2e/hotkey-holder.cjs', 'Alt+Shift+Z'], { stdio: ['ignore', 'pipe', 'ignore'] })
+  const held = await new Promise((r) => holder.stdout.on('data', (d) => r(String(d).trim())))
+  writeFileSync(join(profile, 'settings.json'), '{}') // back to the default ⌥⇧Z
+  const app2 = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
+  try {
+    await wait(2500)
+    // The startup dialog says the capture shortcut is taken; dismiss it.
+    const hist2 = app2.windows().find((w) => w.url().endsWith('#history'))
+    const takenNow = await hist2.evaluate(() => window.snapkit.settingsGet().then((s) => s.hotkeysTaken.join(',')))
+    holder.kill()
+    await wait(6000)
+    console.log('held by another app:', held, '| Snapkit sees taken:', takenNow || 'none',
+      '| after that app quits, registered:', await app2.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('Alt+Shift+Z')),
+      '| taken now:', (await hist2.evaluate(() => window.snapkit.settingsGet().then((s) => s.hotkeysTaken.join(',')))) || 'none')
+  } finally {
+    holder.kill()
+    await app2.close()
+  }
+} finally {
+  if (!closed) await app.close()
 }

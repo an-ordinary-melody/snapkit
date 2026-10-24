@@ -156,6 +156,7 @@ export function createThumb(png: Buffer, doc: CaptureDoc, rect: Rectangle, sessi
   if (session !== undefined && !doc.historyId) thumbBySession.set(session, pin)
   layoutThumbs(display.id)
   load(win, 'thumb')
+  log(`[pin] preview ${size.w}x${size.h} on display ${display.id} (scale ${display.scaleFactor}, work area ${JSON.stringify(display.workArea)})`)
 }
 
 /** New result for a preview (after editing it). */
@@ -220,6 +221,7 @@ export function registerPinIpc() {
     p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(p.png), appearance: getSettings().appearance })
     sendState(p)
     p.win.showInactive() // don't take focus from the app the user is in
+    log(`[pin] ${p.kind} shown at ${JSON.stringify(p.win.getBounds())}, visible ${p.win.isVisible()}`)
   })
   ipcOn(IPC.pinMoveBy, (e, dx: number, dy: number) => {
     const p = of(e)

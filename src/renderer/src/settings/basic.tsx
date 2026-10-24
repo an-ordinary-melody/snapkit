@@ -2,7 +2,7 @@ import { FolderOpen, RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { FEATURES } from '@shared/features'
 import { HISTORY_LIMITS } from '@shared/history'
-import type { HistoryUsage, LoginItemState, UpdateCheck } from '@shared/ipc'
+import type { HistoryUsage, LoginItemState, SettingsSnapshot, UpdateCheck } from '@shared/ipc'
 import { dateStamp, fileName, type NameRule } from '@shared/naming'
 import { ColorField, formatAccelerator, Group, HotkeyField, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
 import type { SectionProps } from './Settings'
@@ -153,13 +153,16 @@ export function Shortcuts({ snap, set }: SectionProps) {
   const tools = FEATURES.filter((f) => f.drawing)
   const keyOf = (id: string) => (s.toolKeys[id] ?? FEATURES.find((f) => f.id === id)?.hint ?? '').toUpperCase()
   const taken = (id: string, k: string) => !!k && tools.some((t) => t.id !== id && keyOf(t.id) === k)
+  // A global shortcut another app holds right now: Snapkit keeps trying and takes it once it's free.
+  const held = (name: SettingsSnapshot['hotkeysTaken'][number], desc: string) =>
+    snap.hotkeysTaken?.includes(name) ? `${desc} ⚠ Another app is using this shortcut right now; Snapkit takes it as soon as it's free.` : desc
   return (
     <>
       <Group title="Global">
-        <Row label="Capture area" desc="Works from any app.">
+        <Row label="Capture area" desc={held('capture', 'Works from any app.')}>
           <HotkeyField value={s.hotkeys.capture} onChange={(acc) => api.settingsSetHotkey(acc)} />
         </Row>
-        <Row label="Capture full screen" desc="The whole screen under the pointer, straight to the floating preview (copy, edit or pin from there).">
+        <Row label="Capture full screen" desc={held('fullscreen', 'The whole screen under the pointer, straight to the floating preview (copy, edit or pin from there).')}>
           <HotkeyField value={s.hotkeys.fullscreen} onChange={(acc) => api.settingsSetHotkey(acc, 'fullscreen')} />
           {s.hotkeys.fullscreen && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'fullscreen')} title="No shortcut; use the menu bar">
@@ -167,7 +170,7 @@ export function Shortcuts({ snap, set }: SectionProps) {
             </button>
           )}
         </Row>
-        <Row label="Open history" desc="The panel of past captures.">
+        <Row label="Open history" desc={held('history', 'The panel of past captures.')}>
           <HotkeyField value={s.hotkeys.history} onChange={(acc) => api.settingsSetHotkey(acc, 'history')} />
           {s.hotkeys.history && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'history')} title="No shortcut; use the menu bar">
@@ -175,7 +178,7 @@ export function Shortcuts({ snap, set }: SectionProps) {
             </button>
           )}
         </Row>
-        <Row label="Open settings" desc="This window, from any app (capture mode closes first).">
+        <Row label="Open settings" desc={held('settings', 'This window, from any app (capture mode closes first).')}>
           <HotkeyField value={s.hotkeys.settings} onChange={(acc) => api.settingsSetHotkey(acc, 'settings')} />
           {s.hotkeys.settings && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'settings')} title="No shortcut; use the menu bar">

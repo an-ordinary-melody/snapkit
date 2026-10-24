@@ -46,7 +46,7 @@ Every push to `main` also builds both installers (the **Actions** tab → latest
 
 **Releasing:** set the version in `package.json` (`npm version 0.2.0-beta.2 --no-git-tag-version`),
 write `release-notes/v<version>.md`, commit, then tag and push (`git tag v0.2.0-beta.2 && git push origin v0.2.0-beta.2`).
-CI builds both installers and publishes the Release with those notes. A version with a dash
+CI builds both installers and publishes the Release with those notes. To test on Windows, run **Actions → E2E (Windows) → Run workflow** (it runs the suites at 100% and 150% display scaling). A version with a dash
 (`-beta.1`) is published as a GitHub pre-release.
 
 **Updates:** Snapkit checks GitHub releases once a day (Settings → About; betas are offered only to people running a beta)
@@ -101,7 +101,7 @@ History test: `npm run build && node e2e/history.mjs /tmp/snapkit-history`
 
 Smart align test (snapping in capture mode and the editor): `npm run build && node e2e/snap.mjs /tmp/snapkit-snap`
 
-Hotkeys and Gray theme test (defaults, stepping aside in capture mode): `npm run build && node e2e/hotkeys.mjs /tmp/snapkit-hotkeys`
+Hotkeys and Gray theme test (defaults, stepping aside in capture mode, taking a shortcut back when the app holding it quits): `npm run build && node e2e/hotkeys.mjs /tmp/snapkit-hotkeys`
 
 Text editing test (click into text, drag it): `npm run build && node e2e/textedit.mjs /tmp/snapkit-textedit`
 

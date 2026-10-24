@@ -175,6 +175,8 @@ export interface SettingsSnapshot {
   defaultSaveFolder: string
   /** Screen capture engines for this OS, in the order Auto tries them. */
   engines: { id: string; label: string; available: boolean }[]
+  /** Hotkeys another app holds right now (Snapkit takes them once they're free). */
+  hotkeysTaken: ('capture' | 'history' | 'fullscreen' | 'settings')[]
 }
 
 /** API exposed to renderers by the preload script (window.snapkit). */

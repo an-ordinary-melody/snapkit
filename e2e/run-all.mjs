@@ -53,7 +53,7 @@ const SUITES = {
   pin: [
     [/after click: Floating preview: on \| dot: true/, 'floating preview toggle'],
     [/preview after ⌘C: 1 in the bottom-right corner: true/, 'preview after copy'],
-    [/copy from preview: \{"width":800/, 'copy again from the preview'],
+    [/copy from preview: \{"width":\d+/, 'copy again from the preview'],
     [/drawings restored \(shape groups\): 1/, 'edit restores drawings'],
     [/Done closes the editor: true \| preview still there: true/, 'Done keeps the preview'],
     [/move handle moved the preview by -120 -80/, 'movable preview'],
@@ -89,7 +89,10 @@ const SUITES = {
     [/⌘⇧Z registered again: true/, 'shortcut comes back after capture'],
     [/gray: settings dark\/gray \| history dark\/gray .*native dark/, 'Gray theme in every window'],
     [/glass off: 22px solid/, 'no glass knob with Liquid Glass off'],
-    [/glass on: 22px glass/, 'glass knob with Liquid Glass on']
+    [/glass on: 22px glass/, 'glass knob with Liquid Glass on'],
+    [/after that app quits, registered: true \| taken now: none/, 'takes a shortcut back once the app holding it quits'],
+    // Only Windows refuses a shortcut another app holds (macOS lets both have it).
+    ...(process.platform === 'win32' ? [[/Snapkit sees taken: capture/, 'notices a shortcut another app holds']] : [])
   ],
   safety: [
     [/hotkey toggles: true -> false/, 'capture hotkey again closes capture mode'],

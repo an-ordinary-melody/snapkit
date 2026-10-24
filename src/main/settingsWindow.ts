@@ -1,18 +1,20 @@
 import { app, BrowserWindow, dialog, nativeTheme, shell } from 'electron'
 import { join } from 'path'
-import { DEFAULT_SETTINGS, type Settings, type SettingsPatch } from '@shared/settings'
+import { type Settings, type SettingsPatch } from '@shared/settings'
 import { IPC, type SettingsSnapshot } from '@shared/ipc'
 import { engineInfo } from './capture'
 import { defaultSaveFolder } from './output'
 import { ipcHandle, ipcOn } from './security'
-import { getSettings, onSettingsChange, resetSettings, settingsFile, updateSettings } from './settings'
+import { DEFAULTS, getSettings, onSettingsChange, resetSettings, settingsFile, updateSettings } from './settings'
+import { onHotkeyStatus, takenHotkeys, type HotkeyName } from './hotkeys'
 
 const isMac = process.platform === 'darwin'
 let win: BrowserWindow | null = null
 
 const snapshot = (): SettingsSnapshot => ({
   settings: getSettings(),
-  defaults: DEFAULT_SETTINGS,
+  defaults: DEFAULTS,
+  hotkeysTaken: takenHotkeys(),
   version: app.getVersion(),
   defaultSaveFolder: defaultSaveFolder(),
   engines: engineInfo()
@@ -56,8 +58,6 @@ export function openSettingsWindow() {
 /** Native window material and menus: Gray is a dark theme. */
 const nativeMode = (m: Settings['appearance']['mode']) => (m === 'gray' ? 'dark' : m)
 
-type HotkeyName = 'capture' | 'history' | 'fullscreen' | 'settings'
-
 export function registerSettingsIpc(setHotkey: (name: HotkeyName, accelerator: string) => string | null) {
   ipcOn(IPC.openSettings, () => openSettingsWindow())
   ipcHandle(IPC.settingsGet, () => snapshot())
@@ -92,4 +92,6 @@ export function registerSettingsIpc(setHotkey: (name: HotkeyName, accelerator: s
     if (isMac && s.appearance.glass !== prev.appearance.glass) win.setVibrancy(s.appearance.glass ? 'sidebar' : null)
     win.webContents.send(IPC.settingsChanged, snapshot())
   })
+  // A shortcut became taken or free: the Shortcuts section shows it.
+  onHotkeyStatus(() => win && !win.isDestroyed() && win.webContents.send(IPC.settingsChanged, snapshot()))
 }

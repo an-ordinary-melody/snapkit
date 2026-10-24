@@ -1,7 +1,10 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
-import { applyPatch, DEFAULT_SETTINGS, mergeSettings, type Settings, type SettingsPatch } from '@shared/settings'
+import { applyPatch, defaultsFor, mergeSettings, type Settings, type SettingsPatch } from '@shared/settings'
+
+/** The defaults on this OS (see defaultsFor). */
+export const DEFAULTS = defaultsFor(process.platform)
 
 export const settingsFile = () => join(app.getPath('userData'), 'settings.json')
 
@@ -25,7 +28,7 @@ function readSaved(): Record<string, unknown> {
 }
 
 export function getSettings(): Settings {
-  if (!current) current = mergeSettings(DEFAULT_SETTINGS, readSaved())
+  if (!current) current = mergeSettings(DEFAULTS, readSaved())
   return current
 }
 
@@ -58,7 +61,7 @@ export function flushSettings() {
 function write(next: Record<string, unknown>) {
   const prev = getSettings()
   saved = next
-  current = mergeSettings(DEFAULT_SETTINGS, next)
+  current = mergeSettings(DEFAULTS, next)
   dirty = true
   if (flushTimer) clearTimeout(flushTimer)
   flushTimer = setTimeout(flushSettings, 100)

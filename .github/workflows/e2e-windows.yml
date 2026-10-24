@@ -12,6 +12,11 @@ on:
 jobs:
   e2e:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 100% and 150% display scaling (most Windows laptops run at 125–150%).
+        scale: ['1', '1.5']
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -20,6 +25,8 @@ jobs:
       - run: npm run build
       - name: Run suites
         shell: bash
+        env:
+          SNAPKIT_E2E_ARGS: ${{ matrix.scale != '1' && format('--force-device-scale-factor={0}', matrix.scale) || '' }}
         run: node e2e/run-all.mjs ${{ github.event.inputs.suites }} --out e2e-out
       - name: Main-process log
         if: always()
@@ -28,5 +35,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: e2e-windows
+          name: e2e-windows-scale-${{ matrix.scale }}
           path: e2e-out

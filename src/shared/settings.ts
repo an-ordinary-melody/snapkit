@@ -253,6 +253,20 @@ export const DEFAULT_SETTINGS: Settings = {
 type Obj = Record<string, unknown>
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
 
+/**
+ * Per-OS differences from the defaults. Windows: bigger text, since its
+ * screens usually run at 100–150% scaling, where 20 px text reads small.
+ */
+const PLATFORM_DEFAULTS: Partial<Record<NodeJS.Platform, SettingsPatch>> = {
+  win32: { annotate: { text: { fontSize: 32 } } }
+}
+
+/** The defaults on this OS. */
+export function defaultsFor(platform: NodeJS.Platform): Settings {
+  const p = PLATFORM_DEFAULTS[platform]
+  return p ? mergeSettings(DEFAULT_SETTINGS, p) : DEFAULT_SETTINGS
+}
+
 /** Deep-merge saved settings over defaults so new settings get sane values after updates. */
 export function mergeSettings(defaults: Settings, saved: unknown): Settings {
   const merge = (d: unknown, s: unknown): unknown => {

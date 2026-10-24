@@ -9,7 +9,8 @@ mkdirSync(profile, { recursive: true })
 writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12', fullscreen: '' }, capture: { fullscreenCopy: true } }))
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
-const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
+// SNAPKIT_E2E_ARGS: extra Chromium switches, e.g. --force-device-scale-factor=1.5 to act like 150% display scaling.
+const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`, ...(process.env.SNAPKIT_E2E_ARGS?.split(' ').filter(Boolean) ?? [])] })
 const windowFor = (view) => app.windows().filter((w) => w.url().endsWith('#' + view))
 
 try {
