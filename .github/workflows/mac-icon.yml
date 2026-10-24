@@ -1,0 +1,37 @@
+name: Mac icon (Liquid Glass)
+
+# Compiles build/AppIcon.icon (Icon Composer document, made by scripts/make-icons.cjs) into
+# Assets.car with Xcode 26+'s actool. Run by hand after changing the icon, then commit the
+# Assets.car from the artifact to build/Assets.car (electron-builder ships it).
+on:
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Xcode 26 or newer
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_2[6-9]*.app /Applications/Xcode.app 2>/dev/null | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Compile the icon
+        run: |
+          mkdir -p out
+          xcrun actool build/AppIcon.icon --compile out \
+            --output-format human-readable-text --notices --warnings --errors \
+            --output-partial-info-plist out/partial.plist \
+            --app-icon AppIcon --include-all-app-icons \
+            --enable-on-demand-resources NO --development-region en \
+            --target-device mac --minimum-deployment-target 11.0 --platform macosx
+          ls -la out
+          cat out/partial.plist
+      - name: Preview (flattened icon)
+        run: |
+          [ -f out/AppIcon.icns ] && sips -s format png out/AppIcon.icns --out out/preview.png && sips -Z 512 out/preview.png || true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mac-icon
+          path: out

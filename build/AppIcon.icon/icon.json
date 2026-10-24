@@ -1,0 +1,40 @@
+{
+  "fill": {
+    "linear-gradient": [
+      "extended-srgb:0.28235,0.53333,0.96471,1.00000",
+      "extended-srgb:0.20392,0.15686,0.92157,1.00000"
+    ],
+    "orientation": {
+      "start": {
+        "x": 1,
+        "y": 0
+      },
+      "stop": {
+        "x": 0,
+        "y": 1
+      }
+    }
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "hand.svg",
+          "name": "hand"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.4
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}
