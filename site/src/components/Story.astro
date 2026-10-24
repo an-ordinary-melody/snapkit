@@ -6,10 +6,10 @@ import { GITHUB } from '../lib/release'
     <span class="eyebrow"><i class="dot"></i> A note from the maker</span>
     <h2>Why a screenshot app <span class="serif">in 2026?</span></h2>
     <div class="story-body">
-      <p>Taking screenshots is something I do all the time, and so do many people.</p>
+      <p>Taking screenshots is something I do a lot, and I suspect I'm not the only one.</p>
       <p>
         There are plenty of screenshot tools out there, and some are arguably more polished. I'd probably have stuck with
-        Lightshot if it didn't look set to have compatibility problems with upcoming macOS versions. So I built one that
+        <a class="ref" href="https://app.prntscr.com/en/index.html">Lightshot</a> if it didn't look set to have compatibility problems with upcoming macOS versions. So I built one that
         fits my own workflow and comes with the extra tools I need.
       </p>
       <p>
@@ -31,4 +31,10 @@ import { GITHUB } from '../lib/release'
   .story-body p:first-child { font-size: 1.15em; color: var(--fg); font-weight: 500; }
   .story-last { padding-top: 18px; border-top: 1px dashed var(--line-strong); }
   .story-last a { color: var(--fg); text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent); text-underline-offset: 3px; text-decoration-thickness: 2px; }
+  .ref {
+    display: inline-block; padding: 0 9px; border-radius: 8px; line-height: 1.5; text-decoration: none; font-weight: 550;
+    color: color-mix(in srgb, var(--accent) 80%, var(--fg)); background: color-mix(in srgb, var(--accent) 12%, var(--card));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); transition: background .15s;
+  }
+  .ref:hover { background: color-mix(in srgb, var(--accent) 20%, var(--card)); }
 </style>

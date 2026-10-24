@@ -63,7 +63,7 @@ A quiet text section in a narrow column, with no signature. Lightly copyedited f
 
 > **Why a screenshot app in 2026?**
 >
-> Taking screenshots is something I do all the time, and so do many people.
+> Taking screenshots is something I do a lot, and I suspect I'm not the only one.
 > There are plenty of screenshot tools out there, and some are arguably more polished.
 > I'd probably have stuck with Lightshot if it didn't look set to have compatibility problems with upcoming macOS versions.
 > So I built one that fits my own workflow and comes with the extra tools I need.
