@@ -2,7 +2,7 @@
 // The release workflow redeploys the site after publishing, so the links stay current.
 import notes from '../data/releases.json'
 
-export const REPO = 'sonbq-fsc/snapkit'
+export const REPO = 'an-ordinary-melody/snapkit'
 export const GITHUB = `https://github.com/${REPO}`
 const FALLBACK = `${GITHUB}/releases/latest`
 
