@@ -1,8 +1,12 @@
 ---
-// The 1200 × 630 share image. `node scripts/og.mjs` screenshots this page into public/og.png.
+// The 1200 × 630 share image, laid out like the hero: centered headline over the gray stage, with an
+// annotated capture on the app's default background peeking up from the bottom edge.
+// `node scripts/og.mjs <url>` screenshots this page into public/og.png.
 import '../styles/global.css'
 import '../styles/demo.css'
+import { Code2, Laptop } from 'lucide-react'
 import { PlanCard } from '../components/demo/Shot'
+import Toolbar, { ACTIONS, TOOLS } from '../components/demo/Toolbar'
 ---
 <!doctype html>
 <html lang="en" data-theme="light">
@@ -13,39 +17,76 @@ import { PlanCard } from '../components/demo/Shot'
   </head>
   <body>
     <div class="og">
-      <div class="og-text">
-        <div class="og-brand"><img src="/logo.svg" alt="" width="56" height="56" /> Snapkit</div>
-        <h1>Screenshots, <span class="serif">your way.</span></h1>
-        <p>Free and open source screenshot tool<br />for macOS and Windows</p>
-      </div>
-      <div class="og-shot">
-        <div class="og-card">
-        <PlanCard />
-        <span class="step-badge" style="left:214px;top:22px">1</span>
-        <span class="step-badge" style="left:290px;top:178px">2</span>
-        <div class="blur-box" style="left:22px;top:188px;width:264px;height:44px"></div>
-        <svg viewBox="0 0 472 262" width="472" height="262">
-          <path d="M452 84 L414 176" />
-          <path d="M-15 -8 L0 0 L-15 8" transform="translate(414 176) rotate(112.4)" />
-        </svg>
+      <div class="glow"></div>
+      <div class="brand"><img src="/logo.svg" alt="" width="40" height="40" /> Snapkit</div>
+      <h1>Screenshots, <span class="serif">your way.</span></h1>
+      <p class="sub">Capture, annotate, blur and beautify in a few keystrokes</p>
+
+      <div class="stage">
+        <div class="shot">
+          <div class="frame">
+            <div class="card">
+              <PlanCard />
+              <svg viewBox="0 0 472 262" width="472" height="262" aria-hidden="true">
+                <path d="M452 84 L414 176" />
+                <path d="M-15 -8 L0 0 L-15 8" transform="translate(414 176) rotate(112.4)" />
+              </svg>
+              <span class="step-badge" style="left:200px;top:18px">1</span>
+              <span class="step-badge" style="left:286px;top:176px">2</span>
+              <div class="blur-box" style="left:22px;top:188px;width:264px;height:44px"></div>
+            </div>
+          </div>
+          <Toolbar items={TOOLS} vertical active={['arrow']} className="tools-v" />
+          <Toolbar items={ACTIONS} on={['beautify']} className="tools-h" />
         </div>
       </div>
+
+      <div class="chip c-free"><span class="ic" style="background:#22c55e"><Code2 /></span>Free &amp; open source</div>
+      <div class="chip c-os"><span class="ic" style="background:#111"><Laptop /></span>macOS + Windows</div>
+      <div class="keys"><span class="kbd">⌥</span><span class="kbd">⇧</span><span class="kbd">Z</span></div>
     </div>
   </body>
 </html>
 
 <style>
   body { margin: 0; }
-  .og { width: 1200px; height: 630px; display: grid; grid-template-columns: 1fr 600px; align-items: center; padding: 0 0 0 72px; background: #fff; overflow: hidden; }
-  .og-brand { display: flex; align-items: center; gap: 16px; font-size: 34px; font-weight: 650; letter-spacing: -.02em; }
-  .og-brand img { border-radius: 13px; }
-  h1 { font-size: 76px; line-height: 1; letter-spacing: -.045em; margin: 40px 0 24px; }
-  h1 .serif { font-size: 1.1em; }
-  p { font-size: 26px; line-height: 1.35; color: #71717a; }
-  .og-shot {
-    position: relative; height: 630px; display: grid; place-items: center; background: linear-gradient(135deg, #f83600, #f9d423);
+  .og {
+    position: relative; width: 1200px; height: 630px; overflow: hidden; background: #fff; display: grid; justify-items: center; align-content: start;
+    font-family: var(--font); color: #0c0c0e;
   }
-  .og-card { position: relative; width: 472px; height: 262px; transform: scale(1.08); }
-  .og-card .plan { box-shadow: 0 24px 60px rgba(80, 20, 0, .35); border-radius: 12px; }
-  .og-card svg { position: absolute; inset: 0; overflow: visible; fill: none; stroke: #ff3b30; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+  .glow {
+    position: absolute; left: 50%; top: -260px; width: 1100px; height: 620px; transform: translateX(-50%); border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(30, 139, 255, .14), rgba(74, 43, 239, .06) 60%, transparent);
+  }
+  .brand { position: relative; margin-top: 38px; display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 650; letter-spacing: -.02em; }
+  .brand img { border-radius: 10px; box-shadow: 0 4px 14px rgba(40, 60, 200, .25); }
+  h1 { position: relative; margin: 18px 0 0; font-size: 76px; line-height: 1; letter-spacing: -.045em; font-weight: 600; }
+  h1 .serif { font-size: 1.1em; }
+  .sub { position: relative; margin-top: 16px; font-size: 22px; color: #71717a; }
+
+  .stage {
+    position: absolute; left: 110px; right: 110px; top: 300px; height: 420px; border-radius: 32px; background: #f3f3f5;
+    box-shadow: inset 0 0 0 1px #e8e8ec;
+  }
+  .shot { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); width: 552px; height: 342px; }
+  .frame {
+    width: 552px; height: 342px; border-radius: 16px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #f83600, #f9d423); box-shadow: 0 30px 70px rgba(120, 50, 0, .25), 0 0 0 1px rgba(0, 0, 0, .04);
+  }
+  .card { position: relative; width: 472px; height: 262px; }
+  .card :global(.plan) { border-radius: 12px; box-shadow: 0 18px 40px rgba(80, 20, 0, .35); }
+  .card svg { position: absolute; inset: 0; overflow: visible; fill: none; stroke: #ff3b30; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+  .shot :global(.tools-v) { position: absolute; left: 568px; top: 0; }
+  .shot :global(.tools-h) { position: absolute; right: 0; top: 356px; }
+
+  .chip { position: absolute; font-size: 17px; padding: 9px 16px 9px 10px; gap: 10px; background: #fff; color: #3f3f46; box-shadow: 0 2px 6px rgba(16,16,24,.06), 0 12px 32px rgba(16,16,24,.1), inset 0 0 0 1px #e8e8ec; }
+  .chip .ic { width: 28px; height: 28px; }
+  .chip .ic :global(svg) { width: 16px; height: 16px; }
+  .c-free { left: 64px; top: 404px; transform: rotate(-3deg); }
+  .c-os { right: 48px; top: 470px; transform: rotate(3deg); }
+  .keys {
+    position: absolute; left: 112px; top: 336px; display: flex; gap: 6px; padding: 9px; border-radius: 16px; background: #fff; transform: rotate(-4deg);
+    box-shadow: 0 2px 6px rgba(16,16,24,.06), 0 12px 32px rgba(16,16,24,.1), inset 0 0 0 1px #e8e8ec;
+  }
+  .keys .kbd { min-width: 34px; height: 34px; font-size: 17px; border-radius: 9px; background: #fff; color: #3f3f46; box-shadow: inset 0 0 0 1px #d6d6dc, 0 2px 0 #d6d6dc; }
 </style>
