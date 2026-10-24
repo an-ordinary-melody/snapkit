@@ -117,7 +117,8 @@ function init() {
   // The menu shows the hotkey; reset-to-defaults can change it too.
   onSettingsChange((s, prev) => {
     if (JSON.stringify(s.hotkeys) !== JSON.stringify(prev.hotkeys)) registerHotkey()
-    if (JSON.stringify(s.history) !== JSON.stringify(prev.history)) void prune() // new limits apply now
+    const limits = ({ panel: _, ...h }: typeof s.history) => JSON.stringify(h)
+    if (limits(s.history) !== limits(prev.history)) void prune() // new limits apply now
     if (s.capture.engine !== prev.capture.engine) setPreferredEngine(s.capture.engine)
     refreshTrayMenu()
   })

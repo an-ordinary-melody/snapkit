@@ -48,6 +48,8 @@ export interface Settings {
     maxAgeDays: number
     /** Record nothing while paused. */
     paused: boolean
+    /** The history window's size, as last resized. */
+    panel: { width: number; height: number }
   }
   /** Tool id -> letter key in capture mode. Missing ids use the tool's built-in letter. */
   toolKeys: Record<string, string>
@@ -161,10 +163,11 @@ export const DEFAULT_SETTINGS: Settings = {
     notified: ''
   },
   history: {
-    maxCount: 5,
+    maxCount: 20,
     maxMB: 300,
     maxAgeDays: 30,
-    paused: false
+    paused: false,
+    panel: { width: 800, height: 520 }
   },
   toolKeys: {},
   toolVariants: {},

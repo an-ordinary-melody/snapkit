@@ -132,6 +132,9 @@ async function outputSize(png: Uint8Array) {
   return b.length > 24 ? { width: b.readUInt32BE(16), height: b.readUInt32BE(20) } : { width: 0, height: 0 }
 }
 
+/** Where an entry's file is on disk (null for an unknown id). */
+export const historyPath = (id: string, name: 'final.png' | 'thumb.jpg') => (entries.some((e) => e.id === id) ? join(entryDir(id), name) : null)
+
 export const historyFile = (id: string, name: 'final.png' | 'thumb.jpg') => {
   if (!entries.some((e) => e.id === id)) return Promise.resolve(null)
   return readFile(join(entryDir(id), name)).catch(() => null)

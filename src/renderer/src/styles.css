@@ -410,7 +410,7 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
   width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: var(--ui-btn-radius); background: transparent; color: var(--ui-fg); cursor: pointer;
 }
 .hist-tools button:hover, .hist-actions button:hover { background: var(--ui-hover); }
-.hist-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 4px 16px 12px; align-content: start; }
+.hist-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; padding: 4px 16px 12px; align-content: start; }
 .hist-card { position: relative; border-radius: 12px; padding: 6px; cursor: pointer; }
 .hist-card.selected { background: var(--ui-active-bg); box-shadow: var(--ui-active-shadow); }
 .hist-thumb {

@@ -45,7 +45,7 @@ leave a `.tmp` folder, which startup removes.
 Settings (General → History), applied in this order after every new entry, at
 startup, when the settings change, and every 6 hours:
 
-1. **Keep at most N captures**: default 5 (1–100; a hard ceiling of 100 applies whatever the settings say, to keep the panel and disk use fast).
+1. **Keep at most N captures**: default 20 (1–100; a hard ceiling of 100 applies whatever the settings say, to keep the panel and disk use fast).
 2. **Size limit**: default 300 MB (50 MB–2 GB, also a hard ceiling). While over it, delete the oldest.
 3. **Keep for**: default 30 days (or forever). Older entries are deleted.
 

@@ -1,7 +1,7 @@
 // Full-screen capture and Clear history. Usage: npm run build && node e2e/fullscreen.mjs <out-dir>
 import { _electron as electron } from 'playwright-core'
-import { mkdirSync, writeFileSync } from 'fs'
-import { join, resolve } from 'path'
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'fs'
+import { basename, join, resolve } from 'path'
 
 const out = resolve(process.argv[2] ?? 'e2e-out')
 const profile = join(out, 'profile')
@@ -38,6 +38,22 @@ try {
   await wait(1000)
   const h = windowFor('history')[0]
   console.log('history entries:', await h.$$eval('.hist-card', (c) => c.length))
+  // Resizable: more columns when wider, and the size is remembered.
+  const cols = () => h.$eval('.hist-grid', (g) => getComputedStyle(g).gridTemplateColumns.split(' ').length)
+  const before = await cols()
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('#history')).setSize(1100, 600))
+  await wait(900)
+  console.log('columns:', before, '->', await cols(), '| saved size:', JSON.stringify(JSON.parse(readFileSync(join(profile, 'settings.json'), 'utf8')).history?.panel))
+  console.log('default limit:', await h.evaluate(() => window.snapkit.settingsGet().then((s) => s.defaults.history.maxCount)))
+  console.log('clear button:', await h.$eval('button.hist-clear', (b) => b.textContent + ' / ' + b.querySelector('svg').classList.value))
+  // Drag out: the main side copies the entry to a temp file named like a capture (the native drag itself isn't run here).
+  const id = await h.evaluate(() => window.snapkit.historyList().then((l) => l[0].id))
+  const drag = await app.evaluate(({ ipcMain }, id) => {
+    let got = null
+    ipcMain.emit('history:drag-out', { senderFrame: { url: 'file:///app/out/renderer/index.html#history' }, sender: { startDrag: (o) => (got = o) } }, id)
+    return got && { file: got.file, icon: got.icon.getSize() }
+  }, id)
+  console.log('drag file:', drag ? `${basename(drag.file)} ${statSync(drag.file).size} bytes, icon ${JSON.stringify(drag.icon)}` : 'none')
   await h.click('.hist-card >> nth=0 >> .hist-star')
   await wait(300)
   await h.click('button[aria-label="Clear history"]')

@@ -1,4 +1,4 @@
-import { Copy, Eraser, FolderOpen, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
+import { Copy, FolderOpen, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HistoryItem } from '@shared/ipc'
 import { applyTheme } from '../theme'
@@ -63,7 +63,9 @@ export function History() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const n = itemsRef.current.length
-      const cols = 4
+      // As many columns as fit the window's width.
+      const grid = document.querySelector('.hist-grid')
+      const cols = grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 4
       const k = e.key
       if (k === 'Escape') return api.historyClose()
       if (!n) return
@@ -109,7 +111,7 @@ export function History() {
         <span className="hist-tools">
           <span className="hist-clear-anchor">
             <button className="hist-clear" aria-label="Clear history" disabled={!items.length} onClick={() => setClearing(clearing ? null : 'menu')}>
-              <Eraser size={14} /> Clear History
+              <Trash2 size={14} /> Clear History
             </button>
             {clearing && (
               <div className="hist-clear-menu" role="menu">
@@ -186,9 +188,21 @@ function Card({ item, selected, onSelect, act }: { item: HistoryItem; selected: 
       className={`hist-card${selected ? ' selected' : ''}`}
       onMouseEnter={onSelect}
       onClick={() => act('copy')}
-      title="Click to copy"
+      title="Click to copy, or drag into another app"
     >
-      <div className="hist-thumb">{src && <img src={src} alt="" draggable={false} />}</div>
+      <div className="hist-thumb">
+        {src && (
+          <img
+            src={src}
+            alt=""
+            draggable
+            onDragStart={(e) => {
+              e.preventDefault()
+              api.historyDragOut(item.id)
+            }}
+          />
+        )}
+      </div>
       <div className="hist-info">
         <span>{ago(item.updatedAt)}</span>
         <span className="hist-size">

@@ -146,6 +146,7 @@ export const IPC = {
   historyClear: 'history:clear',
   historyUsage: 'history:usage',
   historyReveal: 'history:reveal',
+  historyDragOut: 'history:drag-out',
   historyClose: 'history:close',
   // system
   loginItemGet: 'system:login-item-get',
@@ -226,6 +227,8 @@ export interface SnapkitApi {
   historyClear(keepStarred: boolean): Promise<HistoryUsage>
   historyUsage(): Promise<HistoryUsage>
   historyReveal(): void
+  /** Drag an entry into another app as a PNG file. Call from dragstart. */
+  historyDragOut(id: string): void
   /** Close the history panel. */
   historyClose(): void
 

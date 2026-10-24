@@ -1,25 +1,32 @@
 import { app, BrowserWindow, clipboard, nativeImage, screen, shell } from 'electron'
+import { copyFileSync, mkdirSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { IPC } from '@shared/ipc'
-import { clearHistory, deleteEntry, historyDir, historyDoc, historyFile, historyItems, onHistoryChange, setStarred, usage } from './history'
+import { dateStamp } from '@shared/naming'
+import { clearHistory, deleteEntry, historyDir, historyDoc, historyFile, historyItems, historyPath, onHistoryChange, setStarred, usage } from './history'
 import { returnFocus, startEdit } from './overlay'
 import { savePng } from './output'
 import { createPin } from './pin'
-import { getSettings } from './settings'
+import { getSettings, updateSettings } from './settings'
 import { ipcHandle, ipcOn } from './security'
 
 const isMac = process.platform === 'darwin'
 let panel: BrowserWindow | null = null
 let quitting = false
+const MIN_W = 480
+const MIN_H = 340
 app.on('before-quit', () => {
   quitting = true
 })
 
 function create() {
-  const glass = getSettings().appearance.glass
+  const { appearance, history } = getSettings()
+  const glass = appearance.glass
   panel = new BrowserWindow({
-    width: 800,
-    height: 520,
+    width: Math.max(MIN_W, history.panel.width),
+    height: Math.max(MIN_H, history.panel.height),
+    minWidth: MIN_W,
+    minHeight: MIN_H,
     show: false,
     // A normal title bar, hidden, so the window has the standard close button.
     ...(isMac
@@ -27,7 +34,7 @@ function create() {
       : { frame: false }),
     backgroundColor: '#00000000',
     title: 'Snapkit History',
-    resizable: false,
+    resizable: true,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -41,6 +48,16 @@ function create() {
   if (isMac) panel.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) panel.loadURL(process.env.ELECTRON_RENDERER_URL + '#history')
   else panel.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'history' })
+  // Remember the size for next time (once resizing settles).
+  let sizeTimer: NodeJS.Timeout | undefined
+  panel.on('resize', () => {
+    clearTimeout(sizeTimer)
+    sizeTimer = setTimeout(() => {
+      if (!panel || panel.isDestroyed()) return
+      const [width, height] = panel.getSize()
+      updateSettings({ history: { panel: { width, height } } })
+    }, 400)
+  })
   // Like a clipboard manager: clicking anywhere else closes it.
   panel.on('blur', () => hidePanel(false))
   // The close button hides it (it stays loaded so it opens instantly), except when quitting.
@@ -89,6 +106,24 @@ export function registerHistoryIpc() {
   ipcHandle(IPC.historyClear, (_e, keepStarred: boolean) => clearHistory(!!keepStarred))
   ipcOn(IPC.historyReveal, () => void shell.openPath(historyDir()))
   ipcOn(IPC.historyClose, () => hidePanel(true))
+  // Drag into another app: a copy named like a capture ("Snapkit <date>.png"), not "final.png".
+  ipcOn(IPC.historyDragOut, (e, id: string) => {
+    id = String(id)
+    const src = historyPath(id, 'final.png')
+    const item = historyItems().find((i) => i.id === id)
+    if (!src || !item) return
+    try {
+      const dir = join(app.getPath('temp'), 'Snapkit')
+      mkdirSync(dir, { recursive: true })
+      const file = join(dir, `Snapkit ${dateStamp(new Date(item.updatedAt))}.png`)
+      copyFileSync(src, file)
+      const thumb = historyPath(id, 'thumb.jpg')
+      const icon = nativeImage.createFromBuffer(readFileSync(thumb!)).resize({ width: 120 })
+      e.sender.startDrag({ file, icon })
+    } catch {
+      // the entry was just deleted
+    }
+  })
   ipcOn(IPC.historyAction, async (_e, id: string, action: string) => {
     id = String(id)
     if (action === 'delete') return void deleteEntry(id)
