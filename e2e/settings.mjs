@@ -35,6 +35,14 @@ try {
     writeFileSync(join(out, `glass-${name.toLowerCase()}.png`), await st.screenshot())
   }
 
+  // General starts with Startup; history keeps up to 30 (10 by default).
+  await section('General')
+  console.log('general groups:', await st.$$eval('.st-group > h3', (t) => t.map((e) => e.textContent).slice(0, 3).join(' | ')))
+  console.log('history keep slider:', await st.$eval('input[aria-label="Captures to keep"]', (e) => `${e.value} of ${e.max}`))
+  // Open settings is a global hotkey, registered from the start.
+  await section('Shortcuts')
+  console.log('settings hotkey row:', await st.$eval('.st-row:has-text("Open settings") .st-hotkey', (e) => e.textContent),
+    '| registered:', await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('CommandOrControl+Shift+,')))
   // Switches are blue when on.
   await section('General')
   await st.click('button[aria-label="Notify when copied"]')

@@ -13,6 +13,8 @@ export function General({ snap, set }: SectionProps) {
   const s = snap.settings
   return (
     <>
+      <LaunchAtLogin />
+
       <Group title="After a capture">
         <Row label="Full-screen capture also copies" desc="Off: it only goes to the floating preview and history.">
           <Toggle label="Full-screen capture also copies" value={s.capture.fullscreenCopy} onChange={(fullscreenCopy) => set({ capture: { fullscreenCopy } })} />
@@ -57,8 +59,6 @@ export function General({ snap, set }: SectionProps) {
           <Toggle label="Notify when saved" value={s.notifications.onSave} onChange={(v) => set({ notifications: { onSave: v } })} />
         </Row>
       </Group>
-
-      <LaunchAtLogin />
 
       <HistorySettings snap={snap} set={set} />
     </>
@@ -171,6 +171,14 @@ export function Shortcuts({ snap, set }: SectionProps) {
           <HotkeyField value={s.hotkeys.history} onChange={(acc) => api.settingsSetHotkey(acc, 'history')} />
           {s.hotkeys.history && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'history')} title="No shortcut; use the menu bar">
+              Off
+            </button>
+          )}
+        </Row>
+        <Row label="Open settings" desc="This window, from any app (capture mode closes first).">
+          <HotkeyField value={s.hotkeys.settings} onChange={(acc) => api.settingsSetHotkey(acc, 'settings')} />
+          {s.hotkeys.settings && (
+            <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'settings')} title="No shortcut; use the menu bar">
               Off
             </button>
           )}

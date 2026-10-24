@@ -248,7 +248,7 @@ export interface SnapkitApi {
   settingsReset(sections?: (keyof Settings)[]): Promise<SettingsSnapshot>
   onSettingsChanged(cb: (s: SettingsSnapshot) => void): void
   /** Change a hotkey; resolves to an error message if it can't be used. '' turns the history hotkey off. */
-  settingsSetHotkey(accelerator: string, name?: 'capture' | 'history' | 'fullscreen'): Promise<string | null>
+  settingsSetHotkey(accelerator: string, name?: 'capture' | 'history' | 'fullscreen' | 'settings'): Promise<string | null>
   /** Pick a folder; null if cancelled. */
   settingsChooseFolder(): Promise<string | null>
   /** Show the log folder or the settings file in Finder / Explorer. */

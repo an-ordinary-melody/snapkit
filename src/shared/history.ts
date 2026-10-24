@@ -14,7 +14,7 @@ export interface HistoryEntry {
 }
 
 /** Hard ceilings, whatever the settings say: history must stay fast. */
-export const HISTORY_LIMITS = { maxCount: 100, maxMB: 2000 }
+export const HISTORY_LIMITS = { maxCount: 30, maxMB: 2000 }
 
 export interface PruneRules {
   maxCount: number

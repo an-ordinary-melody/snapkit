@@ -27,6 +27,8 @@ export interface Settings {
     history: string
     /** Captures the whole screen straight to the floating preview. '' = none. */
     fullscreen: string
+    /** Opens the settings window from anywhere. '' = none. */
+    settings: string
   }
   /** Update checks: notify and download; nothing installs by itself. */
   updates: {
@@ -154,7 +156,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
     capture: 'CommandOrControl+Shift+2',
     history: 'CommandOrControl+Shift+1',
-    fullscreen: 'CommandOrControl+Shift+9'
+    fullscreen: 'CommandOrControl+Shift+9',
+    settings: 'CommandOrControl+Shift+,'
   },
   updates: {
     autoCheck: true,
@@ -163,7 +166,7 @@ export const DEFAULT_SETTINGS: Settings = {
     notified: ''
   },
   history: {
-    maxCount: 20,
+    maxCount: 10,
     maxMB: 300,
     maxAgeDays: 30,
     paused: false,

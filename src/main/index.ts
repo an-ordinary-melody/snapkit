@@ -7,7 +7,7 @@ import { log } from './log'
 import { lockDownWebContents } from './security'
 import { onUpdateCheck, registerSystemIpc, scheduleUpdateChecks } from './system'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
-import { rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
+import { forceEndCapture, isCapturing, rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { registerPinIpc } from './pin'
 import { loadHistory, prune, saveIndex } from './history'
 import { preloadHistoryPanel, registerHistoryIpc, toggleHistoryPanel } from './historyPanel'
@@ -43,7 +43,13 @@ function capture() {
   })
 }
 
-const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel(), fullscreen: () => fullscreen() }
+const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel(), fullscreen: () => fullscreen(), settings: () => openSettings() }
+
+/** From anywhere, capture mode included (it closes, so the window isn't hidden behind it). */
+function openSettings() {
+  if (isCapturing()) forceEndCapture('settings opened')
+  openSettingsWindow()
+}
 
 /** Like capture(): synchronous until the screen grab has started. */
 function fullscreen() {
@@ -60,7 +66,7 @@ function registerHotkey() {
     dialog.showErrorBox('Snapkit', `The shortcut ${keys.capture} is already used by another app. Snapkit is still running in the menu bar / tray.`)
   }
   // These are optional: if one is taken, the menu-bar menu still has the action.
-  for (const name of ['history', 'fullscreen'] as const) {
+  for (const name of ['history', 'fullscreen', 'settings'] as const) {
     if (!keys[name]) continue
     try {
       if (!globalShortcut.register(keys[name], HOTKEY_ACTIONS[name])) log(`[hotkeys] ${keys[name]} (${name}) is taken by another app`)
@@ -108,7 +114,7 @@ function init() {
   setInterval(() => void prune(), 6 * 60 * 60 * 1000).unref()
   registerHistoryIpc()
   preloadHistoryPanel()
-  createTray(capture, openSettingsWindow, toggleHistoryPanel, fullscreen)
+  createTray(capture, openSettings, toggleHistoryPanel, fullscreen)
   registerHotkey()
   registerSettingsIpc(setHotkey)
   registerSystemIpc()

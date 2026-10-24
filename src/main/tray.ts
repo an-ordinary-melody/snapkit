@@ -26,7 +26,7 @@ export function createTray(onCapture: () => void, onSettings: () => void, onHist
 export function refreshTrayMenu() {
   if (!tray || !actions) return
   const { capture: onCapture, settings: onSettings, history: onHistory, fullscreen: onFullscreen } = actions
-  const { history: historyKey, fullscreen: fullscreenKey } = getSettings().hotkeys
+  const { history: historyKey, fullscreen: fullscreenKey, settings: settingsKey } = getSettings().hotkeys
   const paused = getSettings().history.paused
   const update = lastUpdateCheck()
   const hotkey = getSettings().hotkeys.capture
@@ -40,7 +40,7 @@ export function refreshTrayMenu() {
       { type: 'separator' },
       { label: 'Open Screenshots Folder', click: () => shell.openPath(defaultSaveFolder()) },
       { label: 'Close All Pins', click: closeAllPins },
-      { label: 'Settings…', accelerator: 'CommandOrControl+,', click: onSettings },
+      { label: 'Settings…', accelerator: settingsKey || 'CommandOrControl+,', click: onSettings },
       { type: 'separator' },
       ...(update?.status === 'available'
         ? [{ label: `Update available: ${update.version}…`, click: () => void shell.openExternal(update.url!) }]
