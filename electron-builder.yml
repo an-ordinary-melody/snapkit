@@ -19,12 +19,19 @@ afterPack: build/after-pack.cjs # Electron fuses + macOS ad-hoc signing
 electronLanguages: [en-US, en-GB]
 
 mac:
+  # Liquid Glass icon (macOS 26+): build/Assets.car, compiled from build/AppIcon.icon by the
+  # "Mac icon" workflow, plus the flattened AppIcon.icns it makes for older macOS.
+  icon: build/AppIcon.icns
+  extraResources:
+    - from: build/Assets.car
+      to: Assets.car
   target:
     - target: dmg
       arch: [arm64]
   category: public.app-category.productivity
   identity: null # no Apple Developer account: ad-hoc signed in afterPack instead
   extendInfo:
+    CFBundleIconName: AppIcon # the icon in Assets.car (Liquid Glass)
     LSUIElement: true
     LSAppNapIsDisabled: true # App Nap made idle captures take seconds to start
     NSScreenCaptureUsageDescription: Snapkit needs to record the screen to take screenshots.
