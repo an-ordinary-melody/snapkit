@@ -33,6 +33,7 @@ dmg:
   format: UDBZ # bzip2: the smallest of the formats tried (76 MB vs 83 MB zlib, 82 MB LZFSE)
 
 win:
+  icon: build/icon-win.png # full-size tile (build/icon.png is inset for macOS); made by scripts/make-icons.cjs
   target:
     - target: nsis
       arch: [x64]

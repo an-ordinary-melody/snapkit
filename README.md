@@ -45,6 +45,8 @@ Download the latest installer from the [Releases](https://github.com/sonbq-fsc/s
 Every push to `main` also builds both installers (the **Actions** tab → latest run →
 **Artifacts**).
 
+**Icons:** the app and tray icons are generated from the logo PNGs in `branding/` (kept out of the repo) with `npx electron scripts/make-icons.cjs`: `Snapkit Original.png` becomes the app icon (macOS inset to Apple's grid, Windows full size) and the Windows tray icon, `Snapkit Negative.png` the macOS menu-bar icon.
+
 **Releasing:** set the version in `package.json` (`npm version 0.2.0-beta.2 --no-git-tag-version`),
 write `release-notes/v<version>.md`, commit, then tag and push (`git tag v0.2.0-beta.2 && git push origin v0.2.0-beta.2`).
 CI builds both installers and publishes the Release with those notes. To test on Windows, run **Actions → E2E (Windows) → Run workflow** (it runs the suites at 100% and 150% display scaling). A version with a dash
