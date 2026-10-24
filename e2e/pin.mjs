@@ -51,6 +51,41 @@ try {
   const corner = t && Math.abs(t.bounds.x + t.bounds.width - (t.workArea.x + t.workArea.width)) <= 20 && Math.abs(t.bounds.y + t.bounds.height - (t.workArea.y + t.workArea.height)) <= 20
   console.log('preview after ⌘C:', thumbs.length, 'in the bottom-right corner:', corner, JSON.stringify(t?.bounds), '| clipboard:', JSON.stringify(await clip()))
 
+  // Windows: the preview must stay above the app the user goes back to after copying.
+  // (A real bug: it was shown but ended up behind that app's window until the user minimized it.)
+  // Ask Windows itself, via PowerShell: is the preview marked topmost, and is it above a focused normal window?
+  if (process.platform === 'win32') {
+    const { execFileSync } = await import('child_process')
+    const handles = await app.evaluate(({ BrowserWindow }) => {
+      const other = new BrowserWindow({ x: 100, y: 50, width: 900, height: 700, show: true, title: 'Another app' })
+      other.focus()
+      globalThis.__otherApp = other
+      const preview = BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('#thumb'))
+      const hwnd = (w) => w.getNativeWindowHandle().readBigUInt64LE(0).toString()
+      return { preview: hwnd(preview), other: hwnd(other) }
+    })
+    await wait(800)
+    const ps = `
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class W {
+  [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint c);
+  [DllImport("user32.dll")] public static extern IntPtr GetTopWindow(IntPtr h);
+}
+"@
+$p = [IntPtr]::new([Int64]${handles.preview}); $o = [IntPtr]::new([Int64]${handles.other})
+$top = ([W]::GetWindowLong($p, -20) -band 8) -ne 0
+$h = [W]::GetTopWindow([IntPtr]::Zero); $i = 0; $ip = -1; $io = -1
+while ($h -ne [IntPtr]::Zero -and $i -lt 10000) { if ($h -eq $p) { $ip = $i }; if ($h -eq $o) { $io = $i }; $h = [W]::GetWindow($h, 2); $i++ }
+"topmost=$top above=$($ip -ge 0 -and $io -ge 0 -and $ip -lt $io)"
+`
+    const res = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], { encoding: 'utf8' }).trim()
+    console.log('Windows: preview stays above a focused app window:', res)
+    await app.evaluate(() => globalThis.__otherApp.close())
+    await wait(300)
+  }
+
   const thumb = windowFor('thumb')
   await thumb.hover('.thumb')
   await wait(200)

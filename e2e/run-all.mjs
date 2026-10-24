@@ -62,6 +62,9 @@ const SUITES = {
   pin: [
     [/after click: Floating preview: on \| dot: true/, 'floating preview toggle'],
     [/preview after ⌘C: 1 in the bottom-right corner: true/, 'preview after copy'],
+    ...(process.platform === 'win32'
+      ? [[/preview stays above a focused app window: topmost=True above=True/, 'Windows: the preview stays on top of the app you go back to']]
+      : []),
     [/copy from preview: \{"width":\d+/, 'copy again from the preview'],
     [/drawings restored \(shape groups\): 1/, 'edit restores drawings'],
     [/Done closes the editor: true \| preview still there: true/, 'Done keeps the preview'],
