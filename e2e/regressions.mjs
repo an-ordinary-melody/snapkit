@@ -54,6 +54,35 @@ try {
   }).catch(() => 0)
   console.log('edit from preview shows the image:', painted > 20, `(${painted} colors)`)
   writeFileSync(join(out, 'edit-from-preview.png'), await win.screenshot())
+  // Editor zoom: Ctrl + scroll zooms in around the pointer (drawings redrawn sharp), Ctrl + 0 fits again.
+  await win.click('.be-dock .toolbar button[data-tip="Rectangle"]')
+  const c0 = await win.$eval('.be-canvas canvas', (c) => c.getBoundingClientRect().toJSON())
+  await m.move(c0.x + c0.width * 0.3, c0.y + c0.height * 0.3); await m.down(); await m.move(c0.x + c0.width * 0.5, c0.y + c0.height * 0.5, { steps: 4 }); await m.up(); await wait(200)
+  const px = c0.x + c0.width * 0.7, py = c0.y + c0.height * 0.6
+  const u0 = [(px - c0.x) / c0.width, (py - c0.y) / c0.height]
+  await m.move(px, py)
+  await win.keyboard.down('Control')
+  for (let i = 0; i < 6; i++) { await m.wheel(0, -100); await wait(40) }
+  await win.keyboard.up('Control')
+  await wait(500)
+  const c1 = await win.$eval('.be-canvas canvas', (c) => c.getBoundingClientRect().toJSON())
+  const u1 = [(px - c1.x) / c1.width, (py - c1.y) / c1.height]
+  const badge = await win.$eval('.be-zoom', (b) => b.textContent).catch(() => 'none')
+  // The drawing layer's resolution follows how big it's shown (never below normal).
+  const sharp = await win.evaluate(() => {
+    const ann = document.querySelector('.be-ann .annotations')
+    const shownK = ann.getBoundingClientRect().width / ann.offsetWidth
+    const ratio = window.Konva.stages.at(-1).getLayers()[0].getCanvas().getPixelRatio() / (window.devicePixelRatio || 1)
+    return { shownK, ratio }
+  })
+  const layerOk = sharp.shownK > 1.2 && Math.abs(sharp.ratio - Math.max(1, sharp.shownK)) < 0.05
+  console.log('editor zoom in:', c1.width > c0.width * 2, `(${Math.round((c1.width / c0.width) * 100)}%, badge ${badge})`,
+    '| point stays under the pointer:', Math.abs(u1[0] - u0[0]) < 0.03 && Math.abs(u1[1] - u0[1]) < 0.03,
+    '| drawings redrawn sharp:', layerOk, `(shown ${sharp.shownK.toFixed(2)}x, drawn ${sharp.ratio.toFixed(2)}x)`)
+  writeFileSync(join(out, 'editor-zoomed.png'), await win.screenshot())
+  await win.keyboard.press('Control+0'); await wait(500)
+  const c2 = await win.$eval('.be-canvas canvas', (c) => c.getBoundingClientRect().toJSON())
+  console.log('Ctrl+0 fits again:', Math.abs(c2.width - c0.width) < 2 && !(await win.$('.be-zoom')), '| still in editor:', !!(await win.$('.be-backdrop')))
   await win.keyboard.press('Escape'); await wait(300); await win.keyboard.press('Escape'); await wait(500)
 
   // On a small or scaled screen (e.g. 150% on Windows) the editor's tools stay inside the editor, so they can be clicked.

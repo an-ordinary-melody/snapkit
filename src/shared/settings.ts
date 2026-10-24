@@ -258,7 +258,7 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
  * screens usually run at 100–150% scaling, where 20 px text reads small.
  */
 const PLATFORM_DEFAULTS: Partial<Record<NodeJS.Platform, SettingsPatch>> = {
-  win32: { annotate: { text: { fontSize: 32 } } }
+  win32: { annotate: { text: { fontSize: 26 } } }
 }
 
 /** The defaults on this OS. */

@@ -28,7 +28,7 @@ describe('settings', () => {
 
 describe('defaultsFor', () => {
   it('uses bigger text on Windows only', () => {
-    expect(defaultsFor('win32').annotate.text.fontSize).toBe(32)
+    expect(defaultsFor('win32').annotate.text.fontSize).toBe(26)
     expect(defaultsFor('darwin').annotate.text.fontSize).toBe(20)
     expect(defaultsFor('win32').annotate.text.strokeWidth).toBe(DEFAULT_SETTINGS.annotate.text.strokeWidth)
   })

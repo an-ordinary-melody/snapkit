@@ -10,6 +10,9 @@ import {
 import { readableOn } from './color'
 import { obscure } from './obscure'
 
+/** Fired when the editor preview's zoom settles (or the editor closes), so the layer can redraw at the new size. */
+export const EDITOR_ZOOM_EVENT = 'snapkit:editor-zoom'
+
 /**
  * Pointer-downs the annotation layer handled itself. The overlay checks this so
  * it doesn't also start moving or replacing the selection.
@@ -82,6 +85,23 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     return [sel.x + (cx - r.left) / k, sel.y + (cy - r.top) / k]
   }
   const uiRef = useRef<Konva.Layer>(null)
+
+  // In the editor the layer is shown scaled up when zoomed in: draw it at that resolution, so drawings stay as sharp as the image.
+  useEffect(() => {
+    const sharpen = () => {
+      const stage = stageRef.current
+      if (!stage) return
+      const pr = (window.devicePixelRatio || 1) * Math.max(1, zoom())
+      for (const layer of stage.getLayers()) {
+        if (Math.abs(layer.getCanvas().getPixelRatio() - pr) < 0.01) continue
+        layer.getCanvas().setPixelRatio(pr)
+        layer.batchDraw()
+      }
+    }
+    sharpen()
+    window.addEventListener(EDITOR_ZOOM_EVENT, sharpen)
+    return () => window.removeEventListener(EDITOR_ZOOM_EVENT, sharpen)
+  }, [])
   const trRef = useRef<Konva.Transformer>(null)
   const [draft, setDraft] = useState<Shape | null>(null)
   const [editing, setEditing] = useState<TextShape | null>(null)

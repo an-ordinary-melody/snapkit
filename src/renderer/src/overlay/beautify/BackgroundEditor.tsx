@@ -1,5 +1,6 @@
 import { Copy, Save, WandSparkles, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { EDITOR_ZOOM_EVENT } from '../annotate/AnnotationLayer'
 import type { BeautifyBackground, BeautifyPreset } from '@shared/settings'
 import { hexToHsv, hsvToHex, parseHex } from '../annotate/color'
 import { ColorPicker } from '../annotate/ColorPicker'
@@ -25,6 +26,9 @@ const shiftHue = (hex: string, deg: number) => {
 const SIDEBAR = 300
 /** Room above the preview for the docked tools and style bar (more when they wrap on a narrow screen). */
 const TOOLBAR_ROOM = 112
+/** Ctrl / ⌘ + scroll zooms the preview; the image is redrawn sharp this long after the last step. */
+const ZOOM_SETTLE_MS = 120
+
 
 interface Props {
   presets: BeautifyPreset[]
@@ -91,6 +95,15 @@ export function BackgroundEditor(props: Props) {
   // itself. It never closes the capture.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement
+      // Ctrl / ⌘ + 0 fits the preview again; + and - zoom in and out.
+      if ((e.ctrlKey || e.metaKey) && !typing && ['0', '=', '+', '-'].includes(e.key)) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        if (e.key === '0') zoomTo(1)
+        else zoomTo(zoomRef.current * (e.key === '-' ? 0.8 : 1.25))
+        return
+      }
       if (e.key !== 'Escape' || picking || e.target instanceof HTMLTextAreaElement) return
       e.preventDefault()
       e.stopImmediatePropagation()
@@ -109,17 +122,74 @@ export function BackgroundEditor(props: Props) {
   const dpr = window.devicePixelRatio || 1
   const full = beautifyLayout(selection.w * exportScale, selection.h * exportScale, shown, exportScale)
   const fitCss = area.w ? Math.min(1, (area.w - 48) / (full.width / exportScale), (area.h - room - 24) / (full.height / exportScale)) : 0
-  const scale = fitCss * dpr // preview image px per screen px
+
+  // Zoom: 1 = fit. Ctrl / ⌘ + scroll (or a trackpad pinch) zooms around the pointer, Ctrl / ⌘ + 0 fits again.
+  // `zoom` follows the wheel at once (a CSS scale); `drawnZoom` is redrawn sharp once it settles.
+  // Up to 2 output pixels per screen pixel, so a zoomed preview never needs a huge canvas.
+  const maxZoom = fitCss > 0 ? Math.max(1, Math.min(8, (2 * exportScale) / (fitCss * dpr))) : 1
+  const [zoom, setZoom] = useState(1)
+  const [drawnZoom, setDrawnZoom] = useState(1)
+  const zoomRef = useRef(1)
+  zoomRef.current = zoom
+  const maxZoomRef = useRef(maxZoom)
+  maxZoomRef.current = maxZoom
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const zoomerRef = useRef<HTMLDivElement>(null)
+  /** The point under the pointer (as a fraction of the preview) stays under it while zooming. */
+  const anchor = useRef<{ u: number; v: number; x: number; y: number } | null>(null)
+  const zoomTo = (z: number, at?: { x: number; y: number }) => {
+    const next = Math.min(maxZoomRef.current, Math.max(1, z))
+    const r = zoomerRef.current?.getBoundingClientRect()
+    if (r && r.width) {
+      const x = at?.x ?? r.left + r.width / 2
+      const y = at?.y ?? r.top + r.height / 2
+      anchor.current = { u: Math.min(1, Math.max(0, (x - r.left) / r.width)), v: Math.min(1, Math.max(0, (y - r.top) / r.height)), x, y }
+    }
+    setZoom(next)
+  }
+  useEffect(() => {
+    const t = setTimeout(() => setDrawnZoom(zoom), ZOOM_SETTLE_MS)
+    return () => clearTimeout(t)
+  }, [zoom])
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      // A mouse wheel notch (±100) is about 20%; trackpad pinches send many small steps.
+      zoomTo(zoomRef.current * Math.min(1.25, Math.max(0.8, Math.exp(-e.deltaY * 0.002))), { x: e.clientX, y: e.clientY })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  const scale = fitCss * drawnZoom * dpr // preview image px per screen px
   const source = useMemo(() => (scale > 0 ? compose(scale) : null), [compose, scale])
   const layout = source ? beautifyLayout(source.width, source.height, shown, scale, scale / exportScale) : null
 
-  useEffect(() => {
+  // A layout effect: the canvas has its new size before the zoom anchor below measures it.
+  useLayoutEffect(() => {
     const out = canvasRef.current
     if (!out || !source || !bg) return
     drawBeautified(source, bg, shown, scale, image, out, scale / exportScale)
     out.style.width = `${out.width / dpr}px`
     out.style.height = `${out.height / dpr}px`
   }, [source, bg, shown, scale, image, dpr, exportScale])
+
+  // Once the sharp redraw is in, scroll so the anchored point is back under the pointer.
+  useLayoutEffect(() => {
+    const a = anchor.current
+    const sc = scrollRef.current
+    const r = zoomerRef.current?.getBoundingClientRect()
+    if (!a || !sc || !r || zoom !== drawnZoom) return
+    sc.scrollLeft += r.left + a.u * r.width - a.x
+    sc.scrollTop += r.top + a.v * r.height - a.y
+    anchor.current = null
+    window.dispatchEvent(new Event(EDITOR_ZOOM_EVENT))
+  }, [drawnZoom, zoom])
+  // Leaving the editor: the drawing layer goes back to its normal resolution.
+  useEffect(() => () => void setTimeout(() => window.dispatchEvent(new Event(EDITOR_ZOOM_EVENT)), 0), [])
 
   const set = (patch: Partial<BeautifyState>) => onChange({ ...state, ...patch, on: true })
   const setBg = (b: BeautifyBackground) => set({ background: b })
@@ -171,10 +241,28 @@ export function BackgroundEditor(props: Props) {
       <div className="be-card">
         <div ref={stageRef} className="be-stage">
           <div ref={dockRef} className="be-dock">{toolbar}</div>
-          <div className="be-canvas" style={{ marginTop: room }}>
-            <canvas ref={canvasRef} />
-            {layout && annotations({ left: layout.x / dpr, top: layout.y / dpr, k: layout.drawW / dpr / selection.w })}
+          <div ref={scrollRef} className="be-scroll">
+            <div className="be-canvas" style={{ marginTop: room }}>
+              <div
+                ref={zoomerRef}
+                className="be-zoomer"
+                // Between wheel steps and the sharp redraw: scale what's drawn, around the pointer.
+                style={
+                  zoom !== drawnZoom
+                    ? { transform: `scale(${zoom / drawnZoom})`, transformOrigin: anchor.current ? `${anchor.current.u * 100}% ${anchor.current.v * 100}%` : '50% 0' }
+                    : undefined
+                }
+              >
+                <canvas ref={canvasRef} />
+                {layout && annotations({ left: layout.x / dpr, top: layout.y / dpr, k: layout.drawW / dpr / selection.w })}
+              </div>
+            </div>
           </div>
+          {zoom > 1 && (
+            <button className="be-zoom" title="Fit to the window (Ctrl+0 / ⌘0)" onClick={() => zoomTo(1)}>
+              {Math.round(zoom * 100)}% · Fit
+            </button>
+          )}
         </div>
 
         <div className="be-side" style={{ width: SIDEBAR }}>

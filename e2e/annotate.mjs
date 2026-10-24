@@ -16,7 +16,7 @@ writeFileSync(
     save: { folder: saves, askLocation: false },
     notifications: { onSave: false },
     features: { ellipse: true, step: true, redo: true },
-    // The same text size on every OS (Windows defaults to 32), so the layout below is the same.
+    // The same text size on every OS (Windows defaults to 26), so the layout below is the same.
     annotate: { text: { fontSize: 20 } }
   })
 )
