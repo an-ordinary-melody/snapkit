@@ -15,7 +15,12 @@ type Release = { tag_name: string; html_url: string; draft: boolean; published_a
 async function fetchReleases(): Promise<Release[] | null> {
   try {
     const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=30`, {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'snapkit-site' }
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'snapkit-site',
+        // Optional read-only token: unauthenticated calls share a 60/hour limit per build machine.
+        ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {})
+      }
     })
     if (!res.ok) throw new Error(`GitHub ${res.status}`)
     return ((await res.json()) as Release[]).filter((r) => !r.draft)

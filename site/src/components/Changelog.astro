@@ -6,7 +6,7 @@ import { GITHUB, changelog } from '../lib/release'
 const entries = changelog(curated)
 // "**Bold:** rest" in the release notes → <b>Bold:</b> rest; `code` → <code>.
 const md = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>')
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>')
 const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
 ---
 <section id="changelog" class="log">

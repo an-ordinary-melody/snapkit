@@ -38,7 +38,8 @@ const check = (label, ok, detail = '') => {
 const browser = await chromium.launch({ channel: 'chrome' })
 try {
   for (const [name, viewport] of [['desktop', { width: 1280, height: 860 }], ['phone', { width: 375, height: 812 }]]) {
-    const page = await browser.newPage({ viewport })
+    // Playwright's waiting helpers evaluate strings, which the site's CSP forbids; the strict pass below runs with CSP on.
+    const page = await browser.newPage({ viewport, bypassCSP: true })
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
     page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
@@ -75,6 +76,21 @@ try {
     const stepsAfter = await page.$$eval('.wf-flow li', (l) => l.length)
     check(`${name}: quick area capture drops the drawing step`, stepsAfter === stepsBefore - 1)
 
+    // History demo: star, delete and copy act on the selected capture.
+    await page.locator('.hs').scrollIntoViewIfNeeded()
+    await hydrated(page, '.hs')
+    const firstStarred = () => page.$eval('.hs-item[aria-selected="true"]', (el) => !!el.querySelector('[aria-label="Starred"]'))
+    const starBefore = await firstStarred()
+    await page.locator('.hs-actions button', { hasText: 'Star' }).click()
+    const starAfter = await firstStarred()
+    const itemsBefore = await page.$$eval('.hs-item', (l) => l.length)
+    await page.locator('.hs-actions button', { hasText: 'Delete' }).click()
+    const itemsAfter = await page.$$eval('.hs-item', (l) => l.length)
+    await page.locator('.hs-item').nth(1).click()
+    await page.keyboard.press('Enter')
+    const toast = await page.locator('.hs-toast').textContent()
+    check(`${name}: history demo stars, deletes and copies`, starBefore !== starAfter && itemsAfter === itemsBefore - 1 && /Copied/.test(toast ?? ''), toast ?? '')
+
     // Every features tab shows its panel.
     await page.locator('.fx').scrollIntoViewIfNeeded()
     await hydrated(page, '.fx')
@@ -87,7 +103,7 @@ try {
       const demo = await page.locator('.fx-demo > *').count()
       if (title && demo) shown++
     }
-    check(`${name}: all ${count} feature tabs show a demo`, count === 8 && shown === count, `${shown}/${count}`)
+    check(`${name}: all ${count} feature tabs show a demo`, count === 7 && shown === count, `${shown}/${count}`)
 
     const entries = await page.$$eval('.timeline > li', (l) => l.length)
     const latest = await page.$eval('.timeline > li', (el) => `v${el.dataset.upto}`)
@@ -107,6 +123,39 @@ try {
 
     check(`${name}: no console errors`, errors.length === 0, errors.join(' | '))
     await page.close()
+  }
+
+  // Strict pass: the real Content-Security-Policy, nothing blocked, demos still running.
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 860 } })
+    const errors = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
+    await page.goto(base + '/', { waitUntil: 'networkidle' })
+    const csp = await page.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content ?? '')
+    check('CSP meta allows only this site and hashed inline scripts', /script-src 'self'( 'sha256-[^']+')+;/.test(csp) && !csp.includes('unsafe-eval'))
+    await page.evaluate(() => document.querySelector('[data-stage]').scrollIntoView())
+    await page.waitForTimeout(9000)
+    check('with CSP on: hero demo plays', await page.evaluate(() => document.querySelector('[data-stage]').classList.contains('m-copy')))
+    await page.evaluate(() => document.querySelector('.an').scrollIntoView())
+    await page.waitForTimeout(5000)
+    check('with CSP on: annotate demo draws', await page.evaluate(() => document.querySelectorAll('.an .on').length >= 4))
+    await page.evaluate(() => document.querySelector('.hs').scrollIntoView())
+    await page.waitForTimeout(1500)
+    await page.locator('.hs-actions button', { hasText: 'Save' }).click()
+    check('with CSP on: history demo responds', (await page.locator('.hs-toast').count()) === 1)
+    await page.locator('[data-set="dark"]').click()
+    check('with CSP on: theme switch works', await page.evaluate(() => document.documentElement.dataset.theme === 'dark'))
+    check('with CSP on: nothing blocked, no console errors', errors.length === 0, errors.join(' | '))
+    await page.close()
+  }
+
+  if (process.argv[2]) {
+    const h = (await fetch(base + '/')).headers
+    check(
+      'security headers are sent',
+      h.get('x-frame-options') === 'DENY' && h.get('x-content-type-options') === 'nosniff' && /frame-ancestors 'none'/.test(h.get('content-security-policy') ?? '') && !!h.get('referrer-policy') && !!h.get('strict-transport-security')
+    )
   }
 
   const og = await (await fetch(base + '/og.png')).arrayBuffer().catch(() => new ArrayBuffer(0))

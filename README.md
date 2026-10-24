@@ -152,6 +152,9 @@ npm run build && npm run check   # build, then check it in Chrome (demos, links,
   Vercel deploy hook (repository secret `VERCEL_DEPLOY_HOOK`) so the site rebuilds after each release.
 - Roadmap: `site/src/data/roadmap.json`. Share image: `node scripts/og.mjs` with the site running.
 - `?moment=m-bg` (or `m-copy`, …) freezes the hero demo at that moment.
+- Security: `scripts/csp.mjs` runs after every build and adds a Content-Security-Policy to each page (only this
+  site's files, plus the exact inline scripts by hash; no eval). `site/vercel.json` adds clickjacking protection
+  and the other headers. `npm run check <url>` also checks the headers on a deployed site.
 
 ## License
 

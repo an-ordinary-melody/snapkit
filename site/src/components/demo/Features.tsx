@@ -1,6 +1,6 @@
 // "Everything in detail": tabs down the side, a small demo for each.
 import {
-  Circle, Copy, Crop, Droplets, Hash, Highlighter, History, Monitor, Palette, PencilLine, Pencil, Pin, Ruler, Slash, Square, Star, Type,
+  Circle, Copy, Crop, Droplets, Hash, Highlighter, Monitor, Palette, PencilLine, Pencil, Pin, Ruler, Slash, Square, Type,
   WandSparkles, Magnet, Shuffle, type LucideIcon
 } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react'
@@ -165,33 +165,6 @@ function PreviewDemo() {
   )
 }
 
-function HistoryDemo() {
-  const items = [9, 17, 12, 18, 3, 20, 13, 5]
-  return (
-    <div className="fx-history">
-      <div className="fx-hist-head">
-        <b>History</b>
-        <span className="fx-keys"><K>⌘</K><K>⇧</K><K>1</K></span>
-      </div>
-      <div className="fx-hist-grid">
-        {items.map((gi, i) => (
-          <div key={i} className={`fx-hist-item ${i === 0 ? 'sel' : ''}`} style={{ background: grad(GRADIENTS[gi]) }}>
-            <i />
-            {(i === 0 || i === 4) && <Star className="fx-star" size={13} fill="#facc15" stroke="#facc15" />}
-          </div>
-        ))}
-      </div>
-      <div className="fx-hist-keys">
-        <span><K>↵</K> Copy</span>
-        <span><K>E</K> Edit</span>
-        <span><K>P</K> Pin</span>
-        <span><K>S</K> Save</span>
-        <span><K>F</K> Star</span>
-      </div>
-    </div>
-  )
-}
-
 const THEMES = [
   { id: 'light', label: 'Light', bg: 'rgba(248,248,250,.96)', fg: '#1c1c1e' },
   { id: 'gray', label: 'Gray', bg: 'rgba(58,58,62,.96)', fg: '#f2f2f4' },
@@ -272,11 +245,6 @@ const TABS: Tab[] = [
     id: 'preview', label: 'Preview & pins', Icon: Pin, title: 'Keep it close',
     body: <>A small preview after each copy, like Shottr. Turn it into a pin that floats above every window and Space, even full-screen apps.</>,
     demo: PreviewDemo
-  },
-  {
-    id: 'history', label: 'History', Icon: History, title: 'Copy it again later',
-    body: <>Your recent copies, saves and pins, with drawings still editable. Star the ones to keep; drag any of them out as a PNG. Keeps 10 by default, up to 30, and only on your computer.</>,
-    demo: HistoryDemo
   },
   {
     id: 'theme', label: 'Make it yours', Icon: Palette, title: 'Looks the way you like',

@@ -1,12 +1,13 @@
 ---
 import AnnotateDemo from './demo/AnnotateDemo'
 import BackgroundDemo from './demo/BackgroundDemo'
+import HistoryDemo from './demo/HistoryDemo'
 import WorkflowDemo from './demo/WorkflowDemo'
 ---
 <section class="sig" id="signatures">
   <div class="wrap">
     <div class="section-head">
-      <span class="eyebrow"><i class="dot"></i> Three things Snapkit does well</span>
+      <span class="eyebrow"><i class="dot"></i> Four things Snapkit does well</span>
       <h2>Small tool, <span class="serif">big defaults.</span></h2>
     </div>
 
@@ -59,6 +60,23 @@ import WorkflowDemo from './demo/WorkflowDemo'
         </ul>
       </div>
       <div class="panel"><BackgroundDemo client:visible /></div>
+    </div>
+
+    <div class="sig-row flip">
+      <div class="sig-text">
+        <span class="sig-n">04</span>
+        <h3>History that keeps your work</h3>
+        <p>
+          Every copy, save and pin lands in History. Copy it again, reopen it with the drawings and background still
+          editable, pin it, or drag it into another app as a PNG. Try it: click a capture, then use the buttons or keys.
+        </p>
+        <ul class="sig-list">
+          <li>Open it from anywhere with <kbd class="kbd">⌘</kbd> <kbd class="kbd">⇧</kbd> <kbd class="kbd">1</kbd></li>
+          <li>Star the keepers; size, count and age limits skip them</li>
+          <li>Stays on your computer; pause it or clear it any time</li>
+        </ul>
+      </div>
+      <div class="panel"><HistoryDemo client:visible /></div>
     </div>
   </div>
 </section>
@@ -172,4 +190,55 @@ import WorkflowDemo from './demo/WorkflowDemo'
   :global(.bgd-sizes) { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--bg-soft); box-shadow: inset 0 0 0 1px var(--line); justify-self: start; }
   :global(.bgd-sizes button) { border: 0; background: transparent; height: 28px; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 550; color: var(--muted); cursor: pointer; }
   :global(.bgd-sizes button[aria-pressed='true']) { background: var(--card); color: var(--fg); box-shadow: var(--shadow-s); }
+
+  /* 04 History (dark like the app's panel, in both page themes) */
+  :global(.hs-panel) {
+    position: relative; display: grid; gap: 12px; padding: 14px; border-radius: 16px; background: #1c1c1f; color: #f2f2f4;
+    box-shadow: var(--shadow-m), inset 0 0 0 1px rgba(255,255,255,.06); outline: none;
+  }
+  :global(.hs-panel:focus-visible) { box-shadow: 0 0 0 2px var(--accent), var(--shadow-m); }
+  :global(.hs-head) { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  :global(.hs-count) { color: #a1a1aa; font-size: 12.5px; }
+  :global(.hs-keys) { margin-left: auto; display: flex; gap: 3px; }
+  :global(.hs-panel kbd) { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 5px; font: 600 11px/1 var(--font); background: #2a2a2e; color: #e4e4e7; box-shadow: inset 0 0 0 1px #3a3a40; }
+  :global(.hs-grid) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 480px) { :global(.hs-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  :global(.hs-item) { display: grid; gap: 6px; padding: 5px; border: 0; border-radius: 11px; background: transparent; color: inherit; cursor: pointer; text-align: left; animation: hs-in .25s ease both; }
+  :global(.hs-item:hover) { background: rgba(255,255,255,.05); }
+  :global(.hs-item[aria-selected='true']) { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 2px var(--accent); }
+  @keyframes hs-in { from { opacity: 0; transform: scale(.96); } }
+  :global(.hs-meta) { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #a1a1aa; padding: 0 3px 2px; }
+  :global(.hs-thumb) { position: relative; aspect-ratio: 10 / 7; border-radius: 7px; overflow: hidden; }
+  :global(.hs-win) { position: absolute; inset: 16% 14%; border-radius: 5px; background: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.22); padding: 9% 10%; display: grid; gap: 9%; align-content: start; }
+  :global(.hs-win i) { display: block; height: 7px; border-radius: 3px; background: #e5e7eb; }
+  :global(.hs-win i:first-child) { width: 55%; background: #111827; opacity: .8; }
+  :global(.hs-win i:nth-child(2)) { width: 80%; }
+  :global(.hs-win i:nth-child(3)) { width: 65%; }
+  :global(.hs-win i:last-child) { width: 38%; height: 9px; background: #2563eb; justify-self: end; }
+  :global(.hs-chart i:nth-child(2)), :global(.hs-chart i:nth-child(3)) { height: 14px; background: linear-gradient(90deg, #a78bfa 0 30%, #e5e7eb 30% 40%, #60a5fa 40% 70%, #e5e7eb 70%); }
+  :global(.hs-chat i:nth-child(2)) { width: 60%; background: #dbeafe; height: 10px; }
+  :global(.hs-chat i:nth-child(3)) { width: 50%; justify-self: end; background: #dcfce7; height: 10px; }
+  :global(.hs-code) { background: #0f172a; }
+  :global(.hs-code i) { background: #334155; }
+  :global(.hs-code i:first-child) { background: #f472b6; }
+  :global(.hs-code i:last-child) { background: #22d3ee; justify-self: start; }
+  :global(.hs-blur) { position: absolute; left: 10%; right: 30%; top: 46%; height: 18%; border-radius: 3px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); background: rgba(200,200,210,.5); }
+  :global(.hs-arrow) { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #ff3b30; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+  :global(.hs-step) { position: absolute; width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center; font: 700 9px/1 var(--font); color: #fff; background: #ff3b30; box-shadow: 0 0 0 1.5px #fff; }
+  :global(.hs-actions) { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  @media (max-width: 560px) { :global(.hs-actions) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  :global(.hs-actions button) {
+    display: grid; justify-items: center; gap: 4px; padding: 8px 2px; border: 0; border-radius: 10px; background: rgba(255,255,255,.06);
+    color: #e4e4e7; font-size: 11.5px; font-weight: 550; cursor: pointer; transition: background .15s;
+  }
+  :global(.hs-actions button:hover:not(:disabled)) { background: rgba(255,255,255,.12); }
+  :global(.hs-actions button:disabled) { opacity: .35; cursor: default; }
+  :global(.hs-empty) { display: grid; place-items: center; gap: 12px; min-height: 200px; font-size: 14px; color: #a1a1aa; text-align: center; }
+  :global(.hs-empty button) { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: #f2f2f4; color: #111; font-size: 13px; font-weight: 600; cursor: pointer; }
+  :global(.hs-toast) {
+    position: absolute; left: 50%; top: 46px; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; white-space: nowrap;
+    background: rgba(250,250,250,.95); color: #111; font-size: 13px; font-weight: 550; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    animation: hs-toast 1.8s ease both; pointer-events: none;
+  }
+  @keyframes hs-toast { 0% { opacity: 0; transform: translate(-50%, 6px); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 </style>
