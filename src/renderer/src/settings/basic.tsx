@@ -14,6 +14,9 @@ export function General({ snap, set }: SectionProps) {
   return (
     <>
       <Group title="After a capture">
+        <Row label="Full-screen capture also copies" desc="Off: it only goes to the floating preview and history.">
+          <Toggle label="Full-screen capture also copies" value={s.capture.fullscreenCopy} onChange={(fullscreenCopy) => set({ capture: { fullscreenCopy } })} />
+        </Row>
         <Row label="Floating preview after copy" desc="Keep the result in the corner to copy again, edit or pin. The pin button turns it on or off per capture.">
           <Toggle label="Floating preview after copy" value={s.pin.afterCopy} onChange={(v) => set({ pin: { afterCopy: v } })} />
         </Row>
@@ -155,6 +158,14 @@ export function Shortcuts({ snap, set }: SectionProps) {
       <Group title="Global">
         <Row label="Capture area" desc="Works from any app.">
           <HotkeyField value={s.hotkeys.capture} onChange={(acc) => api.settingsSetHotkey(acc)} />
+        </Row>
+        <Row label="Capture full screen" desc="The whole screen under the pointer, straight to the floating preview (copy, edit or pin from there).">
+          <HotkeyField value={s.hotkeys.fullscreen} onChange={(acc) => api.settingsSetHotkey(acc, 'fullscreen')} />
+          {s.hotkeys.fullscreen && (
+            <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'fullscreen')} title="No shortcut; use the menu bar">
+              Off
+            </button>
+          )}
         </Row>
         <Row label="Open history" desc="The panel of past captures.">
           <HotkeyField value={s.hotkeys.history} onChange={(acc) => api.settingsSetHotkey(acc, 'history')} />

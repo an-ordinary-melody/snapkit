@@ -6,15 +6,15 @@ import { lastUpdateCheck } from './system'
 import { getSettings, updateSettings } from './settings'
 
 let tray: Tray | null = null
-let actions: { capture(): void; settings(): void; history(): void } | null = null
+let actions: { capture(): void; settings(): void; history(): void; fullscreen(): void } | null = null
 
 function iconPath() {
   const dir = app.isPackaged ? process.resourcesPath : join(__dirname, '../../resources')
   return process.platform === 'darwin' ? join(dir, 'trayTemplate.png') : join(dir, 'tray.png')
 }
 
-export function createTray(onCapture: () => void, onSettings: () => void, onHistory: () => void) {
-  actions = { capture: onCapture, settings: onSettings, history: onHistory }
+export function createTray(onCapture: () => void, onSettings: () => void, onHistory: () => void, onFullscreen: () => void) {
+  actions = { capture: onCapture, settings: onSettings, history: onHistory, fullscreen: onFullscreen }
   const icon = nativeImage.createFromPath(iconPath())
   if (process.platform === 'darwin') icon.setTemplateImage(true)
   tray = new Tray(icon)
@@ -25,14 +25,15 @@ export function createTray(onCapture: () => void, onSettings: () => void, onHist
 
 export function refreshTrayMenu() {
   if (!tray || !actions) return
-  const { capture: onCapture, settings: onSettings, history: onHistory } = actions
-  const { history: historyKey } = getSettings().hotkeys
+  const { capture: onCapture, settings: onSettings, history: onHistory, fullscreen: onFullscreen } = actions
+  const { history: historyKey, fullscreen: fullscreenKey } = getSettings().hotkeys
   const paused = getSettings().history.paused
   const update = lastUpdateCheck()
   const hotkey = getSettings().hotkeys.capture
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Capture Area', accelerator: hotkey, click: onCapture },
+      { label: 'Capture Full Screen', accelerator: fullscreenKey || undefined, click: onFullscreen },
       { type: 'separator' },
       { label: 'History…', accelerator: historyKey || undefined, click: onHistory },
       { label: 'Pause History', type: 'checkbox', checked: paused, click: () => updateSettings({ history: { paused: !paused } }) },

@@ -438,3 +438,16 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
 .hist-foot { flex: none; padding: 8px 18px 12px; font-size: 11px; color: var(--ui-fg-faint); }
 .hist-foot kbd { font: inherit; padding: 1px 5px; margin: 0 2px 0 8px; border-radius: 4px; background: var(--ui-field); color: var(--ui-fg-dim); }
 .hist-foot kbd:first-child { margin-left: 0; }
+
+.hist-tools button:disabled { opacity: .4; cursor: default; }
+.hist-clear-anchor { position: relative; display: inline-flex; }
+.hist-clear-menu {
+  position: absolute; top: 34px; right: 0; z-index: 5; min-width: 190px; padding: 4px; display: flex; flex-direction: column; gap: 1px; border-radius: 10px;
+  background: var(--ui-bg-strong); backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur); box-shadow: var(--ui-shadow), var(--ui-rim);
+}
+.hist-clear-menu button {
+  width: auto; height: 30px; padding: 0 10px; justify-content: start; display: flex; align-items: center; border: 0; border-radius: 6px;
+  background: transparent; color: var(--ui-fg); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer;
+}
+.hist-clear-menu button:hover:not(:disabled) { background: var(--ui-hover); }
+.hist-clear-menu button.danger { color: #e5484d; }

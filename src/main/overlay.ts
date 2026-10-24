@@ -86,6 +86,9 @@ export function rebuildOverlays() {
 }
 
 /** Hide overlays without ever showing a stale frame next time. */
+/** Capture mode (or an edit session) is open. */
+export const isCapturing = () => active
+
 /** Capture mode closes by itself after this long without any input. */
 const IDLE_LIMIT_MS = Number(process.env.SNAPKIT_IDLE_MS) || 3 * 60 * 1000 // the env var is for tests
 let idleTimer: NodeJS.Timeout | null = null

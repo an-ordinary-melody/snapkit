@@ -25,6 +25,8 @@ export interface Settings {
     capture: string
     /** Opens the history panel. '' = none. */
     history: string
+    /** Captures the whole screen straight to the floating preview. '' = none. */
+    fullscreen: string
   }
   /** Update checks: notify and download; nothing installs by itself. */
   updates: {
@@ -59,6 +61,8 @@ export interface Settings {
     accentColor: string
     /** Screen capture engine: 'auto' (the fastest that works on this OS) or an engine id. */
     engine: string
+    /** Full-screen capture also copies to the clipboard. */
+    fullscreenCopy: boolean
   }
   save: {
     /** Empty string = default folder (Pictures/Snapkit). */
@@ -147,7 +151,8 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
     capture: 'CommandOrControl+Shift+2',
-    history: 'CommandOrControl+Shift+1'
+    history: 'CommandOrControl+Shift+1',
+    fullscreen: 'CommandOrControl+Shift+9'
   },
   updates: {
     autoCheck: true,
@@ -167,7 +172,8 @@ export const DEFAULT_SETTINGS: Settings = {
     dimOpacity: 0.6,
     showSizeLabel: true,
     accentColor: '#3b82f6',
-    engine: 'auto'
+    engine: 'auto',
+    fullscreenCopy: false
   },
   save: {
     folder: '',

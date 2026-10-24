@@ -53,7 +53,9 @@ export function openSettingsWindow() {
  * `setHotkey` changes the capture hotkey and returns an error message if the
  * shortcut can't be registered (the old one is kept then).
  */
-export function registerSettingsIpc(setHotkey: (name: 'capture' | 'history', accelerator: string) => string | null) {
+type HotkeyName = 'capture' | 'history' | 'fullscreen'
+
+export function registerSettingsIpc(setHotkey: (name: HotkeyName, accelerator: string) => string | null) {
   ipcOn(IPC.openSettings, () => openSettingsWindow())
   ipcHandle(IPC.settingsGet, () => snapshot())
   ipcHandle(IPC.settingsUpdate, (_e, patch: SettingsPatch) => {
@@ -64,8 +66,8 @@ export function registerSettingsIpc(setHotkey: (name: 'capture' | 'history', acc
     resetSettings(sections)
     return snapshot()
   })
-  ipcHandle(IPC.settingsSetHotkey, (_e, accelerator: string, name: 'capture' | 'history' = 'capture') =>
-    setHotkey(name === 'history' ? 'history' : 'capture', String(accelerator))
+  ipcHandle(IPC.settingsSetHotkey, (_e, accelerator: string, name: HotkeyName = 'capture') =>
+    setHotkey(name === 'history' || name === 'fullscreen' ? name : 'capture', String(accelerator))
   )
   ipcHandle(IPC.settingsChooseFolder, async () => {
     const res = await dialog.showOpenDialog(win ?? undefined!, { properties: ['openDirectory', 'createDirectory'], defaultPath: defaultSaveFolder() })

@@ -33,8 +33,12 @@ export function warmUpCapture() {
 }
 
 /** Freeze every screen right now, with the first engine that works. */
-export async function grabAllScreens(): Promise<ScreenGrab[]> {
-  const displays = screen.getAllDisplays()
+export function grabAllScreens(): Promise<ScreenGrab[]> {
+  return grabScreens(screen.getAllDisplays())
+}
+
+/** Freeze these displays, with the first engine that works. */
+export async function grabScreens(displays: Electron.Display[]): Promise<ScreenGrab[]> {
   let lastError: unknown
   for (const engine of engineOrder()) {
     if (!engine.available()) continue

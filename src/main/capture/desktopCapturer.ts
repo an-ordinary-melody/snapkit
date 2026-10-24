@@ -31,7 +31,8 @@ export const electronCapturer: CaptureEngine = {
             rgba[p + 3] = 255
           }
           return rgba
-        }
+        },
+        png: async () => img.toPNG()
       }
     })
   }

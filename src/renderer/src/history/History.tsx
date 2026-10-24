@@ -1,4 +1,4 @@
-import { Copy, FolderOpen, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
+import { Copy, Eraser, FolderOpen, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HistoryItem } from '@shared/ipc'
 import { applyTheme } from '../theme'
@@ -34,6 +34,8 @@ const mb = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024)
 export function History() {
   const [items, setItems] = useState<HistoryItem[]>([])
   const [recording, setRecording] = useState(true)
+  /** The Clear menu: closed, open, or waiting for a second click to clear everything. */
+  const [clearing, setClearing] = useState<null | 'menu' | 'confirm-all'>(null)
   const [sel, setSel] = useState(0)
   const itemsRef = useRef(items)
   itemsRef.current = items
@@ -105,6 +107,29 @@ export function History() {
           {recording ? 'Recording' : 'Paused'}
         </label>
         <span className="hist-tools">
+          <span className="hist-clear-anchor">
+            <button aria-label="Clear history" title="Clear history" disabled={!items.length} onClick={() => setClearing(clearing ? null : 'menu')}>
+              <Eraser size={15} />
+            </button>
+            {clearing && (
+              <div className="hist-clear-menu" role="menu">
+                <button
+                  role="menuitem"
+                  disabled={!items.some((i) => !i.starred)}
+                  onClick={() => void api.historyClear(true).then(() => setClearing(null))}
+                >
+                  Clear, keep starred
+                </button>
+                <button
+                  role="menuitem"
+                  className="danger"
+                  onClick={() => (clearing === 'confirm-all' ? void api.historyClear(false).then(() => setClearing(null)) : setClearing('confirm-all'))}
+                >
+                  {clearing === 'confirm-all' ? 'Click again to delete all' : 'Clear all…'}
+                </button>
+              </div>
+            )}
+          </span>
           <button aria-label="Show the history folder" title="Show the history folder" onClick={() => api.historyReveal()}>
             <FolderOpen size={15} />
           </button>

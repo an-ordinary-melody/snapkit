@@ -8,7 +8,7 @@ import type { CaptureEngine, ScreenGrab } from './types'
 type NativeMonitor = {
   x(): number
   y(): number
-  captureImage(): Promise<{ width: number; height: number; toRaw(copy?: boolean): Promise<Buffer> }>
+  captureImage(): Promise<{ width: number; height: number; toRaw(copy?: boolean): Promise<Buffer>; toPng(copy?: boolean): Promise<Buffer> }>
 }
 
 let lib: { Monitor: { all(): NativeMonitor[] } } | null | undefined
@@ -66,7 +66,8 @@ export const nodeScreenshots: CaptureEngine = {
           pixels: async () => {
             const raw = await img.toRaw()
             return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength)
-          }
+          },
+          png: () => img.toPng() // encoded in Rust, off the main thread
         }
       })
     )

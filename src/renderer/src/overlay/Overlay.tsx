@@ -218,7 +218,8 @@ export function Overlay() {
         setTool(null)
         setSelectedId(null)
         setStyle(lastStyle ?? initialStyle(p.settings))
-        setBeautify(doc ? (doc.beautify as BeautifyState) : initialBeautify(p.settings))
+        // A full-screen capture has no background state yet: start from the defaults (off).
+        setBeautify((doc?.beautify as BeautifyState | null) ?? initialBeautify(p.settings))
         setFloating(doc ? true : p.settings.pin.afterCopy)
         // Default shape/arrow styles from settings; picks made this session win.
         setVariants({ ...p.settings.toolVariants, ...lastVariants })

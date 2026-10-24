@@ -2,6 +2,8 @@ import { app, dialog, globalShortcut, screen } from 'electron'
 import { rmSync } from 'fs'
 import { join } from 'path'
 import { setPreferredEngine, warmUpCapture } from './capture'
+import { captureFullScreen } from './fullscreen'
+import { log } from './log'
 import { lockDownWebContents } from './security'
 import { onUpdateCheck, registerSystemIpc, scheduleUpdateChecks } from './system'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
@@ -17,8 +19,10 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   lockDownWebContents()
-  // Opening Snapkit again captures; with --history it opens the history panel.
-  app.on('second-instance', (_e, argv: string[] = []) => (argv.includes('--history') ? toggleHistoryPanel() : capture()))
+  // Opening Snapkit again captures; --history opens the history panel, --fullscreen captures the whole screen.
+  app.on('second-instance', (_e, argv: string[] = []) =>
+    argv.includes('--history') ? toggleHistoryPanel() : argv.includes('--fullscreen') ? fullscreen() : capture()
+  )
   app.whenReady().then(init)
 }
 
@@ -39,7 +43,14 @@ function capture() {
   })
 }
 
-const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel() }
+const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel(), fullscreen: () => fullscreen() }
+
+/** Like capture(): synchronous until the screen grab has started. */
+function fullscreen() {
+  const t0 = Date.now()
+  if (hasScreenPermission()) return captureFullScreen(t0)
+  void ensureScreenPermission().then((ok) => ok && captureFullScreen(t0))
+}
 type HotkeyName = keyof typeof HOTKEY_ACTIONS
 
 function registerHotkey() {
@@ -48,23 +59,24 @@ function registerHotkey() {
   if (!globalShortcut.register(keys.capture, capture)) {
     dialog.showErrorBox('Snapkit', `The shortcut ${keys.capture} is already used by another app. Snapkit is still running in the menu bar / tray.`)
   }
-  // The history hotkey is optional: if it's taken, the menu-bar menu still opens history.
-  if (keys.history) {
+  // These are optional: if one is taken, the menu-bar menu still has the action.
+  for (const name of ['history', 'fullscreen'] as const) {
+    if (!keys[name]) continue
     try {
-      globalShortcut.register(keys.history, HOTKEY_ACTIONS.history)
+      if (!globalShortcut.register(keys[name], HOTKEY_ACTIONS[name])) log(`[hotkeys] ${keys[name]} (${name}) is taken by another app`)
     } catch {
       // invalid accelerator in settings
     }
   }
 }
 
-/** Switch a hotkey from the settings window. Keeps the old one if the new one can't be used. '' turns it off (history only). */
+/** Switch a hotkey from the settings window. Keeps the old one if the new one can't be used. '' turns it off (not the capture hotkey). */
 function setHotkey(name: HotkeyName, accelerator: string): string | null {
   const old = getSettings().hotkeys[name]
   if (accelerator === old) return null
   if (old) globalShortcut.unregister(old)
-  if (!accelerator && name === 'history') {
-    updateSettings({ hotkeys: { history: '' } })
+  if (!accelerator && name !== 'capture') {
+    updateSettings({ hotkeys: { [name]: '' } })
     return null
   }
   let ok = false
@@ -96,7 +108,7 @@ function init() {
   setInterval(() => void prune(), 6 * 60 * 60 * 1000).unref()
   registerHistoryIpc()
   preloadHistoryPanel()
-  createTray(capture, openSettingsWindow, toggleHistoryPanel)
+  createTray(capture, openSettingsWindow, toggleHistoryPanel, fullscreen)
   registerHotkey()
   registerSettingsIpc(setHotkey)
   registerSystemIpc()
@@ -104,7 +116,7 @@ function init() {
   onUpdateCheck(() => refreshTrayMenu()) // shows "Update available" in the menu
   // The menu shows the hotkey; reset-to-defaults can change it too.
   onSettingsChange((s, prev) => {
-    if (s.hotkeys.capture !== prev.hotkeys.capture || s.hotkeys.history !== prev.hotkeys.history) registerHotkey()
+    if (JSON.stringify(s.hotkeys) !== JSON.stringify(prev.hotkeys)) registerHotkey()
     if (JSON.stringify(s.history) !== JSON.stringify(prev.history)) void prune() // new limits apply now
     if (s.capture.engine !== prev.capture.engine) setPreferredEngine(s.capture.engine)
     refreshTrayMenu()

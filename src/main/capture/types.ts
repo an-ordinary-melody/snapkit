@@ -8,6 +8,8 @@ export interface ScreenGrab {
   height: number
   /** RGBA pixels. Converted lazily so the overlay can appear before this work is done. */
   pixels(): Promise<Uint8Array>
+  /** The same image as PNG (for full-screen capture, which skips the overlay). Off the main thread where the engine can. */
+  png(): Promise<Buffer>
 }
 
 /**
