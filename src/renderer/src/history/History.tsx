@@ -33,6 +33,7 @@ const mb = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024)
  */
 export function History() {
   const [items, setItems] = useState<HistoryItem[]>([])
+  const [recording, setRecording] = useState(true)
   const [sel, setSel] = useState(0)
   const itemsRef = useRef(items)
   itemsRef.current = items
@@ -41,7 +42,11 @@ export function History() {
 
   useEffect(() => {
     document.documentElement.classList.add('history-page')
-    const theme = () => void api.settingsGet().then((s) => applyTheme(s.settings.appearance))
+    const theme = () =>
+      void api.settingsGet().then((s) => {
+        applyTheme(s.settings.appearance)
+        setRecording(!s.settings.history.paused)
+      })
     theme()
     void api.historyList().then(setItems)
     api.onHistoryChanged((next) => {
@@ -84,6 +89,21 @@ export function History() {
       <header className="hist-head">
         <span className="hist-title">History</span>
         <span className="hist-meta">{items.length ? `${items.length} · ${mb(total)}` : ''}</span>
+        <label className="hist-record" title="Keep new copies, saves and pins here">
+          <button
+            role="switch"
+            aria-checked={recording}
+            aria-label="Record history"
+            className={`switch${recording ? ' on' : ''}`}
+            onClick={() => {
+              setRecording(!recording)
+              void api.settingsUpdate({ history: { paused: recording } })
+            }}
+          >
+            <span />
+          </button>
+          {recording ? 'Recording' : 'Paused'}
+        </label>
         <span className="hist-tools">
           <button aria-label="Show the history folder" title="Show the history folder" onClick={() => api.historyReveal()}>
             <FolderOpen size={15} />

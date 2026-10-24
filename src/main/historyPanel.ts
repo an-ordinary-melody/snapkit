@@ -5,19 +5,28 @@ import { clearHistory, deleteEntry, historyDir, historyDoc, historyFile, history
 import { returnFocus, startEdit } from './overlay'
 import { savePng } from './output'
 import { createPin } from './pin'
+import { getSettings } from './settings'
 import { ipcHandle, ipcOn } from './security'
 
 const isMac = process.platform === 'darwin'
 let panel: BrowserWindow | null = null
+let quitting = false
+app.on('before-quit', () => {
+  quitting = true
+})
 
 function create() {
+  const glass = getSettings().appearance.glass
   panel = new BrowserWindow({
     width: 800,
-    height: 500,
+    height: 520,
     show: false,
-    frame: false,
-    transparent: true,
+    // A normal title bar, hidden, so the window has the standard close button.
+    ...(isMac
+      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 17 }, vibrancy: glass ? ('popover' as const) : undefined, visualEffectState: 'active' as const }
+      : { frame: false }),
     backgroundColor: '#00000000',
+    title: 'Snapkit History',
     resizable: false,
     minimizable: false,
     maximizable: false,
@@ -34,6 +43,12 @@ function create() {
   else panel.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'history' })
   // Like a clipboard manager: clicking anywhere else closes it.
   panel.on('blur', () => hidePanel(false))
+  // The close button hides it (it stays loaded so it opens instantly), except when quitting.
+  panel.on('close', (e) => {
+    if (quitting) return
+    e.preventDefault()
+    hidePanel(true)
+  })
   panel.on('closed', () => {
     panel = null
   })

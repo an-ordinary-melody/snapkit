@@ -24,7 +24,7 @@ in settings.
 - **Select:** drag to select. Drag inside the selection to move it, and drag the handles to resize. Arrow keys nudge the selection (hold Shift for 10px; hold Alt to resize).
 - **Copy:** `⌘C` / `Ctrl+C` or `Enter`.
 - **Save:** `⌘S` / `Ctrl+S`. Asks where to save, starting in the last folder you used (`Pictures/Snapkit` the first time). Set `save.askLocation` to `false` to save straight to the folder.
-- **Cancel:** `Esc` or right-click.
+- **Cancel:** `Esc` or right-click. If capture mode ever gets stuck, press the capture hotkey (`⌘⇧2`) again: it always closes it. It also closes by itself after 3 minutes without any input.
 - **Annotate:** pick a tool from the vertical bar, or press its letter: `P` pencil, `L` line, `A` arrow, `R` rectangle, `E` ellipse, `H` highlighter, `T` text, `N` numbered step (click to drop the next number; the palette sets the badge color), `B` blur. Press the letter again (or click the tool) to go back to moving the selection. Hold Shift for straight pencil/highlighter strokes, lines at 45° and square boxes. Right-click the rectangle (or ellipse) tool for more shapes: filled rectangle, ellipse, filled ellipse, line; right-click the arrow to switch between an open head (the default) and a filled one. Buttons with a small corner mark have such a menu.
 - **Edit what you drew:** click a shape to select it, then drag to move it, drag its handles to resize, drag an arrow's ends, change its color/width in the style bar, or press Delete. Arrow keys nudge it. While dragging, shapes snap to line up with each other and the capture area (pink guides); hold ⌘ to place freely.
 - **Text:** click to type. `Enter` adds a line; `⌘Enter` / `Ctrl+Enter` or `Esc` finishes (you stay in capture mode). Drag the blue frame to move the box while typing. Click text (or near it) to select and drag it; double-click to edit it again. Style (one at a time): plain, stroke (an outline, white by default), light background (black text) or dark background (white text), each with its own color swatch for the stroke or background; plus size. Text has its own color, separate from the other tools. A subtle drop shadow (10% by default) and the stroke width are in settings (`annotate.text.shadow`, `annotate.text.strokeWidth`).
@@ -83,6 +83,8 @@ Annotation test (macOS or Linux, uses its own profile and briefly shows the capt
 Pin test: `npm run build && node e2e/pin.mjs /tmp/snapkit-pin`
 
 Settings test: `npm run build && node e2e/settings.mjs /tmp/snapkit-settings`
+
+Safeguards test (stuck overlay, idle timeout, hotkey toggle): `npm run build && node e2e/safety.mjs /tmp/snapkit-safety`
 
 History test: `npm run build && node e2e/history.mjs /tmp/snapkit-history`
 

@@ -72,7 +72,10 @@ function createOverlay(display: Display): BrowserWindow {
     if (!win.isDestroyed()) win.destroy()
     overlays.set(display.id, createOverlay(display))
   })
-  win.on('unresponsive', () => log(`[overlay ${display.id}] unresponsive`))
+  win.on('unresponsive', () => {
+    log(`[overlay ${display.id}] unresponsive`)
+    forceEndCapture('overlay stopped responding')
+  })
   return win
 }
 
@@ -83,9 +86,40 @@ export function rebuildOverlays() {
 }
 
 /** Hide overlays without ever showing a stale frame next time. */
+/** Capture mode closes by itself after this long without any input. */
+const IDLE_LIMIT_MS = Number(process.env.SNAPKIT_IDLE_MS) || 3 * 60 * 1000 // the env var is for tests
+let idleTimer: NodeJS.Timeout | null = null
+
+function touchIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => forceEndCapture(`no input for ${Math.round(IDLE_LIMIT_MS / 1000)} s`), IDLE_LIMIT_MS)
+}
+
+/**
+ * Safety net: close capture mode right now, without waiting for the overlay
+ * page (it may be stuck). Used when the hotkey is pressed again, when the
+ * overlay doesn't respond, and after a long idle time.
+ */
+export function forceEndCapture(reason: string) {
+  if (!active) return
+  log(`capture closed: ${reason}`)
+  endCapture()
+  for (const win of overlays.values()) if (!win.isDestroyed()) win.hide()
+  releaseFocus()
+}
+
+/** A stuck overlay page is replaced so the next capture starts clean. */
+function replaceOverlay(display: Display) {
+  const old = overlays.get(display.id)
+  if (old && !old.isDestroyed()) old.destroy()
+  overlays.set(display.id, createOverlay(display))
+}
+
 function endCapture() {
   active = false
   editTarget = null
+  if (idleTimer) clearTimeout(idleTimer)
+  idleTimer = null
   const endedSession = session
   for (const win of overlays.values()) {
     if (win.isDestroyed()) continue
@@ -118,14 +152,9 @@ export function returnFocus() {
 }
 
 export async function startCapture(t0 = Date.now()) {
-  if (active) {
-    // A capture is open: nothing to do, unless it got stuck with nothing on
-    // screen (e.g. a renderer failure), in which case start over.
-    const showing = [...overlays.values()].some((w) => !w.isDestroyed() && w.isVisible() && w.getOpacity() > 0 && !w.webContents.isCrashed())
-    if (showing) return log('hotkey ignored: capture already open')
-    log('capture was stuck with no overlay showing; starting over')
-    endCapture()
-  }
+  // The hotkey again closes capture mode, whatever state it's in: a way out
+  // that doesn't depend on the overlay page responding.
+  if (active) return forceEndCapture('hotkey pressed again')
   active = true
   const id = ++session
   const settings = getSettings()
@@ -158,9 +187,14 @@ export async function startCapture(t0 = Date.now()) {
 
       // Step 1: show the dim right away over the live screen (it still looks identical).
       const arm: ArmPayload = { session: id, displayId: g.display.id, width: g.width, height: g.height, settings }
-      const armed = waitFor(IPC.armed, win, id, 60)
+      const armed = waitFor(IPC.armed, win, id, 1000)
       win.webContents.send(IPC.arm, arm)
-      await armed
+      if (!(await armed)) {
+        // Showing a page that doesn't answer could leave a dim you can't get out of.
+        forceEndCapture(`overlay ${g.display.id} didn't respond`)
+        replaceOverlay(g.display)
+        return
+      }
       if (id !== session || !active) return
       win.setBounds(g.display.bounds)
       win.showInactive()
@@ -170,6 +204,7 @@ export async function startCapture(t0 = Date.now()) {
         win.focus()
       }
       log(`display ${g.display.id} shown at ${ms()}`)
+      touchIdleTimer()
 
       // Step 2: transfer the frozen image and paint it under the dim.
       const pixels = await g.pixels()
@@ -177,7 +212,11 @@ export async function startCapture(t0 = Date.now()) {
       const painted = waitFor(IPC.painted, win, id, 2000)
       const payload: PixelsPayload = { session: id, pixels, width: g.width, height: g.height }
       win.webContents.send(IPC.pixels, payload)
-      await painted
+      if (!(await painted)) {
+        forceEndCapture(`overlay ${g.display.id} never showed the frozen image`)
+        replaceOverlay(g.display)
+        return
+      }
       log(`display ${g.display.id} frozen image painted at ${ms()} (${g.width}x${g.height})`)
     })
   )
@@ -210,22 +249,26 @@ export async function startEdit(doc: CaptureDoc, onDone: (png: Buffer, doc: Capt
   win.focus()
 }
 
-/** Resolve when `win` sends `channel` (for `session`, if given), or after `timeout` ms. */
+/**
+ * Resolve true when `win` sends `channel` (for `session`, if given), or false
+ * after `timeout` ms. Listens with ipcMain directly (the sender is checked
+ * here) so the listener can be removed again.
+ */
 function waitFor(channel: string, win: BrowserWindow, session: number | null, timeout: number) {
-  return new Promise<void>((resolve) => {
+  return new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => {
       log(`timeout waiting for ${channel}`)
-      done()
+      done(false)
     }, timeout)
     function onMsg(e: Electron.IpcMainEvent, s?: number) {
-      if (e.sender === win.webContents && (session === null || s === session)) done()
+      if (e.sender === win.webContents && (session === null || s === session)) done(true)
     }
-    function done() {
+    function done(ok: boolean) {
       clearTimeout(timer)
       ipcMain.off(channel, onMsg)
-      resolve()
+      resolve(ok)
     }
-    ipcOn(channel, onMsg)
+    ipcMain.on(channel, onMsg)
   })
 }
 
@@ -273,6 +316,8 @@ export function registerOverlayIpc() {
     }
     releaseFocus()
   })
+  // Any input in capture mode pushes the idle timeout back.
+  ipcOn(IPC.activity, (_e, s: number) => s === session && active && touchIdleTimer())
   // Sent right after an output; the session has usually ended by then.
   ipcOn(IPC.historyAdd, (_e, r: HistoryRecord) => {
     void addToHistory(r).then((id) => id && linkThumbToHistory(r.session, id))

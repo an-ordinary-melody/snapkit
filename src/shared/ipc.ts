@@ -116,6 +116,7 @@ export const IPC = {
   painted: 'overlay:painted',
   cleared: 'overlay:cleared',
   selectionStarted: 'overlay:selection-started',
+  activity: 'overlay:activity',
   copy: 'capture:copy',
   save: 'capture:save',
   cancel: 'capture:cancel',
@@ -185,6 +186,8 @@ export interface SnapkitApi {
   painted(session: number): void
   cleared(): void
   selectionStarted(session: number): void
+  /** Input happened in capture mode (pushes the idle timeout back). */
+  activity(session: number): void
   /** Copy the output; with `extra`, a floating preview stays afterwards (or, when editing one, it's updated). */
   copy(session: number, png: ArrayBuffer, extra?: CopyExtra): void
   save(session: number, png: ArrayBuffer): void

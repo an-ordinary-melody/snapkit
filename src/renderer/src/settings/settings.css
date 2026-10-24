@@ -190,3 +190,7 @@
 .st-ext { color: var(--ui-fg-faint); }
 .st-btn.primary-ish { background: var(--ui-switch-on, #0a84ff); color: #fff; box-shadow: none; }
 .st-btn.primary-ish:hover:not(:disabled) { background: var(--ui-switch-on, #0a84ff); filter: brightness(1.08); }
+.st-number-opts { padding: 10px 12px; border-radius: 8px; background: var(--ui-field); }
+.st-number-opts .st-field { min-width: 200px; }
+.st-number-opts small { color: var(--ui-fg-faint); font-size: 11px; }
+.st-number-opts .st-input { width: 110px; }

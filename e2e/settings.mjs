@@ -45,6 +45,12 @@ try {
   await st.fill('input[aria-label="File name text"]', 'Bug')
   await st.click('.st-seg[aria-label="Date position"] button:has-text("Off")')
   await st.click('.st-seg[aria-label="Number position"] button:has-text("After")')
+  await st.fill('input[aria-label="Starting number"]', '7')
+  await st.fill('input[aria-label="Number of digits"]', '2')
+  await wait(150)
+  console.log('number options:', await st.$eval('.st-number-opts', (e) => e.innerText.replace(/\n+/g, ' | ')))
+  await st.fill('input[aria-label="Starting number"]', '1')
+  await st.fill('input[aria-label="Number of digits"]', '3')
   await wait(200)
   console.log('name preview:', await st.$eval('.st-namer-preview', (e) => e.getAttribute('aria-label')))
 

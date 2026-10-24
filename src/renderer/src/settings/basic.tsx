@@ -341,16 +341,23 @@ function NameBuilder({ rule, next, set }: { rule: NameRule; next: number; set: S
           <span>Number</span>
           <Segmented label="Number position" value={rule.number} options={where} onChange={(number) => set({ save: { name: { number } } })} />
         </div>
-        {rule.number !== 'none' && (
-          <div className="st-field">
-            <span>Next · digits</span>
-            <span className="st-control">
-              <NumberField label="Next number" min={0} max={99999999} value={next} onChange={(nextNumber) => set({ save: { nextNumber } })} />
-              <NumberField label="Digits" min={1} max={8} value={rule.digits} onChange={(digits) => set({ save: { name: { digits } } })} />
-            </span>
-          </div>
-        )}
       </div>
+      {rule.number !== 'none' && (
+        <div className="st-namer-fields st-number-opts">
+          <label className="st-field">
+            <span>Starting number</span>
+            <NumberField label="Starting number" min={0} max={99999999} value={next} onChange={(nextNumber) => set({ save: { nextNumber } })} />
+            <small>The next save gets this number, then it counts up.</small>
+          </label>
+          <label className="st-field">
+            <span>Number of digits</span>
+            <NumberField label="Number of digits" min={1} max={8} value={rule.digits} onChange={(digits) => set({ save: { name: { digits } } })} />
+            <small>
+              Padded with zeros: {[0, 1, 2].map((i) => String(next + i).padStart(rule.digits, '0')).join(', ')}…
+            </small>
+          </label>
+        </div>
+      )}
       <div className="st-namer-preview" aria-label={`Example: ${fileName(rule, now, next)}`}>
         {parts.length ? (
           parts.map((p, i) => (

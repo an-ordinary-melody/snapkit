@@ -400,6 +400,23 @@ export function Overlay() {
     return m
   }, [cap])
 
+  // Any input tells main we're still here (capture mode closes itself after a long idle time).
+  useEffect(() => {
+    if (!cap) return
+    let last = 0
+    const ping = () => {
+      const now = Date.now()
+      if (now - last < 5000) return
+      last = now
+      api.activity(cap.session)
+    }
+    const events = ['pointermove', 'pointerdown', 'keydown', 'wheel'] as const
+    for (const ev of events) window.addEventListener(ev, ping, { passive: true, capture: true })
+    return () => {
+      for (const ev of events) window.removeEventListener(ev, ping, { capture: true })
+    }
+  }, [cap])
+
   // ---- keyboard -------------------------------------------------------------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
