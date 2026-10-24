@@ -12,6 +12,7 @@ mkdirSync(saves, { recursive: true })
 writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12' }, save: { folder: saves, askLocation: false }, notifications: { onSave: false } }))
 const saved = () => JSON.parse(readFileSync(join(profile, 'settings.json'), 'utf8'))
 
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
 const windowFor = (view) => app.windows().find((w) => w.url().endsWith('#' + view))
@@ -48,7 +49,7 @@ try {
   // Switches are blue when on.
   await section('General')
   await st.click('button[aria-label="Notify when copied"]')
-  await wait(150)
+  await wait(400) // past the color transition
   console.log('switch on color:', await st.$eval('.switch.on', (e) => getComputedStyle(e).backgroundColor))
   await st.click('button[aria-label="Notify when copied"]')
   // File naming: "Bug" + number after.
@@ -152,14 +153,14 @@ try {
     '| first swatch', await ov.$eval('.style-bar .swatch', (b) => b.dataset.tip).catch(() => 'none'))
   writeFileSync(join(out, 'capture-after-settings.png'), await ov.screenshot())
   // Two saves name the files Bug 001, Bug 002.
-  await ov.keyboard.press('Meta+s')
+  await ov.keyboard.press(MOD + '+s')
   await wait(1000)
   await app.evaluate(({ app }) => app.emit('second-instance'))
   await wait(1000)
   const ov2 = windowFor('overlay')
   await ov2.mouse.move(300, 200); await ov2.mouse.down(); await ov2.mouse.move(600, 400, { steps: 3 }); await ov2.mouse.up(); await wait(200)
   await ov2.click('.toolbar button[data-id="beautify"]') // background on, so remember-last kicks in
-  await ov2.keyboard.press('Meta+s')
+  await ov2.keyboard.press(MOD + '+s')
   await wait(1200)
   console.log('saved files:', readdirSync(saves).sort(), '| next number:', saved().save.nextNumber)
 

@@ -19,6 +19,7 @@ writeFileSync(
   })
 )
 
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const innerWidthOf = () => 100000 // checked loosely; the real bound is checked in-page below
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
@@ -72,7 +73,7 @@ try {
   await drag(frame.x + 2, frame.y + 2, frame.x + 2 + 60, frame.y + 2 + 30) // drag the frame while typing
   const frame2 = await win.$eval('.text-frame', (e) => e.getBoundingClientRect().toJSON())
   console.log('frame drag moved text box by', frame2.x - frame.x, frame2.y - frame.y, '| still typing:', !!(await win.$('.text-editor:focus')))
-  await win.keyboard.press('Meta+Enter')
+  await win.keyboard.press(MOD + '+Enter')
   await wait(150)
   writeFileSync(join(out, '1-drawn.png'), await win.screenshot())
 
@@ -125,7 +126,7 @@ try {
   // Live preview: mid-drag, the blur shows what's under its new position.
   await m.move(770, 590); await m.down(); await m.move(700, 560, { steps: 3 }); await m.move(620, 520, { steps: 3 }); await wait(100)
   writeFileSync(join(out, '1c-blur-mid-drag.png'), await win.screenshot())
-  await m.up(); await win.keyboard.press('Meta+z') // put it back (undo also deselects)
+  await m.up(); await win.keyboard.press(MOD + '+z') // put it back (undo also deselects)
 
   // Style a selected shape: click the arrow (no tool) and make it thick + green.
   await m.click(350, 250); await wait(150)
@@ -145,8 +146,8 @@ try {
 
   // Move the rectangle by dragging it, then undo the move, then redo it.
   await drag(500, 260, 520, 280)
-  await win.keyboard.press('Meta+z')
-  await win.keyboard.press('Meta+Shift+z')
+  await win.keyboard.press(MOD + '+z')
+  await win.keyboard.press(MOD + '+Shift+z')
   // Delete the ellipse.
   await m.click(650, 400); await win.keyboard.press('Backspace')
   await wait(100)
@@ -195,7 +196,7 @@ try {
   await win.keyboard.press('Escape') // closes the editor only
   console.log('Esc closed editor, still capturing:', !(await win.$('.be-backdrop')) && !!(await win.$('.toolbar')))
 
-  await win.keyboard.press('Meta+s')
+  await win.keyboard.press(MOD + '+s')
   await wait(1200)
   const files = readdirSync(saves)
   console.log('saved files:', files)

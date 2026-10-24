@@ -23,7 +23,7 @@ const shiftHue = (hex: string, deg: number) => {
 }
 
 const SIDEBAR = 300
-/** Room above the preview for the docked tools and style bar. */
+/** Room above the preview for the docked tools and style bar (more when they wrap on a narrow screen). */
 const TOOLBAR_ROOM = 112
 
 interface Props {
@@ -70,13 +70,22 @@ export function BackgroundEditor(props: Props) {
   const bg = backgroundOf(state, presets)
   const shown = useMemo(() => (state.on ? state : { ...state, ...PLAIN }), [state]) // the switch previews right here
 
+  // The docked bars wrap onto more rows when the stage is narrow (small or scaled screens).
+  const dockRef = useRef<HTMLDivElement>(null)
+  const [dockH, setDockH] = useState(0)
   useEffect(() => {
     const el = stageRef.current
+    const dock = dockRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => setArea({ w: el.clientWidth, h: el.clientHeight }))
+    const ro = new ResizeObserver(() => {
+      setArea({ w: el.clientWidth, h: el.clientHeight })
+      if (dock) setDockH(dock.offsetHeight)
+    })
     ro.observe(el)
+    if (dock) ro.observe(dock)
     return () => ro.disconnect()
   }, [])
+  const room = Math.max(TOOLBAR_ROOM, dockH + 30)
 
   // Esc steps back one level: typing, then a selected shape, then the editor
   // itself. It never closes the capture.
@@ -99,7 +108,7 @@ export function BackgroundEditor(props: Props) {
   // Fit the whole output into the preview area, sharp on Retina.
   const dpr = window.devicePixelRatio || 1
   const full = beautifyLayout(selection.w * exportScale, selection.h * exportScale, shown, exportScale)
-  const fitCss = area.w ? Math.min(1, (area.w - 48) / (full.width / exportScale), (area.h - TOOLBAR_ROOM - 24) / (full.height / exportScale)) : 0
+  const fitCss = area.w ? Math.min(1, (area.w - 48) / (full.width / exportScale), (area.h - room - 24) / (full.height / exportScale)) : 0
   const scale = fitCss * dpr // preview image px per screen px
   const source = useMemo(() => (scale > 0 ? compose(scale) : null), [compose, scale])
   const layout = source ? beautifyLayout(source.width, source.height, shown, scale, scale / exportScale) : null
@@ -161,8 +170,8 @@ export function BackgroundEditor(props: Props) {
     >
       <div className="be-card">
         <div ref={stageRef} className="be-stage">
-          <div className="be-dock">{toolbar}</div>
-          <div className="be-canvas" style={{ marginTop: TOOLBAR_ROOM }}>
+          <div ref={dockRef} className="be-dock">{toolbar}</div>
+          <div className="be-canvas" style={{ marginTop: room }}>
             <canvas ref={canvasRef} />
             {layout && annotations({ left: layout.x / dpr, top: layout.y / dpr, k: layout.drawW / dpr / selection.w })}
           </div>

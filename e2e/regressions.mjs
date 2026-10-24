@@ -54,6 +54,23 @@ try {
   }).catch(() => 0)
   console.log('edit from preview shows the image:', painted > 20, `(${painted} colors)`)
   writeFileSync(join(out, 'edit-from-preview.png'), await win.screenshot())
+  await win.keyboard.press('Escape'); await wait(300); await win.keyboard.press('Escape'); await wait(500)
+
+  // On a small or scaled screen (e.g. 150% on Windows) the editor's tools stay inside the editor, so they can be clicked.
+  await app.evaluate(({ app }) => app.emit('second-instance', {}, []))
+  await wait(1200)
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('#overlay')).setBounds({ x: 0, y: 0, width: 683, height: 512 }))
+  await wait(500)
+  await m.move(100, 100); await m.down(); await m.move(450, 380, { steps: 5 }); await m.up(); await wait(300)
+  await win.click('.toolbar button[data-tip="Edit background"]'); await wait(800)
+  const fits = await win.evaluate(() => {
+    const card = document.querySelector('.be-card').getBoundingClientRect()
+    return [...document.querySelectorAll('.be-dock .toolbar button')].every((b) => {
+      const r = b.getBoundingClientRect()
+      return r.left >= card.left && r.right <= card.right && r.top >= card.top && r.bottom <= card.bottom
+    })
+  })
+  console.log('editor tools fit a small screen:', fits)
   console.log('renderer errors:', errors.length ? errors : 'none')
 } finally {
   await app.close()

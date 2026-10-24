@@ -11,6 +11,7 @@ writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { captur
 const index = () => (existsSync(join(profile, 'history', 'index.json')) ? JSON.parse(readFileSync(join(profile, 'history', 'index.json'), 'utf8')) : [])
 const folders = () => readdirSync(join(profile, 'history')).filter((n) => n !== 'index.json')
 
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`] })
 const windowFor = (view) => app.windows().find((w) => w.url().endsWith('#' + view))
@@ -26,7 +27,7 @@ async function copyCapture(i) {
     await ov.keyboard.press('a')
     await m.move(250, 200); await m.down(); await m.move(450, 350, { steps: 3 }); await m.up()
   }
-  await ov.keyboard.press('Meta+c')
+  await ov.keyboard.press(MOD + '+c')
   await wait(900)
 }
 

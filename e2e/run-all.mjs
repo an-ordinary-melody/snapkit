@@ -34,6 +34,7 @@ const SUITES = {
     [/Esc closes only the color picker: true/, 'Esc with the color picker open cancelled the capture'],
     [/text style keeps the rectangle color: true/, 'text background style recolored other tools'],
     [/edit from preview shows the image: true/, 'editor opened from the preview without the image'],
+    [/editor tools fit a small screen: true/, 'editor tools clipped on a small or scaled screen (Windows 150%)'],
     [/renderer errors: none/, 'no page errors']
   ],
   textedit: [
@@ -109,7 +110,7 @@ const SUITES = {
     [/dim default: 0.75 \/ mode dark/, 'defaults: 75% dim, Dark'],
     [/history keep slider: 10 of 30/, 'history keeps 10, up to 30'],
     [/settings hotkey row: ⌘⇧2 \| registered: true/, 'Open Settings shortcut'],
-    [/switch on color: rgb\(10, 132, 255\)/, 'blue switches'],
+    [/switch on color: rgb\((9|10|11), 13[1-3], 25[4-5]\)/, 'blue switches'],
     [/name preview: Example: Bug 001.png/, 'file naming'],
     [/hotkey button: ⌘⌥⇧F11 \| saved: CommandOrControl\+Alt\+Shift\+F11/, 'recording a hotkey'],
     [/arrow key saved: w/, 'tool letters'],

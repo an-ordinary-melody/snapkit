@@ -352,6 +352,8 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
 
 /* Toolbars docked in the background editor: static and horizontal. */
 .toolbar.docked { position: static; animation: none; align-items: center; }
+/* A narrow editor (small or scaled screen): the bars wrap instead of running past the edges, where they'd be clipped. */
+.be-dock .toolbar.docked { flex-wrap: wrap; justify-content: center; max-width: calc(100% - 16px); }
 .toolbar .dock-sep { width: 1px; height: 20px; margin: 0 3px; background: var(--ui-sep); }
 
 /* ---- Pinned screenshot ---- */
