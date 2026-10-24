@@ -152,7 +152,7 @@ import WorkflowDemo from './demo/WorkflowDemo'
   :global(.an-pop.on) { transform: none; }
   :global(.an-blur) { opacity: 0; transition: opacity .35s, backdrop-filter .3s; cursor: help; }
   :global(.an-blur.on) { opacity: 1; }
-  :global(.an-blur.on:hover) { backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); box-shadow: inset 0 0 0 2px #ff3b30; }
+  :global(.an-blur.on:hover) { -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); box-shadow: inset 0 0 0 2px #ff3b30; }
   :global(.an-tools) { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
   :global(.an-tool) {
     display: grid; justify-items: center; gap: 4px; padding: 10px 4px 8px; border-radius: 12px; background: var(--card);
@@ -222,7 +222,7 @@ import WorkflowDemo from './demo/WorkflowDemo'
   :global(.hs-code i) { background: #334155; }
   :global(.hs-code i:first-child) { background: #f472b6; }
   :global(.hs-code i:last-child) { background: #22d3ee; justify-self: start; }
-  :global(.hs-blur) { position: absolute; left: 10%; right: 30%; top: 46%; height: 18%; border-radius: 3px; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); background: rgba(200,200,210,.5); }
+  :global(.hs-blur) { position: absolute; left: 10%; right: 30%; top: 46%; height: 18%; border-radius: 3px; -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); background: rgba(200,200,210,.5); }
   :global(.hs-arrow) { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: #ff3b30; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
   :global(.hs-step) { position: absolute; width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center; font: 700 9px/1 var(--font); color: #fff; background: #ff3b30; box-shadow: 0 0 0 1.5px #fff; }
   :global(.hs-actions) { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }

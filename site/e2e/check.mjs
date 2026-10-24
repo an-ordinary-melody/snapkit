@@ -63,6 +63,16 @@ try {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
     check(`${name}: no sideways scroll`, overflow <= 0, `${overflow}px wider than the window`)
 
+    // Blurs really apply (a CSS minifier once kept only -webkit-backdrop-filter, which Chrome ignores).
+    const blurs = await page.evaluate(() =>
+      ['.nav', '.blur-box'].map((sel) => {
+        const cs = getComputedStyle(document.querySelector(sel))
+        const v = cs.backdropFilter || cs.webkitBackdropFilter || 'none'
+        return v.includes('blur') ? null : `${sel}: ${v}`
+      }).filter(Boolean)
+    )
+    check(`${name}: top bar and blur boxes are blurred`, blurs.length === 0, blurs.join(', '))
+
     const links = await page.$$eval('[data-dl] a', (as) => as.map((a) => [a.dataset.os, a.href]))
     check(`${name}: macOS buttons link to a .dmg`, links.filter(([os]) => os === 'mac').every(([, h]) => h.endsWith('.dmg')))
     check(`${name}: Windows buttons link to a -setup.exe`, links.filter(([os]) => os === 'win').every(([, h]) => h.endsWith('-setup.exe')))
