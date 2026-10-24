@@ -35,7 +35,10 @@ const SUITES = {
     [/text style keeps the rectangle color: true/, 'text background style recolored other tools'],
     [/edit from preview shows the image: true/, 'editor opened from the preview without the image'],
     [/editor zoom in: true .*\| point stays under the pointer: true \| drawings redrawn sharp: true/, 'Ctrl + scroll zooms the editor around the pointer, drawings stay sharp'],
+    [/Space hand pans: true .*\| draws nothing: true \| hand gone on release: true/, 'Space + drag pans the zoomed editor (hand tool)'],
+    [/pinch zooms in: true/, 'trackpad pinch zooms in'],
     [/Ctrl\+0 fits again: true \| still in editor: true/, 'Ctrl + 0 fits the editor preview again'],
+    [/scrollbars have no track: true/, 'thin themed scrollbars without a background strip'],
     [/editor tools fit a small screen: true/, 'editor tools clipped on a small or scaled screen (Windows 150%)'],
     [/renderer errors: none/, 'no page errors']
   ],

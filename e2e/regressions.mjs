@@ -61,9 +61,11 @@ try {
   const px = c0.x + c0.width * 0.7, py = c0.y + c0.height * 0.6
   const u0 = [(px - c0.x) / c0.width, (py - c0.y) / c0.height]
   await m.move(px, py)
-  await win.keyboard.down('Control')
-  for (let i = 0; i < 6; i++) { await m.wheel(0, -100); await wait(40) }
-  await win.keyboard.up('Control')
+  // Scrolling up zooms in: on a Mac that's ⌘ + scroll with a positive delta (natural scrolling), on Windows Ctrl + scroll with a negative one.
+  const mac = process.platform === 'darwin'
+  await win.keyboard.down(mac ? 'Meta' : 'Control')
+  for (let i = 0; i < 6; i++) { await m.wheel(0, mac ? 100 : -100); await wait(40) }
+  await win.keyboard.up(mac ? 'Meta' : 'Control')
   await wait(500)
   const c1 = await win.$eval('.be-canvas canvas', (c) => c.getBoundingClientRect().toJSON())
   const u1 = [(px - c1.x) / c1.width, (py - c1.y) / c1.height]
@@ -80,8 +82,32 @@ try {
     '| point stays under the pointer:', Math.abs(u1[0] - u0[0]) < 0.03 && Math.abs(u1[1] - u0[1]) < 0.03,
     '| drawings redrawn sharp:', layerOk, `(shown ${sharp.shownK.toFixed(2)}x, drawn ${sharp.ratio.toFixed(2)}x)`)
   writeFileSync(join(out, 'editor-zoomed.png'), await win.screenshot())
+
+  // Hold Space: a hand that drags the zoomed preview around, without drawing.
+  const shapesBefore = await win.evaluate(() => window.Konva.stages.at(-1).find('Group').filter((g) => g.id()).length)
+  const scrollOf = () => win.$eval('.be-scroll', (e) => [Math.round(e.scrollLeft), Math.round(e.scrollTop)])
+  const s0 = await scrollOf()
+  await win.keyboard.down(' '); await wait(150)
+  const handCursor = await win.$eval('.be-pan', (e) => getComputedStyle(e).cursor).catch(() => 'none')
+  await m.move(px, py); await m.down(); await m.move(px + 150, py + 100, { steps: 6 }); await m.up(); await wait(150)
+  const s1 = await scrollOf()
+  await win.keyboard.up(' '); await wait(150)
+  const shapesAfter = await win.evaluate(() => window.Konva.stages.at(-1).find('Group').filter((g) => g.id()).length)
+  console.log('Space hand pans:', handCursor === 'grab' && s1[0] < s0[0] - 100 && s1[1] < s0[1] - 50, `(cursor ${handCursor}, scroll ${s0} -> ${s1})`,
+    '| draws nothing:', shapesAfter === shapesBefore, '| hand gone on release:', !(await win.$('.be-pan')))
+
   await win.keyboard.press('Control+0'); await wait(500)
   const c2 = await win.$eval('.be-canvas canvas', (c) => c.getBoundingClientRect().toJSON())
+  // A trackpad pinch (ctrlKey without the Control key) spreading zooms in on every OS.
+  await win.keyboard.press('Control+0'); await wait(500)
+  await win.$eval('.be-stage', (el) => {
+    const r = el.getBoundingClientRect()
+    for (let i = 0; i < 5; i++) el.dispatchEvent(new WheelEvent('wheel', { deltaY: -40, ctrlKey: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }))
+  })
+  await wait(400)
+  // Five quick steps of 8% each, sent faster than the screen redraws: they add up (about 149%).
+  console.log('pinch zooms in:', (await win.$eval('.be-zoom', (b) => parseInt(b.textContent)).catch(() => 100)) > 140)
+  await win.keyboard.press('Control+0'); await wait(500)
   console.log('Ctrl+0 fits again:', Math.abs(c2.width - c0.width) < 2 && !(await win.$('.be-zoom')), '| still in editor:', !!(await win.$('.be-backdrop')))
   await win.keyboard.press('Escape'); await wait(300); await win.keyboard.press('Escape'); await wait(500)
 
@@ -100,6 +126,8 @@ try {
     })
   })
   console.log('editor tools fit a small screen:', fits)
+  // Scrollbars: thin and themed, with no track or background strip.
+  console.log('scrollbars have no track:', await win.evaluate(() => [...document.styleSheets].flatMap((ss) => [...ss.cssRules]).some((r) => r.selectorText?.includes('::-webkit-scrollbar-track') && /transparent/.test(r.cssText))))
   console.log('renderer errors:', errors.length ? errors : 'none')
 } finally {
   await app.close()

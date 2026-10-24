@@ -28,6 +28,7 @@ const SIDEBAR = 300
 const TOOLBAR_ROOM = 112
 /** Ctrl / ⌘ + scroll zooms the preview; the image is redrawn sharp this long after the last step. */
 const ZOOM_SETTLE_MS = 120
+const isMac = /Mac/.test(navigator.platform)
 
 
 interface Props {
@@ -145,6 +146,7 @@ export function BackgroundEditor(props: Props) {
       const y = at?.y ?? r.top + r.height / 2
       anchor.current = { u: Math.min(1, Math.max(0, (x - r.left) / r.width)), v: Math.min(1, Math.max(0, (y - r.top) / r.height)), x, y }
     }
+    zoomRef.current = next // several wheel events can arrive before the next render: each builds on the last
     setZoom(next)
   }
   useEffect(() => {
@@ -154,19 +156,80 @@ export function BackgroundEditor(props: Props) {
   useEffect(() => {
     const el = stageRef.current
     if (!el) return
+    // A trackpad pinch arrives as a wheel event with ctrlKey set although Control isn't held:
+    // track the real key to tell the two apart.
+    let ctrlHeld = false
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Control') ctrlHeld = e.type === 'keydown'
+    }
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
-      // A mouse wheel notch (±100) is about 20%; trackpad pinches send many small steps.
-      zoomTo(zoomRef.current * Math.min(1.25, Math.max(0.8, Math.exp(-e.deltaY * 0.002))), { x: e.clientX, y: e.clientY })
+      const pinch = e.ctrlKey && !ctrlHeld && !e.metaKey
+      // Zoom in when scrolling up. On a Mac (natural scrolling) scrolling up sends a positive delta,
+      // on Windows a negative one; a pinch is negative when spreading, on both.
+      const up = isMac && !pinch ? e.deltaY : -e.deltaY
+      // A mouse wheel notch (±100) is about 20%; trackpads send many small steps.
+      zoomTo(zoomRef.current * Math.min(1.25, Math.max(0.8, Math.exp(up * 0.002))), { x: e.clientX, y: e.clientY })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('keyup', onKey, true)
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('keyup', onKey, true)
+    }
   }, [])
 
   const scale = fitCss * drawnZoom * dpr // preview image px per screen px
   const source = useMemo(() => (scale > 0 ? compose(scale) : null), [compose, scale])
   const layout = source ? beautifyLayout(source.width, source.height, shown, scale, scale / exportScale) : null
+
+  // Hold Space for the hand: drag to move around the zoomed preview (like Photoshop). Typing keeps its spaces.
+  const [hand, setHand] = useState(false)
+  const [grabbing, setGrabbing] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return
+      const typing = e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement
+      if (typing && e.type === 'keydown') return
+      e.preventDefault() // no page scroll, no button press
+      e.stopImmediatePropagation()
+      setHand(e.type === 'keydown')
+    }
+    const off = () => setHand(false)
+    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('keyup', onKey, true)
+    window.addEventListener('blur', off)
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('keyup', onKey, true)
+      window.removeEventListener('blur', off)
+    }
+  }, [])
+  const pan = (e: React.PointerEvent<HTMLDivElement>) => {
+    const sc = scrollRef.current
+    if (!sc || e.button !== 0) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const start = { x: e.clientX, y: e.clientY, left: sc.scrollLeft, top: sc.scrollTop }
+    setGrabbing(true)
+    const el = e.currentTarget
+    const move = (ev: PointerEvent) => {
+      sc.scrollLeft = start.left - (ev.clientX - start.x)
+      sc.scrollTop = start.top - (ev.clientY - start.y)
+    }
+    const up = () => {
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', up)
+      el.removeEventListener('pointercancel', up)
+      setGrabbing(false)
+    }
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', up)
+    el.addEventListener('pointercancel', up)
+  }
 
   // A layout effect: the canvas has its new size before the zoom anchor below measures it.
   useLayoutEffect(() => {
@@ -258,6 +321,8 @@ export function BackgroundEditor(props: Props) {
               </div>
             </div>
           </div>
+          {/* Space held: a hand over the preview (below the tool bars) instead of the drawing tools. */}
+          {hand && <div className={`be-pan${grabbing ? ' grabbing' : ''}`} onPointerDown={pan} />}
           {zoom > 1 && (
             <button className="be-zoom" title="Fit to the window (Ctrl+0 / ⌘0)" onClick={() => zoomTo(1)}>
               {Math.round(zoom * 100)}% · Fit
