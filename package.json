@@ -13,9 +13,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "build:mac": "npm run build && electron-builder --mac --publish never",
+    "e2e": "npm run build && node e2e/run-all.mjs",
     "build:win": "npm run build && electron-builder --win --publish never",
     "build:dir": "npm run build && electron-builder --dir --publish never",
-    "e2e": "node e2e/smoke.mjs"
+    "e2e:smoke": "node e2e/smoke.mjs"
   },
   "dependencies": {
     "node-screenshots": "^0.2.1"

@@ -14,6 +14,9 @@ asarUnpack:
   - "**/*.node"
 npmRebuild: false
 afterPack: build/after-pack.cjs # Electron fuses + macOS ad-hoc signing
+# Snapkit's UI is English: keep only Chromium's English language packs (Windows: locales/*.pak;
+# macOS packs are inside the Electron framework, trimmed in build/after-pack.cjs).
+electronLanguages: [en-US, en-GB]
 
 mac:
   target:
@@ -27,6 +30,7 @@ mac:
     NSScreenCaptureUsageDescription: Snapkit needs to record the screen to take screenshots.
 dmg:
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  format: UDBZ # bzip2: the smallest of the formats tried (76 MB vs 83 MB zlib, 82 MB LZFSE)
 
 win:
   target:

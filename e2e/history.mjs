@@ -7,7 +7,7 @@ import { join, resolve } from 'path'
 const out = resolve(process.argv[2] ?? 'e2e-out')
 const profile = join(out, 'profile')
 mkdirSync(profile, { recursive: true })
-writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12', history: 'CommandOrControl+Alt+Shift+F11' }, notifications: { onCopy: false } }))
+writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12', history: 'CommandOrControl+Alt+Shift+F11' }, notifications: { onCopy: false }, history: { maxCount: 5 } }))
 const index = () => (existsSync(join(profile, 'history', 'index.json')) ? JSON.parse(readFileSync(join(profile, 'history', 'index.json'), 'utf8')) : [])
 const folders = () => readdirSync(join(profile, 'history')).filter((n) => n !== 'index.json')
 

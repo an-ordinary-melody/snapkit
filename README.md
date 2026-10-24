@@ -77,9 +77,15 @@ Run the setup `.exe`. If SmartScreen warns you, click **More info → Run anyway
 npm install
 npm run dev        # run with hot reload
 npm test           # unit tests
+npm run e2e        # every end-to-end suite with its checks (macOS, ~3 min; shows capture windows)
 npm run typecheck
 npm run build:mac  # or build:win (run on that OS)
 ```
+
+**Before a release run `npm test` and `npm run e2e`.** `e2e/run-all.mjs` runs each suite below and checks
+its output against the expected results, each labeled with the bug or feature it guards, so a bug fixed
+once fails the run if it comes back. Run some suites only with `node e2e/run-all.mjs snap textedit`.
+When you fix a bug, add a check for it there (or in `e2e/regressions.mjs`).
 
 Linux smoke test (Xvfb): `npm run build && xvfb-run -a node e2e/smoke.mjs`
 
@@ -98,6 +104,8 @@ Smart align test (snapping in capture mode and the editor): `npm run build && no
 Hotkeys and Gray theme test (defaults, stepping aside in capture mode): `npm run build && node e2e/hotkeys.mjs /tmp/snapkit-hotkeys`
 
 Text editing test (click into text, drag it): `npm run build && node e2e/textedit.mjs /tmp/snapkit-textedit`
+
+Regression checks for older bugs (Esc with the color picker open, text styles recoloring tools, editing from the preview): `npm run build && node e2e/regressions.mjs /tmp/snapkit-regressions`
 
 Full-screen capture and clear history test: `npm run build && node e2e/fullscreen.mjs /tmp/snapkit-fullscreen`
 
