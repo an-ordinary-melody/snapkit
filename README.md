@@ -45,7 +45,7 @@ Download the latest installer from the [Releases](https://github.com/sonbq-fsc/s
 Every push to `main` also builds both installers (the **Actions** tab → latest run →
 **Artifacts**).
 
-**Icons:** the app and tray icons are generated from the logo SVGs in `branding/` (kept out of the repo) with `npx electron scripts/make-icons.cjs`: the hand from `Snapkit Black.svg` on the blue gradient becomes the app icon and the Windows tray icon, `Snapkit Negative.svg` the macOS menu-bar icon. The script also writes `build/AppIcon.icon`, an Icon Composer document for the macOS 26 Liquid Glass icon; compile it with **Actions → Mac icon (Liquid Glass) → Run workflow** (needs Xcode 26) and commit the artifact's `Assets.car` and `AppIcon.icns` to `build/`.
+**Icons:** the app and tray icons are generated from the logo SVGs in `branding/` (kept out of the repo) with `npx electron scripts/make-icons.cjs`: the hand from `Snapkit Black.svg` on the blue gradient becomes the app icon and the Windows tray icon, `Snapkit Mac Negative.svg` the macOS menu-bar icon. The script also writes `build/AppIcon.icon`, an Icon Composer document for the macOS 26 Liquid Glass icon; compile it with **Actions → Mac icon (Liquid Glass) → Run workflow** (needs Xcode 26) and commit the artifact's `Assets.car` and `AppIcon.icns` to `build/`.
 
 **Releasing:** set the version in `package.json` (`npm version 0.2.0-beta.2 --no-git-tag-version`),
 write `release-notes/v<version>.md`, commit, then tag and push (`git tag v0.2.0-beta.2 && git push origin v0.2.0-beta.2`).

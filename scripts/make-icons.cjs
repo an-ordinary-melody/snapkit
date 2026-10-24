@@ -3,7 +3,7 @@
 //
 // Sources (vector, so every size is drawn sharp):
 //   branding/Snapkit Black.svg     the hand and snap lines (its tile is dropped)
-//   branding/Snapkit Negative.svg  white tile with the hand cut out
+//   branding/Snapkit Mac Negative.svg  white tile with a bigger hand cut out (no snap lines): clearer in the menu bar
 // Outputs:
 //   build/icon.png                 macOS app icon for macOS 15 and older (tile inset to Apple's icon grid)
 //   build/icon-win.png             Windows app icon (full-size tile)
@@ -33,7 +33,7 @@ const hand = (color) => paths.slice(1).map((p) => p.replace(/fill="[^"]*"/, `fil
 const original = `<svg xmlns="http://www.w3.org/2000/svg" width="843" height="843" viewBox="0 0 843 843">
 <defs><linearGradient id="g" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${GRADIENT.from}"/><stop offset="1" stop-color="${GRADIENT.to}"/></linearGradient></defs>
 <path d="${tileD}" fill="url(#g)"/>${hand('#F8F9FB')}</svg>`
-const negative = read('Snapkit Negative.svg')
+const negative = read('Snapkit Mac Negative.svg')
 
 /** Runs in a hidden page: draws an SVG onto a size × size canvas (inset to `content`), optionally as one flat color. */
 const draw = (svg, size, content, mono) => `
