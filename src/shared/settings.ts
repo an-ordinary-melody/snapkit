@@ -155,7 +155,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
-    capture: 'CommandOrControl+Shift+Z',
+    capture: 'Alt+Shift+Z',
     history: 'CommandOrControl+Shift+1',
     fullscreen: 'CommandOrControl+Shift+5',
     settings: 'CommandOrControl+Shift+2'
