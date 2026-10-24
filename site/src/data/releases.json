@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.2.0-beta.8",
+    "date": "2026-10-24",
+    "intro": "Eighth beta of Snapkit, a fast screenshot tool for macOS and Windows. A small Windows fix.",
+    "items": [
+      {
+        "text": "**Windows: the app is called \"Snapkit\" everywhere.** Startup apps, Task Manager and Installed apps showed Snapkit's long description (\"Minimal, fully customizable screenshot tool…\") as its name and \"Son\" as its publisher. Both are now simply **Snapkit**.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.2.0-beta.7",
+    "date": "2026-10-24",
+    "intro": "Seventh beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**New home on GitHub:** Snapkit now lives at **github.com/an-ordinary-melody/snapkit** (the GitHub account was renamed). This beta checks for updates there. Older betas still find updates through GitHub's redirect from the old address, but please install this one so update checks go straight to the new home.",
+        "sub": []
+      }
+    ]
+  },
+  {
     "version": "0.2.0-beta.6",
     "date": "2026-10-24",
     "intro": "Sixth beta of Snapkit, a fast screenshot tool for macOS and Windows. A Windows fix.",
