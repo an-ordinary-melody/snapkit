@@ -27,6 +27,9 @@ if (!base) {
 }
 
 const results = []
+// A demo's React island is interactive once Astro drops its `ssr` attribute.
+const hydrated = (page, sel) => page.waitForFunction((s) => !!document.querySelector(s)?.closest('astro-island:not([ssr])'), sel, { timeout: 15000 })
+
 const check = (label, ok, detail = '') => {
   results.push({ label, ok })
   console.log(`${ok ? '✓' : '✗'} ${label}${detail ? ` (${detail})` : ''}`)
@@ -58,6 +61,7 @@ try {
     const drawn = await page.waitForFunction(() => document.querySelectorAll('.an .on').length >= 4, null, { timeout: 8000 }).then(() => true, () => false)
     check(`${name}: annotate demo draws`, drawn)
     await page.locator('.bgd').scrollIntoViewIfNeeded()
+    await hydrated(page, '.bgd')
     const before = await page.$eval('.bgd-frame', (el) => el.style.background)
     await page.getByRole('button', { name: 'Mint' }).click()
     const after = await page.$eval('.bgd-frame', (el) => el.style.background)
@@ -65,12 +69,15 @@ try {
 
     // Workflow switch changes the flow.
     await page.locator('.wf').scrollIntoViewIfNeeded()
+    await hydrated(page, '.wf')
     const stepsBefore = await page.$$eval('.wf-flow li', (l) => l.length)
     await page.locator('.wf-row', { hasText: 'Quick area capture' }).click()
     const stepsAfter = await page.$$eval('.wf-flow li', (l) => l.length)
     check(`${name}: quick area capture drops the drawing step`, stepsAfter === stepsBefore - 1)
 
     // Every features tab shows its panel.
+    await page.locator('.fx').scrollIntoViewIfNeeded()
+    await hydrated(page, '.fx')
     const tabs = page.getByRole('tab')
     const count = await tabs.count()
     let shown = 0
@@ -82,10 +89,21 @@ try {
     }
     check(`${name}: all ${count} feature tabs show a demo`, count === 8 && shown === count, `${shown}/${count}`)
 
-    const notes = await page.$$eval('.timeline > li', (l) => l.length)
-    const latest = await page.$eval('.timeline .ver', (el) => el.textContent.trim())
+    const entries = await page.$$eval('.timeline > li', (l) => l.length)
+    const latest = await page.$eval('.timeline > li', (el) => `v${el.dataset.upto}`)
     const note = await page.$eval('.dl-note a', (el) => el.textContent.trim())
-    check(`${name}: changelog lists releases, newest matches the download`, notes > 0 && latest === note, `${latest} vs ${note}`)
+    check(`${name}: changelog is up to the downloaded version`, entries > 0 && latest === note, `${latest} vs ${note}`)
+
+    // The theme switch overrides the system theme and survives a reload.
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    await page.getByRole('radio', { name: 'Dark theme' }).click()
+    const dark = await bg()
+    await page.reload({ waitUntil: 'networkidle' })
+    const kept = await bg()
+    await page.getByRole('radio', { name: 'Light theme' }).click()
+    const light = await bg()
+    await page.getByRole('radio', { name: 'System theme' }).click()
+    check(`${name}: theme switch sets dark and light, and remembers it`, dark === 'rgb(11, 11, 13)' && kept === dark && light === 'rgb(255, 255, 255)', `${dark} / ${kept} / ${light}`)
 
     check(`${name}: no console errors`, errors.length === 0, errors.join(' | '))
     await page.close()

@@ -6,3 +6,5 @@ dist/
 
 # Brand drafts stay local (not in the repo)
 branding/
+.vercel
+.env*

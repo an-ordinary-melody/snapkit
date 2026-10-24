@@ -1,0 +1,10 @@
+# Vercel only needs the website and what it reads from the app (release notes, settings defaults).
+/*
+!/site
+!/release-notes
+!/src
+/src/*
+!/src/shared
+/site/node_modules
+/site/dist
+/site/.astro
