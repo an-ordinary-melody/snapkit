@@ -441,6 +441,7 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
 
 .hist-tools button:disabled { opacity: .4; cursor: default; }
 .hist-clear-anchor { position: relative; display: inline-flex; }
+.hist-tools button.hist-clear { width: auto; display: flex; align-items: center; gap: 6px; padding: 0 10px; font: inherit; font-size: 12.5px; }
 .hist-clear-menu {
   position: absolute; top: 34px; right: 0; z-index: 5; min-width: 190px; padding: 4px; display: flex; flex-direction: column; gap: 1px; border-radius: 10px;
   background: var(--ui-bg-strong); backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur); box-shadow: var(--ui-shadow), var(--ui-rim);

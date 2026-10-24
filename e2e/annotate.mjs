@@ -28,7 +28,7 @@ try {
   await wait(2500)
   await app.evaluate(({ app }) => app.emit('second-instance'))
   await wait(1200)
-  const win = app.windows()[0]
+  const win = app.windows().find((w) => w.url().endsWith('#overlay'))
   const errors = []
   win.on('pageerror', (e) => errors.push(String(e)))
   win.on('console', (m) => m.type() === 'error' && errors.push(m.text()))

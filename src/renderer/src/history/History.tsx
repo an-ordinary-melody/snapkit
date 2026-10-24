@@ -108,8 +108,8 @@ export function History() {
         </label>
         <span className="hist-tools">
           <span className="hist-clear-anchor">
-            <button aria-label="Clear history" title="Clear history" disabled={!items.length} onClick={() => setClearing(clearing ? null : 'menu')}>
-              <Eraser size={15} />
+            <button className="hist-clear" aria-label="Clear history" disabled={!items.length} onClick={() => setClearing(clearing ? null : 'menu')}>
+              <Eraser size={14} /> Clear History
             </button>
             {clearing && (
               <div className="hist-clear-menu" role="menu">

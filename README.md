@@ -89,6 +89,8 @@ Safeguards test (stuck overlay, idle timeout, hotkey toggle): `npm run build && 
 
 History test: `npm run build && node e2e/history.mjs /tmp/snapkit-history`
 
+Text editing test (click into text, drag it): `npm run build && node e2e/textedit.mjs /tmp/snapkit-textedit`
+
 Full-screen capture and clear history test: `npm run build && node e2e/fullscreen.mjs /tmp/snapkit-fullscreen`
 
 Install a build on this Mac without waiting for GitHub: `./scripts/update-mac.sh --local "message"`

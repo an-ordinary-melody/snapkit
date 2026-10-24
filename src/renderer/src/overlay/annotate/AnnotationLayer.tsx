@@ -234,6 +234,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
 
   // ---- editing existing shapes -------------------------------------------------
   const commitShape = (s: Shape) => onCommit(upsert(shapesRef.current, s))
+  const clickEdits = useRef(false)
 
   const groupProps = (s: Shape) => ({
     id: s.id,
@@ -245,8 +246,11 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       handledEvents.add(e.evt)
       if (editingRef.current) return
       e.cancelBubble = true
+      clickEdits.current = s.type === 'text' && (tool === 'text' || selectedId === s.id)
       onSelect(s.id)
     },
+    // A click (not a drag) on text with the Text tool, or on text that's already selected, edits it.
+    onClick: () => clickEdits.current && s.type === 'text' && startEditing(s),
     onDblClick: () => s.type === 'text' && startEditing(s),
     onMouseEnter: () => setCursor('move'),
     onMouseLeave: () => setCursor(null),
@@ -420,6 +424,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
               anchorCornerRadius={3}
               padding={6}
               shouldOverdrawWholeArea
+              // The frame covers the selected shape, so a click on selected text lands here (not on a resize handle).
+              onClick={(e) => selected?.type === 'text' && e.target.name() === 'back' && startEditing(selected)}
             />
             {lineSel && <LineEnds shape={lineSel} onCommit={commitShape} />}
             {guides.map((gd, i) => (
@@ -562,7 +568,12 @@ function TextEditor(props: { shape: TextShape; zoom(): number; onChange(s: TextS
   useEffect(() => {
     // Focus once the click that created the box has finished: focusing during
     // it would be undone by its own mouse-down (and end the empty text box).
-    const t = setTimeout(() => ref.current?.focus({ preventScroll: true }), 0)
+    const t = setTimeout(() => {
+      const el = ref.current
+      if (!el) return
+      el.focus({ preventScroll: true })
+      el.setSelectionRange(el.value.length, el.value.length) // existing text: carry on at the end
+    }, 0)
     return () => clearTimeout(t)
   }, [])
   const pad = textPad(s)
