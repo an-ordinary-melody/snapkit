@@ -146,6 +146,7 @@ export function ToolsSection({ snap, set }: SectionProps) {
   const a = snap.settings.annotate
   const v = snap.settings.toolVariants
   const rectVariants = FEATURES.find((f) => f.id === 'rect')!.variants!
+  const arrowVariants = FEATURES.find((f) => f.id === 'arrow')!.variants!
   const setA = (patch: Partial<Settings['annotate']>) => set({ annotate: patch })
   const setText = (patch: Partial<Settings['annotate']['text']>) => set({ annotate: { text: patch } })
   return (
@@ -184,6 +185,20 @@ export function ToolsSection({ snap, set }: SectionProps) {
             options={['Thin', 'Medium', 'Thick'].map((l, i) => ({ value: String(i), label: l }))}
             onChange={(i) => setA({ strokeWidth: Number(i) })}
           />
+        </Row>
+        <Row label="Arrow tool draws" desc="Right-click the tool to switch while capturing.">
+          <select
+            className="st-select"
+            value={arrowVariants.some((a) => a.id === v.arrow) ? v.arrow : 'arrow'}
+            onChange={(e) => set({ toolVariants: { ...v, arrow: e.target.value } })}
+            aria-label="Arrow tool default"
+          >
+            {arrowVariants.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </select>
         </Row>
         <Row label="Rectangle tool draws" desc="Right-click the tool to switch while capturing.">
           <select className="st-select" value={v.rect ?? 'rect'} onChange={(e) => set({ toolVariants: { ...v, rect: e.target.value } })} aria-label="Rectangle tool default">

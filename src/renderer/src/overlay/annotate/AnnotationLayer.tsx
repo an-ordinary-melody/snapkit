@@ -183,9 +183,9 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
         case 'line':
         case 'arrow': {
           const [dx, dy] = shift ? snap45(x - x0, y - y0) : [x - x0, y - y0]
-          // New arrows have an open head (filled heads only appear in older captures).
-          const head = kind === 'arrow' ? 'open' : undefined
-          return { id, type: kind, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth, head }
+          // New arrows have an open head (filled heads only appear in older captures); the two-way style has one at each end.
+          const arrow = kind === 'arrow' ? { head: 'open' as const, ...(props.variant === 'arrow-both' ? { bothEnds: true } : {}) } : {}
+          return { id, type: kind, points: [x0, y0, x0 + dx, y0 + dy], color: style.color, width: strokeWidth, ...arrow }
         }
         case 'rect':
         case 'ellipse': {
@@ -234,6 +234,28 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
 
   // ---- editing existing shapes -------------------------------------------------
   const commitShape = (s: Shape) => onCommit(upsert(shapesRef.current, s))
+
+  /**
+   * Smart snap: nudge a moving box (layer coordinates) so its edges and center
+   * line up with other shapes and the capture area, and show the guides.
+   * `null` (or ⌘ held, `free`) clears the guides.
+   */
+  const snapMoving = (id: string, box: Rect | null, free = false) => {
+    const stage = stageRef.current
+    const layer = stage?.getLayers()[0]
+    if (!box || free || !stage || !layer) {
+      setGuides([])
+      return { dx: 0, dy: 0 }
+    }
+    const others = shapesRef.current
+      .filter((o) => o.id !== id)
+      .map((o) => stage.findOne('#' + o.id)?.getClientRect({ relativeTo: layer, skipShadow: true }))
+      .filter((b): b is NonNullable<typeof b> => !!b)
+      .map((b) => ({ x: b.x, y: b.y, w: b.width, h: b.height }))
+    const r = snapBox(box, [...others, sel], 6 / zoom())
+    setGuides(r.guides)
+    return r
+  }
   const clickEdits = useRef(false)
 
   const groupProps = (s: Shape) => ({
@@ -257,19 +279,9 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
       const g = e.target
       // Smart snap: line edges and centers up with other shapes and the capture area. Hold ⌘ to place freely.
-      if (!e.evt.metaKey) {
-        const layer = g.getLayer()!
-        const stage = g.getStage()!
-        const box = g.getClientRect({ relativeTo: layer, skipShadow: true })
-        const others = shapesRef.current
-          .filter((o) => o.id !== s.id)
-          .map((o) => stage.findOne('#' + o.id)?.getClientRect({ relativeTo: layer, skipShadow: true }))
-          .filter((b): b is NonNullable<typeof b> => !!b)
-          .map((b) => ({ x: b.x, y: b.y, w: b.width, h: b.height }))
-        const r = snapBox({ x: box.x, y: box.y, w: box.width, h: box.height }, [...others, sel], 6 / zoom())
-        g.position({ x: g.x() + r.dx, y: g.y() + r.dy })
-        setGuides(r.guides)
-      } else setGuides([])
+      const box = g.getClientRect({ relativeTo: g.getLayer()!, skipShadow: true })
+      const r = snapMoving(s.id, { x: box.x, y: box.y, w: box.width, h: box.height }, e.evt.metaKey)
+      g.position({ x: g.x() + r.dx, y: g.y() + r.dy })
       // Blur areas re-render what's under them while being moved.
       if (s.type === 'blur') setLive({ id: s.id, rect: { x: s.x + g.x(), y: s.y + g.y(), w: s.w, h: s.h } })
     },
@@ -336,6 +348,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
               <>
                 <Line points={s.points} {...line} />
                 <Line points={openArrowHead(s.points, head * 1.1)} {...line} />
+                {s.bothEnds && <Line points={openArrowHead([s.points[2], s.points[3], s.points[0], s.points[1]], head * 1.1)} {...line} />}
               </>
             )
           }
@@ -347,6 +360,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
               strokeWidth={s.width}
               pointerLength={head}
               pointerWidth={head}
+              pointerAtBeginning={!!s.bothEnds}
               lineCap="round"
               lineJoin="round"
               hitStrokeWidth={Math.max(12, s.width)}
@@ -441,7 +455,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           </Layer>
         </Stage>
       </div>
-      {editing && <TextEditor shape={editing} zoom={zoom} onChange={setEditing} onDone={finishEditing} />}
+      {editing && <TextEditor shape={editing} zoom={zoom} onChange={setEditing} onDone={finishEditing} snap={snapMoving} />}
     </>
   )
 })
@@ -560,8 +574,15 @@ function LineEnds({ shape, onCommit }: { shape: LineShape; onCommit(s: Shape): v
   )
 }
 
-function TextEditor(props: { shape: TextShape; zoom(): number; onChange(s: TextShape): void; onDone(): void }) {
-  const { shape: s, zoom, onChange, onDone } = props
+function TextEditor(props: {
+  shape: TextShape
+  zoom(): number
+  onChange(s: TextShape): void
+  onDone(): void
+  /** Smart snap for the box while it's dragged (see snapMoving). */
+  snap(id: string, box: Rect | null, free?: boolean): { dx: number; dy: number }
+}) {
+  const { shape: s, zoom, onChange, onDone, snap } = props
   const ref = useRef<HTMLTextAreaElement>(null)
   const shapeRef = useRef(s)
   shapeRef.current = s
@@ -584,11 +605,18 @@ function TextEditor(props: { shape: TextShape; zoom(): number; onChange(s: TextS
     if (e.target !== e.currentTarget || e.button !== 0) return
     e.preventDefault() // keep the caret in the text box
     const start = { x: e.clientX, y: e.clientY, sx: shapeRef.current.x, sy: shapeRef.current.y, k: zoom() }
-    const move = (ev: PointerEvent) =>
-      onChange({ ...shapeRef.current, x: start.sx + (ev.clientX - start.x) / start.k, y: start.sy + (ev.clientY - start.y) / start.k })
+    const box = ref.current!
+    const move = (ev: PointerEvent) => {
+      const x = start.sx + (ev.clientX - start.x) / start.k
+      const y = start.sy + (ev.clientY - start.y) / start.k
+      // The text box's own size (CSS px are layer units: the layer's zoom is a transform around it).
+      const r = snap(shapeRef.current.id, { x, y, w: box.offsetWidth, h: box.offsetHeight }, ev.metaKey)
+      onChange({ ...shapeRef.current, x: x + r.dx, y: y + r.dy })
+    }
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      snap(shapeRef.current.id, null)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)

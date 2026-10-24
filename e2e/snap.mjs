@@ -38,6 +38,20 @@ try {
   await drag(700, 500, 800, 580) // C: top 500
   await drag(300, 240, 520, 243 + 300, async () => { guides = await win.evaluate(() => window.Konva.stages[0].find('Line').filter((l) => (l.dash() ?? []).length).length) })
   console.log('tool active drag -> rects', JSON.stringify(await rects()), '| guides while dragging', guides)
+  // A text box still being typed in snaps too when its frame is dragged.
+  const typingDrag = async (label) => {
+    const target = (await rects())[0] // A
+    const ta = await win.$eval('.text-editor', (e) => e.getBoundingClientRect().toJSON())
+    const fr = await win.$eval('.text-frame', (e) => e.getBoundingClientRect().toJSON())
+    const dx = target[0] + 3 - ta.x
+    await drag(fr.x + 2, fr.y + 2, fr.x + 2 + dx, fr.y + 2 + 30, async () => { guides = await win.evaluate(() => window.Konva.stages.at(-1).find('Line').filter((l) => (l.dash() ?? []).length).length) })
+    const after = await win.$eval('.text-editor', (e) => e.getBoundingClientRect().x)
+    console.log(label, '(it snaps to the nearest shape) typing text left', Math.round(after), 'vs shape', target[0], '| guides while dragging', guides, '| still typing:', !!(await win.$('.text-editor:focus')))
+  }
+  await win.click('.toolbar button[data-tip="Text"]')
+  await m.click(760, 300); await wait(200); await win.keyboard.type('Snap me')
+  await typingDrag('capture:')
+  await win.keyboard.press('Escape'); await wait(150)
   writeFileSync(join(out, 'snap.png'), await win.screenshot())
   // In the background editor (zoomed): drag C so its left edge comes near B's.
   await win.click('.toolbar button[data-tip="Edit background"]'); await wait(800)
@@ -46,5 +60,10 @@ try {
   const [bx] = pos[1], [cx, cy] = pos[2]
   await drag(cx, cy + 20, bx + 3 + 1, cy + 60, async () => { guides = await win.evaluate(() => window.Konva.stages.at(-1).find('Line').filter((l) => (l.dash() ?? []).length).length) })
   console.log('editor drag -> rects', JSON.stringify(await rects()), '| guides while dragging', guides)
+  // The Text tool may still be on from capture mode; clicking it again would turn it off.
+  if (!(await win.$('.be-dock .toolbar button.active[data-id="text"]'))) await win.click('.be-dock .toolbar button[data-tip="Text"]')
+  await m.click(650, 400); await wait(300)
+  await win.keyboard.type('Editor text')
+  await typingDrag('editor:')
   writeFileSync(join(out, 'snap-editor.png'), await win.screenshot())
 } finally { await app.close() }

@@ -21,12 +21,13 @@ const VARIANT_ICONS: Record<string, { Icon: LucideIcon; filled: boolean }> = {
   line: { Icon: Slash, filled: false }
 }
 
-/** Long diagonal arrow with an open head. */
-function ArrowIcon({ size }: { size: number }) {
+/** Long diagonal arrow with an open head; `both`: a head at each end. */
+function ArrowIcon({ size, both }: { size: number; both: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 20 L19 5" />
-      <path d="M10 5 H19 V14" />
+      <path d="M5 19 L19 5" />
+      <path d="M11 5 H19 V13" />
+      {both && <path d="M13 19 H5 V11" />}
     </svg>
   )
 }
@@ -43,7 +44,7 @@ function BackgroundIcon({ size }: { size: number }) {
 }
 
 export function FeatureIcon({ id, size = 17 }: { id: string; size?: number }) {
-  if (id === 'arrow') return <ArrowIcon size={size} />
+  if (id === 'arrow' || id === 'arrow-both') return <ArrowIcon size={size} both={id === 'arrow-both'} />
   if (id === 'beautify') return <BackgroundIcon size={size} />
   const v = VARIANT_ICONS[id]
   const Icon = v?.Icon ?? ICONS[id] ?? Square

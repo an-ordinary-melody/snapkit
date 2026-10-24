@@ -27,6 +27,8 @@ export interface LineShape extends Base {
   width: number
   /** Arrows: a solid triangle (default) or two strokes. */
   head?: 'filled' | 'open'
+  /** Arrows: a head at the start too (two-way). */
+  bothEnds?: boolean
 }
 
 /** The two short strokes of an open arrow head, as [x1, y1, tipX, tipY, x2, y2]. */
