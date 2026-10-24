@@ -8,7 +8,7 @@
 #                                                       GitHub still builds the installers in the background
 set -euo pipefail
 cd "$(dirname "$0")/.."
-REPO=sonbq-fsc/snapkit
+REPO=an-ordinary-melody/snapkit
 
 LOCAL=0
 if [ "${1:-}" = "--local" ]; then

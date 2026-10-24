@@ -164,7 +164,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   updates: {
     autoCheck: true,
-    repo: 'sonbq-fsc/snapkit',
+    repo: 'an-ordinary-melody/snapkit',
     lastCheck: 0,
     notified: ''
   },

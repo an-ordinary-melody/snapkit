@@ -21,9 +21,9 @@ and a soft gray rounded "stage" holding tilted cards and small floating labels.
 `git diff --quiet HEAD^ HEAD -- site release-notes` skips builds for app-only commits.
 
 **Download links stay current:** at build time the site reads the GitHub releases API
-(`/repos/sonbq-fsc/snapkit/releases`, which, unlike `/releases/latest`, includes betas) and gets the `.dmg` and `-setup.exe` URLs.
+(`/repos/an-ordinary-melody/snapkit/releases`, which, unlike `/releases/latest`, includes betas) and gets the `.dmg` and `-setup.exe` URLs.
 The Release job in `.github/workflows/build.yml` calls a Vercel Deploy Hook (secret `VERCEL_DEPLOY_HOOK`) after publishing, so a new release redeploys the site.
-If the API call fails at build time, the buttons fall back to `github.com/sonbq-fsc/snapkit/releases/latest`.
+If the API call fails at build time, the buttons fall back to `github.com/an-ordinary-melody/snapkit/releases/latest`.
 
 ## 2. Page sections
 

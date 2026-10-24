@@ -42,7 +42,7 @@ in settings.
 
 ## Installing the builds
 
-Download the latest installer from the [Releases](https://github.com/sonbq-fsc/snapkit/releases) page.
+Download the latest installer from the [Releases](https://github.com/an-ordinary-melody/snapkit/releases) page.
 Every push to `main` also builds both installers (the **Actions** tab → latest run →
 **Artifacts**).
 
