@@ -119,6 +119,20 @@ try {
   await st.keyboard.press('Enter')
   await wait(150)
   console.log('step color saved:', saved().annotate?.stepColor)
+  // Step badges: outline and shadow (defaults: 2 px white, 30%).
+  const outlineDefault = await st.$eval('input[aria-label="Step outline width"]', (e) => e.value)
+  const shadowDefault = await st.$eval('input[aria-label="Step shadow"]', (e) => e.value)
+  await st.fill('input[aria-label="Step outline width"]', '4')
+  await wait(150)
+  await st.click('button[aria-label="Step outline color: pick a color"]')
+  await st.fill('.color-picker .hex', '#00ff00')
+  await st.keyboard.press('Enter')
+  await st.$eval('input[aria-label="Step shadow"]', (el) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    set.call(el, '0'); el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await wait(200)
+  console.log('step outline/shadow: defaults', outlineDefault, shadowDefault, '| saved', JSON.stringify(saved().annotate?.stepStroke), saved().annotate?.stepShadow)
 
   // Background: pick a library gradient as the default; turn on remember-last.
   await section('Background')
@@ -152,6 +166,13 @@ try {
     '| first tool', tools[0], '| highlighter shown', tools.includes('Highlighter'),
     '| W selects arrow', await ov.$eval('.toolbar button.active[data-id]', (b) => b.dataset.id).catch(() => 'none'),
     '| first swatch', await ov.$eval('.style-bar .swatch', (b) => b.dataset.tip).catch(() => 'none'))
+  // A step badge drawn now uses the outline and shadow set above.
+  await ov.click('.toolbar button[data-tip="Numbered step"]')
+  await m.click(450, 350); await wait(200)
+  console.log('step badge drawn with:', await ov.evaluate(() => {
+    const c = window.Konva.stages[0].find('Circle').at(-1)
+    return c ? `${c.strokeWidth()}px ${c.stroke()} shadow ${c.shadowEnabled() ? c.shadowOpacity() : 'off'}` : 'none'
+  }))
   writeFileSync(join(out, 'capture-after-settings.png'), await ov.screenshot())
   // Two saves name the files Bug 001, Bug 002.
   await ov.keyboard.press(MOD + '+s')

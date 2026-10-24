@@ -626,6 +626,8 @@ export function Overlay() {
       highlighter={{ width: cap.settings.annotate.highlighterWidth }}
       stepSize={cap.settings.annotate.stepSize}
       stepTextColor={cap.settings.annotate.stepTextColor}
+      stepStroke={cap.settings.annotate.stepStroke}
+      stepShadow={cap.settings.annotate.stepShadow}
       selectedId={selectedId}
       onSelect={setSelectedId}
       onCommit={onCommit}

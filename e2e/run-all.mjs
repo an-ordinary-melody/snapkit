@@ -133,6 +133,8 @@ const SUITES = {
     [/palette saved: #00aa55/, 'quick colors'],
     [/step color saved: #3b82f6/, 'step color'],
     [/remember last: true/, 'remember last background'],
+    [/step outline\/shadow: defaults 2 0.3 \| saved \{"color":"#00ff00","width":4\} 0/, 'step badge outline and shadow settings (defaults 2 px, 30%)'],
+    [/step badge drawn with: 4px #00ff00 shadow off/, 'step badges use the outline and shadow settings'],
     [/gradients reset: 32/, 'gradient library reset'],
     [/W selects arrow arrow/, 'settings reach capture mode'],
     [/saved files: \[ 'Bug 001.png', 'Bug 002.png' \] \| next number: 3/, 'numbered file names'],

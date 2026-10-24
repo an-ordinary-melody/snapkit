@@ -40,6 +40,9 @@ interface Props {
   stepSize: number
   /** Number color on step badges; '' = black or white, whichever reads better. */
   stepTextColor: string
+  /** Outline and shadow of every step badge (Settings → Tools → Numbered steps). */
+  stepStroke: { color: string; width: number }
+  stepShadow: number
   selectedId: string | null
   onSelect(id: string | null): void
   onCommit(next: Shape[], mergeKey?: string): void
@@ -404,7 +407,18 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           const n = steps.get(s.id) ?? 0
           return (
             <Group x={s.x} y={s.y}>
-              <Circle radius={s.size / 2} fill={s.color} stroke="#fff" strokeWidth={2} shadowColor="#000" shadowBlur={4} shadowOpacity={0.3} />
+              <Circle
+                radius={s.size / 2}
+                fill={s.color}
+                stroke={props.stepStroke.color}
+                strokeWidth={props.stepStroke.width}
+                strokeEnabled={props.stepStroke.width > 0}
+                shadowColor="#000"
+                shadowBlur={4 + props.stepShadow * 6}
+                shadowOffsetY={props.stepShadow * 2}
+                shadowOpacity={props.stepShadow}
+                shadowEnabled={props.stepShadow > 0}
+              />
               <Text
                 text={String(n)}
                 width={s.size}

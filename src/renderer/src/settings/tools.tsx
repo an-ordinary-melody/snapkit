@@ -271,6 +271,13 @@ export function ToolsSection({ snap, set }: SectionProps) {
           />
           {a.stepTextColor && <ColorField label="Number color" value={a.stepTextColor} onChange={(stepTextColor) => setA({ stepTextColor })} />}
         </Row>
+        <Row label="Outline" desc="The ring around each badge. 0 px: no outline.">
+          <NumberField label="Step outline width" min={0} max={8} value={a.stepStroke.width} unit="px" onChange={(width) => setA({ stepStroke: { ...a.stepStroke, width } })} />
+          {a.stepStroke.width > 0 && <ColorField label="Step outline color" value={a.stepStroke.color} onChange={(color) => setA({ stepStroke: { ...a.stepStroke, color } })} />}
+        </Row>
+        <Row label="Shadow" desc="Lifts the badge off busy screenshots.">
+          <SliderField label="Step shadow" min={0} max={1} step={0.05} value={a.stepShadow} format={(n) => (n ? `${Math.round(n * 100)}%` : 'Off')} onChange={(stepShadow) => setA({ stepShadow })} />
+        </Row>
       </Group>
 
       <Group title="Blur">

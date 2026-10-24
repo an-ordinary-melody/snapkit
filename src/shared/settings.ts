@@ -108,6 +108,10 @@ export interface Settings {
     stepTextColor: string
     /** Badge color for new steps. */
     stepColor: string
+    /** Outline around step badges: color and width in px (0 = none). Applies to every badge. */
+    stepStroke: { color: string; width: number }
+    /** Shadow under step badges, 0 (off) to 1. */
+    stepShadow: number
     text: {
       fontFamily: string
       fontSize: number
@@ -208,6 +212,8 @@ export const DEFAULT_SETTINGS: Settings = {
     stepSize: 34,
     stepTextColor: '',
     stepColor: '#ef4444',
+    stepStroke: { color: '#ffffff', width: 2 },
+    stepShadow: 0.3,
     text: {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       fontSize: 20,
