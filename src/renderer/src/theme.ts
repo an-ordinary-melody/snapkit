@@ -13,7 +13,10 @@ darkQuery.addEventListener('change', () => current && applyTheme(current))
 export function applyTheme(a: Settings['appearance']) {
   current = a
   const root = document.documentElement
-  root.dataset.mode = a.mode === 'system' ? (darkQuery.matches ? 'dark' : 'light') : a.mode
+  // Gray is the dark theme with lighter surfaces: data-mode="dark" plus data-tone="gray".
+  root.dataset.mode = a.mode === 'system' ? (darkQuery.matches ? 'dark' : 'light') : a.mode === 'gray' ? 'dark' : a.mode
+  if (a.mode === 'gray') root.dataset.tone = 'gray'
+  else delete root.dataset.tone
   root.dataset.glass = a.glass === false ? 'off' : 'on'
   const vars = ['--ui-accent', '--ui-accent-hover', '--ui-on-accent', '--ui-active-bg', '--ui-active-fg', '--ui-switch-on']
   for (const v of vars) root.style.removeProperty(v)

@@ -128,7 +128,8 @@ export interface Settings {
     /** Liquid Glass: frosted, refracting panels. Off: solid panels. */
     glass: boolean
     /** Light or dark panels; 'system' follows macOS / Windows. */
-    mode: 'system' | 'light' | 'dark'
+    /** Gray: the dark theme, a few shades lighter. */
+    mode: 'system' | 'light' | 'dark' | 'gray'
     /** Highlight color for the selected tool, switches and primary buttons; '' = the theme's (white in glass, gray in dark). */
     accent: string
   }
@@ -154,10 +155,10 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   hotkeys: {
-    capture: 'CommandOrControl+Shift+2',
+    capture: 'CommandOrControl+Shift+Z',
     history: 'CommandOrControl+Shift+1',
-    fullscreen: 'CommandOrControl+Shift+9',
-    settings: 'CommandOrControl+Shift+,'
+    fullscreen: 'CommandOrControl+Shift+5',
+    settings: 'CommandOrControl+Shift+2'
   },
   updates: {
     autoCheck: true,

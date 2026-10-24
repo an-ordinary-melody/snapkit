@@ -25,6 +25,9 @@
 :root.settings-page body { color: var(--ui-fg); font-size: 13px; }
 :root.settings-page[data-glass="off"] body { background: #f2f2f5; }
 :root.settings-page[data-glass="off"][data-mode="dark"] body { background: #1e1e21; }
+:root.settings-page[data-tone="gray"] { --st-main: rgba(62,62,68,.6); --st-card: rgba(255,255,255,.09); }
+:root.settings-page[data-glass="off"][data-tone="gray"] { --st-main: #3a3a3e; --st-card: #46464b; --st-card-edge: rgba(255,255,255,.08); --st-sidebar: #323236; }
+:root.settings-page[data-glass="off"][data-tone="gray"] body { background: #353539; }
 
 .st-window { display: flex; height: 100vh; }
 .st-sidebar { width: 210px; flex: none; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; background: var(--st-sidebar); }

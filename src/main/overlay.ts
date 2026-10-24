@@ -17,6 +17,14 @@ const overlays = new Map<number, BrowserWindow>()
 
 let session = 0
 let active = false
+const modeListeners: ((on: boolean) => void)[] = []
+/** Called when capture mode (or an edit session) opens or closes. */
+export const onCaptureMode = (cb: (on: boolean) => void) => void modeListeners.push(cb)
+function setActive(on: boolean) {
+  if (active === on) return
+  active = on
+  for (const cb of modeListeners) cb(on)
+}
 /** While editing a floating preview: where the edited result goes. */
 let editTarget: ((png: Buffer, doc: CaptureDoc) => void) | null = null
 
@@ -119,7 +127,7 @@ function replaceOverlay(display: Display) {
 }
 
 function endCapture() {
-  active = false
+  setActive(false)
   editTarget = null
   if (idleTimer) clearTimeout(idleTimer)
   idleTimer = null
@@ -158,7 +166,7 @@ export async function startCapture(t0 = Date.now()) {
   // The hotkey again closes capture mode, whatever state it's in: a way out
   // that doesn't depend on the overlay page responding.
   if (active) return forceEndCapture('hotkey pressed again')
-  active = true
+  setActive(true)
   const id = ++session
   const settings = getSettings()
   const ms = () => `${Date.now() - t0}ms`
@@ -168,7 +176,7 @@ export async function startCapture(t0 = Date.now()) {
     grabs = await grabAllScreens()
   } catch (err) {
     log('capture failed', err)
-    active = false
+    setActive(false)
     return
   }
   if (id !== session) return
@@ -231,7 +239,7 @@ export async function startCapture(t0 = Date.now()) {
  */
 export async function startEdit(doc: CaptureDoc, onDone: (png: Buffer, doc: CaptureDoc) => void) {
   if (active) return
-  active = true
+  setActive(true)
   const id = ++session
   editTarget = onDone
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())

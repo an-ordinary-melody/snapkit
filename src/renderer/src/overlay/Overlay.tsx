@@ -670,7 +670,7 @@ export function Overlay() {
       {cap && sel && !cap.edit && (
         <div
           className="selection"
-          style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h, boxShadow: `0 0 0 1px ${accent}, 0 0 0 99999px ${dim}` }}
+          style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h, boxShadow: `0 0 0 1.5px ${accent}, 0 0 0 99999px ${dim}` }}
         />
       )}
 

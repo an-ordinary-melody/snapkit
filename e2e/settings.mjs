@@ -44,7 +44,7 @@ try {
   // Open settings is a global hotkey, registered from the start.
   await section('Shortcuts')
   console.log('settings hotkey row:', await st.$eval('.st-row:has-text("Open settings") .st-hotkey', (e) => e.textContent),
-    '| registered:', await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('CommandOrControl+Shift+,')))
+    '| registered:', await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('CommandOrControl+Shift+2')))
   // Switches are blue when on.
   await section('General')
   await st.click('button[aria-label="Notify when copied"]')

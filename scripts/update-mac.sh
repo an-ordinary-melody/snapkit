@@ -67,4 +67,4 @@ xattr -cr /Applications/Snapkit.app
 tccutil reset ScreenCapture com.charios.snapkit > /dev/null 2>&1 || true
 
 open /Applications/Snapkit.app
-echo "==> Done. Press ⌘⇧2. If macOS asks, allow Screen Recording, then quit and reopen Snapkit."
+echo "==> Done. Press ⌘⇧Z (or your capture shortcut). If macOS asks, allow Screen Recording, then quit and reopen Snapkit."

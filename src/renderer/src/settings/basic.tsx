@@ -231,12 +231,13 @@ export function Appearance({ snap, set }: SectionProps) {
   return (
     <>
       <Group title="Theme">
-        <Row label="Appearance" desc="For toolbars, menus, the editor, pins and this window. System follows your Mac.">
+        <Row label="Appearance" desc="For toolbars, menus, the editor, pins and this window. Gray is a lighter dark. System follows your Mac.">
           <Segmented
             label="Appearance"
             value={s.appearance.mode}
             options={[
               { value: 'light', label: 'Light' },
+              { value: 'gray', label: 'Gray' },
               { value: 'dark', label: 'Dark' },
               { value: 'system', label: 'System' }
             ]}

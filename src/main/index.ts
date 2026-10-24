@@ -7,7 +7,7 @@ import { log } from './log'
 import { lockDownWebContents } from './security'
 import { onUpdateCheck, registerSystemIpc, scheduleUpdateChecks } from './system'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
-import { forceEndCapture, isCapturing, rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
+import { forceEndCapture, isCapturing, onCaptureMode, rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
 import { registerPinIpc } from './pin'
 import { loadHistory, prune, saveIndex } from './history'
 import { preloadHistoryPanel, registerHistoryIpc, toggleHistoryPanel } from './historyPanel'
@@ -58,6 +58,30 @@ function fullscreen() {
   void ensureScreenPermission().then((ok) => ok && captureFullScreen(t0))
 }
 type HotkeyName = keyof typeof HOTKEY_ACTIONS
+
+/**
+ * ⌘ shortcuts capture mode handles itself (undo, redo, copy, save, settings).
+ * A global hotkey set to one of them (e.g. ⌘⇧Z, which is also Redo) steps
+ * aside while capturing so the key reaches capture mode.
+ */
+const CAPTURE_MODE_KEYS = new Set(['Z', 'Shift+Z', 'Y', 'C', 'S', ','].map((k) => `CommandOrControl+${k}`))
+const HOTKEY_NAMES = ['capture', 'history', 'fullscreen', 'settings'] as const
+
+function stepAsideWhileCapturing(on: boolean) {
+  const keys = getSettings().hotkeys
+  for (const name of HOTKEY_NAMES) {
+    const k = keys[name]
+    if (!k || !CAPTURE_MODE_KEYS.has(k)) continue
+    if (on) globalShortcut.unregister(k)
+    else if (!globalShortcut.isRegistered(k)) {
+      try {
+        globalShortcut.register(k, HOTKEY_ACTIONS[name])
+      } catch {
+        // invalid accelerator in settings
+      }
+    }
+  }
+}
 
 function registerHotkey() {
   const keys = getSettings().hotkeys
@@ -116,6 +140,7 @@ function init() {
   preloadHistoryPanel()
   createTray(capture, openSettings, toggleHistoryPanel, fullscreen)
   registerHotkey()
+  onCaptureMode(stepAsideWhileCapturing)
   registerSettingsIpc(setHotkey)
   registerSystemIpc()
   scheduleUpdateChecks()

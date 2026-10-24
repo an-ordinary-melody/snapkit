@@ -53,6 +53,9 @@ export function openSettingsWindow() {
  * `setHotkey` changes the capture hotkey and returns an error message if the
  * shortcut can't be registered (the old one is kept then).
  */
+/** Native window material and menus: Gray is a dark theme. */
+const nativeMode = (m: Settings['appearance']['mode']) => (m === 'gray' ? 'dark' : m)
+
 type HotkeyName = 'capture' | 'history' | 'fullscreen' | 'settings'
 
 export function registerSettingsIpc(setHotkey: (name: HotkeyName, accelerator: string) => string | null) {
@@ -78,10 +81,10 @@ export function registerSettingsIpc(setHotkey: (name: HotkeyName, accelerator: s
     else shell.showItemInFolder(settingsFile())
   })
   // Light / dark / system for everything native too (window material, dialogs, menus).
-  nativeTheme.themeSource = getSettings().appearance.mode
+  nativeTheme.themeSource = nativeMode(getSettings().appearance.mode)
   // Keep the window in sync with changes made anywhere (e.g. the last save folder).
   onSettingsChange((s, prev) => {
-    nativeTheme.themeSource = s.appearance.mode
+    nativeTheme.themeSource = nativeMode(s.appearance.mode)
     if (JSON.stringify(s.appearance) !== JSON.stringify(prev.appearance)) {
       for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(IPC.appearanceChanged, s.appearance)
     }
