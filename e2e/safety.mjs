@@ -11,7 +11,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`], env: { ...process.env, SNAPKIT_IDLE_MS: '4000' } })
 const capturing = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.webContents.getURL().endsWith('#overlay') && w.isVisible() && w.getOpacity() > 0))
 const hotkey = () => app.evaluate(({ app }) => app.emit('second-instance', {}, []))
-const lastLog = (n = 3) => readFileSync(join(process.env.HOME, 'Library/Logs/Snapkit/main.log'), 'utf8').trim().split('\n').slice(-n).map((l) => l.slice(25)).join(' | ')
+// Snapkit's log: ~/Library/Logs/Snapkit on macOS; elsewhere in the profile's logs folder.
+const LOG = process.platform === 'darwin' ? join(process.env.HOME, 'Library/Logs/Snapkit/main.log') : join(profile, 'logs', 'main.log')
+const lastLog = (n = 3) => readFileSync(LOG, 'utf8').trim().split('\n').slice(-n).map((l) => l.slice(25)).join(' | ')
 
 try {
   await wait(2500)

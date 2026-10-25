@@ -6,6 +6,7 @@ import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import { copyPng, savePng } from './output'
 import { log } from './log'
+import { disableWindowAnimations } from './noAnimation'
 import { ipcHandle, ipcOn } from './security'
 import { createThumb, hasPins, keepPinsOnTop, linkThumbToHistory } from './pin'
 import { addToHistory } from './history'
@@ -68,6 +69,7 @@ function createOverlay(display: Display): BrowserWindow {
   if (isMac) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
   win.setBounds(display.bounds)
   win.setOpacity(0)
+  disableWindowAnimations(win) // Windows: no fade-and-grow when capture mode opens
   overlayUrl(win)
   win.on('closed', () => overlays.delete(display.id))
   // Diagnostics: overlay errors and crashes go to main.log.

@@ -27,6 +27,10 @@ afterPack: build/after-pack.cjs # Electron fuses + macOS ad-hoc signing
 electronLanguages: [en-US, en-GB]
 
 mac:
+  # koffi only turns off a Windows window animation (src/main/noAnimation.ts): not needed on macOS.
+  files:
+    - "!node_modules/koffi/**"
+    - "!node_modules/@koromix/**"
   # Liquid Glass icon (macOS 26+): build/Assets.car, compiled from build/AppIcon.icon by the
   # "Mac icon" workflow, plus the flattened AppIcon.icns it makes for older macOS.
   icon: build/AppIcon.icns
