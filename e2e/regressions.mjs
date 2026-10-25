@@ -47,9 +47,10 @@ try {
   await thumb.click('.thumb-btn:has-text("Edit")'); await wait(1500)
   const painted = await win.$eval('.be-canvas canvas', (c) => {
     const ctx = c.getContext('2d')
-    const d = ctx.getImageData(Math.floor(c.width * 0.3), Math.floor(c.height * 0.3), Math.floor(c.width * 0.4), Math.floor(c.height * 0.4)).data
+    // The whole image, so it doesn't matter what was on screen (a plain window in the middle has few colors).
+    const d = ctx.getImageData(0, 0, c.width, c.height).data
     const colors = new Set()
-    for (let i = 0; i < d.length; i += 4 * 97) if (d[i + 3]) colors.add(`${d[i]},${d[i + 1]},${d[i + 2]}`)
+    for (let i = 0; i < d.length; i += 4 * 61) if (d[i + 3]) colors.add(`${d[i]},${d[i + 1]},${d[i + 2]}`)
     return colors.size
   }).catch(() => 0)
   console.log('edit from preview shows the image:', painted > 20, `(${painted} colors)`)
