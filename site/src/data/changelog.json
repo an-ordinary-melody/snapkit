@@ -1,5 +1,16 @@
 [
   {
+    "title": "Compress, last area and a ruler",
+    "from": "0.2.0-beta.12",
+    "upTo": "0.2.0-beta.12",
+    "items": [
+      "Compress images: smaller PNGs on copy and save, and pasting keeps the savings",
+      "Capture last area: reopen or instantly copy the area you captured last",
+      "Ruler tool: measure in pixels",
+      "macOS: a Dock icon while Settings is open, and a frosted glass app icon"
+    ]
+  },
+  {
     "title": "Polish and a new look",
     "from": "0.2.0-beta.2",
     "upTo": "0.2.0-beta.11",
