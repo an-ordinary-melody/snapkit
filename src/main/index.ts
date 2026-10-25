@@ -13,7 +13,7 @@ import { registerPinIpc } from './pin'
 import { loadHistory, prune, saveIndex } from './history'
 import { preloadHistoryPanel, registerHistoryIpc, toggleHistoryPanel } from './historyPanel'
 import { flushSettings, getSettings, onSettingsChange } from './settings'
-import { openSettingsWindow, registerSettingsIpc } from './settingsWindow'
+import { isSettingsOpen, openSettingsWindow, registerSettingsIpc } from './settingsWindow'
 import { createTray, refreshTrayMenu } from './tray'
 
 if (!app.requestSingleInstanceLock()) {
@@ -81,7 +81,10 @@ function fullscreen() {
   void ensureScreenPermission().then((ok) => ok && captureFullScreen(t0))
 }
 function init() {
-  if (process.platform === 'darwin') app.dock?.hide() // menu-bar app, no Dock icon
+  if (process.platform === 'darwin') {
+    app.dock?.hide() // menu-bar app: a Dock icon only while Settings is open
+    app.on('activate', () => isSettingsOpen() && openSettingsWindow())
+  }
 
   // Drag-out files left by a previous run (pins are gone, so are their files).
   rmSync(join(app.getPath('temp'), 'Snapkit'), { recursive: true, force: true })

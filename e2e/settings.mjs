@@ -212,6 +212,19 @@ try {
   await wait(300)
   console.log('after reset: appearance', JSON.stringify(saved().appearance ?? 'default'), '| toolbar kept:', saved().features?.highlighter === false)
   console.log('settings errors:', errors.length ? errors : 'none')
+
+  // macOS: a Dock icon while Settings is open, gone again when it closes.
+  if (process.platform === 'darwin') {
+    const dock = () => app.evaluate(({ app }) => app.dock.isVisible())
+    const open = await dock()
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('#settings')).close())
+    await wait(800)
+    const closed = await dock()
+    await app.evaluate(({ app }) => app.emit('second-instance', {}, [])) // capture mode still opens
+    await wait(1200)
+    const capturing = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.webContents.getURL().endsWith('#overlay') && w.isVisible() && w.getOpacity() > 0))
+    console.log('Dock icon with Settings open:', open, '| after closing:', closed, '| capture still opens:', capturing)
+  }
 } finally {
   await app.close()
 }

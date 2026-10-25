@@ -20,10 +20,22 @@ const snapshot = (): SettingsSnapshot => ({
   engines: engineInfo()
 })
 
+/**
+ * macOS: Snapkit is a menu-bar app, but while Settings is open it has a Dock
+ * icon (and ⌘-Tab entry) like a normal app. Closing Settings takes it away again.
+ */
+function showInDock(show: boolean) {
+  if (!isMac || !app.dock) return
+  if (show) void app.dock.show()
+  else app.dock.hide()
+}
+
 /** Open (or bring forward) the settings window. */
 export function openSettingsWindow() {
+  showInDock(true)
   if (isMac) app.focus({ steal: true })
   if (win && !win.isDestroyed()) {
+    if (win.isMinimized()) win.restore()
     win.show()
     win.focus()
     return
@@ -48,8 +60,12 @@ export function openSettingsWindow() {
   win.once('ready-to-show', () => win?.show())
   win.on('closed', () => {
     win = null
+    showInDock(false)
   })
 }
+
+/** Whether Settings is open (macOS: a click on the Dock icon then brings it forward). */
+export const isSettingsOpen = () => !!win && !win.isDestroyed()
 
 /**
  * `setHotkey` changes the capture hotkey and returns an error message if the

@@ -160,6 +160,7 @@ const SUITES = {
     [/history keep slider: 10 of 30/, 'history keeps 10, up to 30'],
     [/history recording switch: true/, '"Recording" switch in History settings, on by default (matches the History window)'],
     [/shortcut rows without descriptions: Capture area, Capture last area, Capture full screen, History, Settings$/m, 'short shortcut names, no descriptions'],
+    [/Dock icon with Settings open: true \| after closing: false \| capture still opens: true|^(?![\s\S]*Dock icon)/, 'macOS: Dock icon only while Settings is open'],
     [/settings hotkey row: (⌘⇧2|Ctrl\+Shift\+2) \| registered: true/, 'Open Settings shortcut'],
     [/switch on color: rgb\((9|10|11), 13[1-3], 25[4-5]\)/, 'blue switches'],
     [/name preview: Example: Bug 001.png/, 'file naming'],
