@@ -10,6 +10,8 @@ const api: SnapkitApi = {
   armed: (s) => ipcRenderer.send(IPC.armed, s),
   painted: (s) => ipcRenderer.send(IPC.painted, s),
   cleared: () => ipcRenderer.send(IPC.cleared),
+  onDecorate: (cb) => ipcRenderer.on(IPC.decorate, (_e, p) => cb(p)),
+  decorated: (id, result) => ipcRenderer.send(IPC.decorated, id, result),
   selectionStarted: (s) => ipcRenderer.send(IPC.selectionStarted, s),
   activity: (s) => ipcRenderer.send(IPC.activity, s),
   copy: (s, png, extra) => ipcRenderer.send(IPC.copy, s, png, extra),

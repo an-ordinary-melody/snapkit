@@ -115,6 +115,9 @@ export const IPC = {
   armed: 'overlay:armed',
   painted: 'overlay:painted',
   cleared: 'overlay:cleared',
+  /** Main → capture page: draw the default background around a full-screen capture; the page answers with `decorated`. */
+  decorate: 'overlay:decorate',
+  decorated: 'overlay:decorated',
   selectionStarted: 'overlay:selection-started',
   activity: 'overlay:activity',
   copy: 'capture:copy',
@@ -179,6 +182,21 @@ export interface SettingsSnapshot {
   hotkeysTaken: ('capture' | 'history' | 'fullscreen' | 'settings')[]
 }
 
+/** A full-screen capture to put on the default background (see captureFullScreen). */
+export interface DecorateRequest {
+  id: number
+  png: Uint8Array
+  /** Image px per screen px. */
+  scale: number
+  settings: Settings
+}
+
+/** The capture on its background, and the background state (kept in the history entry, so Edit can change it). */
+export interface DecorateResult {
+  png: Uint8Array
+  beautify: unknown
+}
+
 /** API exposed to renderers by the preload script (window.snapkit). */
 export interface SnapkitApi {
   platform: string
@@ -189,6 +207,9 @@ export interface SnapkitApi {
   armed(session: number): void
   painted(session: number): void
   cleared(): void
+  /** Full-screen capture with "Background on by default": draw the background (capture page only). */
+  onDecorate(cb: (p: DecorateRequest) => void): void
+  decorated(id: number, result: DecorateResult | null): void
   selectionStarted(session: number): void
   /** Input happened in capture mode (pushes the idle timeout back). */
   activity(session: number): void

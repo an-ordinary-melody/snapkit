@@ -65,6 +65,25 @@ function initialBeautify(s: Settings): BeautifyState {
   return preset ? stateFromPreset(preset, on) : { on: false, presetId: '', padding: 0, radius: 0, shadow: 0 }
 }
 
+// A full-screen capture with "Background on by default": the main process has no canvas, so this
+// (preloaded, hidden) page draws the same background a new capture would start with.
+api.onDecorate(async ({ id, png, scale, settings }) => {
+  try {
+    const b = initialBeautify(settings)
+    const bg = b.on ? backgroundOf(b, settings.beautify.presets) : null
+    if (!bg) return api.decorated(id, null)
+    const bitmap = await createImageBitmap(new Blob([png as BlobPart], { type: 'image/png' }))
+    const src = document.createElement('canvas')
+    src.width = bitmap.width
+    src.height = bitmap.height
+    src.getContext('2d')!.drawImage(bitmap, 0, 0)
+    const out = await renderBeautified(src, bg, b, scale)
+    api.decorated(id, { png: new Uint8Array(await (await toBlob(out, 'image/png')).arrayBuffer()), beautify: b })
+  } catch {
+    api.decorated(id, null) // the capture is kept without a background
+  }
+})
+
 function initialStyle(s: Settings): Style {
   const a = s.annotate
   return {

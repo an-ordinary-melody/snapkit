@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron'
 import { readFile, stat } from 'fs/promises'
 import { extname, join } from 'path'
-import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
+import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type DecorateResult, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
 import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import { copyPng, savePng } from './output'
@@ -281,6 +281,35 @@ function waitFor(channel: string, win: BrowserWindow, session: number | null, ti
       resolve(ok)
     }
     ipcMain.on(channel, onMsg)
+  })
+}
+
+let decorateId = 0
+/**
+ * Put a full-screen capture on the default background ("Background on by
+ * default"), drawn by a capture page (the main process has no canvas). Null
+ * when the background is off, or if the page doesn't answer in time: the
+ * capture then goes out plain rather than not at all.
+ */
+export function decorateCapture(png: Buffer, scale: number): Promise<{ png: Buffer; beautify: unknown } | null> {
+  const win = [...overlays.values()].find((w) => !w.isDestroyed())
+  if (!win || !getSettings().beautify.applyOnCopy) return Promise.resolve(null)
+  const id = ++decorateId
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      log('[fullscreen] background took too long; copying without it')
+      done(null)
+    }, 3000)
+    function onMsg(e: Electron.IpcMainEvent, gotId: number, result: DecorateResult | null) {
+      if (e.sender === win!.webContents && gotId === id) done(result ? { png: Buffer.from(result.png), beautify: result.beautify } : null)
+    }
+    function done(r: { png: Buffer; beautify: unknown } | null) {
+      clearTimeout(timer)
+      ipcMain.off(IPC.decorated, onMsg)
+      resolve(r)
+    }
+    ipcMain.on(IPC.decorated, onMsg)
+    win.webContents.send(IPC.decorate, { id, png: new Uint8Array(png), scale, settings: getSettings() })
   })
 }
 

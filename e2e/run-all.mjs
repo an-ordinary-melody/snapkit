@@ -95,7 +95,8 @@ const SUITES = {
     [/drag file: Snapkit .*\.png \d+ bytes/, 'drag a capture out of history'],
     [/after clear keep starred: 1/, 'clear, keep starred'],
     [/confirm text: Click again to delete all/, 'clear all asks twice'],
-    [/after clear all: 0 \| errors: none/, 'clear all']
+    [/after clear all: 0 \| errors: none/, 'clear all'],
+    [/full screen with background: true \| history entry has it too: true/, 'full-screen capture gets the background when it is on by default (copy, preview, history)']
   ],
   hotkeys: [
     [/defaults registered: ⌥⇧Z:true ⌘⇧9:true ⌘⇧2:true ⌘⇧1:true/, 'default shortcuts'],
