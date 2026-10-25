@@ -20,7 +20,7 @@ try {
     await wait(1500)
   }
   const thumbs = windowFor('thumb')
-  console.log('floating previews:', thumbs.length, '| overlay shown:', await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.webContents.getURL().endsWith('#overlay') && w.isVisible())))
+  console.log('floating previews:', thumbs.length, '| overlay shown:', await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.webContents.getURL().endsWith('#overlay') && w.isVisible() && w.getOpacity() > 0)))
   // The plain full-screen capture's size (compared with the one on a background below).
   const plainClip = await app.evaluate(({ clipboard }) => clipboard.readImage().getSize())
   console.log('clipboard image:', JSON.stringify(plainClip))

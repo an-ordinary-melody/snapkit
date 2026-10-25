@@ -8,6 +8,7 @@ const out = resolve(process.argv[2] ?? 'e2e-out')
 const profile = join(out, 'profile')
 mkdirSync(profile, { recursive: true })
 writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12', history: 'CommandOrControl+Alt+Shift+F11' }, notifications: { onCopy: false }, history: { maxCount: 5 } }))
+const LOG = process.platform === 'darwin' ? join(process.env.HOME, 'Library/Logs/Snapkit/main.log') : join(profile, 'logs', 'main.log')
 const index = () => (existsSync(join(profile, 'history', 'index.json')) ? JSON.parse(readFileSync(join(profile, 'history', 'index.json'), 'utf8')) : [])
 const folders = () => readdirSync(join(profile, 'history')).filter((n) => n !== 'index.json')
 
@@ -37,7 +38,7 @@ try {
   for (let i = 0; i < 7; i++) await copyCapture(i)
   await wait(500)
   console.log('7 copies -> kept:', index().length, '(limit 5) | folders on disk:', folders().length, '| took', Math.round((Date.now() - t0) / 1000), 's')
-  const log = readFileSync(join(process.env.HOME, 'Library/Logs/Snapkit/main.log'), 'utf8').split('\n').filter((l) => l.includes('[history] added')).slice(-3)
+  const log = readFileSync(LOG, 'utf8').split('\n').filter((l) => l.includes('[history] added')).slice(-3)
   console.log('recent history writes:', log.map((l) => l.replace(/^.*\[history\] /, '')).join(' | '))
 
   // Open the panel.

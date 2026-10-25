@@ -56,16 +56,10 @@ try {
   // Ask Windows itself, via PowerShell: is the preview marked topmost, and is it above a focused normal window?
   if (process.platform === 'win32') {
     const { execFileSync } = await import('child_process')
-    const handles = await app.evaluate(({ BrowserWindow }) => {
-      const other = new BrowserWindow({ x: 100, y: 50, width: 900, height: 700, show: true, title: 'Another app' })
-      other.focus()
-      globalThis.__otherApp = other
-      const preview = BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith('#thumb'))
-      const hwnd = (w) => w.getNativeWindowHandle().readBigUInt64LE(0).toString()
-      return { preview: hwnd(preview), other: hwnd(other) }
-    })
-    await wait(800)
-    const ps = `
+    const hwndOf = (url) =>
+      app.evaluate(({ BrowserWindow }, url) => BrowserWindow.getAllWindows().find((w) => w.webContents.getURL().endsWith(url)).getNativeWindowHandle().readBigUInt64LE(0).toString(), url)
+    const zorder = (preview, other) => {
+      const ps = `
 Add-Type @"
 using System; using System.Runtime.InteropServices;
 public class W {
@@ -74,14 +68,24 @@ public class W {
   [DllImport("user32.dll")] public static extern IntPtr GetTopWindow(IntPtr h);
 }
 "@
-$p = [IntPtr]::new([Int64]${handles.preview}); $o = [IntPtr]::new([Int64]${handles.other})
+$p = [IntPtr]::new([Int64]${preview}); $o = [IntPtr]::new([Int64]${other})
 $top = ([W]::GetWindowLong($p, -20) -band 8) -ne 0
 $h = [W]::GetTopWindow([IntPtr]::Zero); $i = 0; $ip = -1; $io = -1
 while ($h -ne [IntPtr]::Zero -and $i -lt 10000) { if ($h -eq $p) { $ip = $i }; if ($h -eq $o) { $io = $i }; $h = [W]::GetWindow($h, 2); $i++ }
 "topmost=$top above=$($ip -ge 0 -and $io -ge 0 -and $ip -lt $io)"
 `
-    const res = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], { encoding: 'utf8' }).trim()
-    console.log('Windows: preview stays above a focused app window:', res)
+      return execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], { encoding: 'utf8' }).trim()
+    }
+    const preview = await hwndOf('#thumb')
+    console.log('Windows: preview topmost right after the copy (info):', zorder(preview, await hwndOf('#overlay')))
+    const other = await app.evaluate(({ BrowserWindow }) => {
+      const w = new BrowserWindow({ x: 100, y: 50, width: 900, height: 700, show: true, title: 'Another app' })
+      w.focus()
+      globalThis.__otherApp = w
+      return w.getNativeWindowHandle().readBigUInt64LE(0).toString()
+    })
+    await wait(800)
+    console.log('Windows: preview stays above a focused app window:', zorder(preview, other))
     await app.evaluate(() => globalThis.__otherApp.close())
     await wait(300)
   }
