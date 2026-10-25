@@ -271,6 +271,9 @@ export function Appearance({ snap, set }: SectionProps) {
         <Row label="Dim outside the selection">
           <SliderField label="Dim amount" min={0.1} max={0.9} step={0.05} value={s.capture.dimOpacity} format={(v) => `${Math.round(v * 100)}%`} onChange={(dimOpacity) => set({ capture: { dimOpacity } })} />
         </Row>
+        <Row label="Dim color" desc="Black by default; the amount above sets how strong it is.">
+          <ColorField label="Dim color" value={s.capture.dimColor} onChange={(dimColor) => set({ capture: { dimColor } })} />
+        </Row>
         <Row label="Selection outline color">
           <ColorField label="Selection outline color" value={s.capture.accentColor} onChange={(accentColor) => set({ capture: { accentColor } })} />
         </Row>

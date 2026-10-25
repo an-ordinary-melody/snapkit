@@ -81,6 +81,13 @@ try {
   await st.click('.st-seg button:has-text("Dark")')
   await wait(300)
   console.log('mode:', await st.evaluate(() => document.documentElement.dataset.mode), '| saved:', saved().appearance?.mode)
+  // Dim color: black by default; a dark blue dims capture mode in blue.
+  const dimDefault = await st.evaluate(() => window.snapkit.settingsGet().then((x) => x.settings.capture.dimColor))
+  await st.click('button[aria-label="Dim color: pick a color"]')
+  await st.fill('.color-picker .hex', '#1e3a8a')
+  await st.keyboard.press('Enter')
+  await wait(200)
+  console.log('dim color: default', dimDefault, '| saved', saved().capture?.dimColor)
   await st.click('button[aria-label="Liquid Glass"]')
   await wait(200)
   console.log('glass toggled on (default is off):', await st.evaluate(() => document.documentElement.dataset.glass), '| saved:', saved().appearance?.glass)
@@ -166,6 +173,7 @@ try {
     '| first tool', tools[0], '| highlighter shown', tools.includes('Highlighter'),
     '| W selects arrow', await ov.$eval('.toolbar button.active[data-id]', (b) => b.dataset.id).catch(() => 'none'),
     '| first swatch', await ov.$eval('.style-bar .swatch', (b) => b.dataset.tip).catch(() => 'none'))
+  console.log('capture dims in:', await ov.$eval('.selection', (e) => getComputedStyle(e).boxShadow.split('),').slice(-1)[0].trim()))
   // A step badge drawn now uses the outline and shadow set above.
   await ov.click('.toolbar button[data-tip="Numbered step"]')
   await m.click(450, 350); await wait(200)

@@ -60,6 +60,8 @@ export interface Settings {
   capture: {
     /** 0–1 darkness of the area outside the selection. */
     dimOpacity: number
+    /** Color of that dim (#rrggbb). */
+    dimColor: string
     showSizeLabel: boolean
     /** Selection outline color. */
     accentColor: string
@@ -183,6 +185,7 @@ export const DEFAULT_SETTINGS: Settings = {
   toolVariants: {},
   capture: {
     dimOpacity: 0.75,
+    dimColor: '#000000',
     showSizeLabel: true,
     accentColor: '#3b82f6',
     engine: 'auto',

@@ -127,6 +127,8 @@ const SUITES = {
     [/hotkey button: ⌘⌥⇧F11 \| saved: CommandOrControl\+Alt\+Shift\+F11/, 'recording a hotkey'],
     [/arrow key saved: w/, 'tool letters'],
     [/mode: dark \| saved: dark/, 'theme mode'],
+    [/dim color: default #000000 \| saved #1e3a8a/, 'dim color setting (black by default)'],
+    [/capture dims in: .*rgba\(30, 58, 138, 0\.75\) 0px 0px 0px 99999px/, 'capture mode dims in the chosen color'],
     [/glass toggled on .*: on \| saved: true/, 'Liquid Glass toggle'],
     [/history window glass: on/, 'theme reaches windows already open'],
     [/group rows: \[ 'Arrows \(2\)', 'Shapes \(5\)' \]/, 'no separate Line / Ellipse rows'],

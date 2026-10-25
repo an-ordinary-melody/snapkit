@@ -14,6 +14,13 @@ export function parseHex(input: string): string | null {
   return '#' + h.toLowerCase()
 }
 
+/** A hex color at the given opacity, as rgba() (black for anything that isn't a hex color). */
+export function withAlpha(hex: string, alpha: number): string {
+  const h = parseHex(hex) ?? '#000000'
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 export function hexToHsv(hex: string): Hsv {
   const n = parseInt((parseHex(hex) ?? '#000000').slice(1), 16)
   const r = ((n >> 16) & 255) / 255

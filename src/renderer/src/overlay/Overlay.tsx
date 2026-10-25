@@ -6,6 +6,7 @@ import { visibleFeatures, type Settings } from '@shared/settings'
 import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
 import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
 import { hasStyleOptions, StyleBar, type StyleTarget } from './annotate/StyleBar'
+import { withAlpha } from './annotate/color'
 import { BackgroundEditor } from './beautify/BackgroundEditor'
 import { backgroundOf, stateFromPreset, type BeautifyState } from './beautify/layout'
 import { renderBeautified } from './beautify/render'
@@ -557,7 +558,7 @@ export function Overlay() {
 
   // ---- render ---------------------------------------------------------------
   const s = cap?.settings
-  const dim = `rgba(0,0,0,${s?.capture.dimOpacity ?? 0.6})`
+  const dim = withAlpha(s?.capture.dimColor || '#000000', s?.capture.dimOpacity ?? 0.6)
   const accent = s?.capture.accentColor ?? '#3b82f6'
   const scale = cap?.scale ?? 1
   const hasSel = !!(cap && sel && sel.w >= MIN_SIZE && sel.h >= MIN_SIZE)

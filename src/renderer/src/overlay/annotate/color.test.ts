@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hexToHsv, hsvToHex, parseHex } from './color'
+import { hexToHsv, hsvToHex, parseHex, withAlpha } from './color'
 
 describe('color', () => {
   it('parses short and long hex, with or without #', () => {
@@ -19,5 +19,14 @@ describe('color', () => {
     expect(hexToHsv('#ff0000')).toEqual({ h: 0, s: 1, v: 1 })
     expect(hsvToHex({ h: 120, s: 1, v: 1 })).toBe('#00ff00')
     expect(hsvToHex({ h: 240, s: 0.5, v: 0.5 })).toBe('#404080')
+  })
+})
+
+describe('withAlpha', () => {
+  it('turns a hex color and an opacity into rgba()', () => {
+    expect(withAlpha('#000000', 0.75)).toBe('rgba(0,0,0,0.75)')
+    expect(withAlpha('#1e3a8a', 0.5)).toBe('rgba(30,58,138,0.5)')
+    expect(withAlpha('fff', 1)).toBe('rgba(255,255,255,1)')
+    expect(withAlpha('nonsense', 0.6)).toBe('rgba(0,0,0,0.6)')
   })
 })
