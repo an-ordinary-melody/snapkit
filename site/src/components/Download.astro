@@ -1,5 +1,7 @@
 ---
 // Download for macOS / Windows. The visitor's OS goes first (set by the script in index.astro).
+// Keep the installer URLs in the page HTML: the release job in .github/workflows/build.yml waits for
+// "Snapkit-<version>-mac-arm64.dmg" to appear here to confirm the site picked up a new release.
 import type { Latest } from '../lib/release'
 import OsIcon from './OsIcons.astro'
 
