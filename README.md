@@ -97,10 +97,11 @@ npm run build:mac  # or build:win (run on that OS)
 | Code you changed | Suites to run (or put on the backlog) |
 |---|---|
 | Drawing tools, text, snapping (`overlay/annotate/`) | annotate, textedit, snap, regressions |
-| Background editor, zoom (`overlay/beautify/`) | regressions, annotate, snap |
+| Background editor, zoom (`overlay/beautify/`) | regressions, annotate, snap, compress |
 | Capture mode UI (`Overlay.tsx`, `Toolbars.tsx`, `layout.ts`) | annotate, regressions, pin, safety |
 | Capture flow, engines (`main/overlay.ts`, `main/capture/`) | safety, pin, fullscreen, regressions |
 | Floating preview and pins (`main/pin.ts`, `renderer/pin/`) | pin, fullscreen |
+| Copy, save, compression (`main/output.ts`, `main/compress*.ts`, `main/clipboardPng.ts`) | compress, pin, history, fullscreen |
 | History (`main/history*.ts`, `renderer/history/`) | history, fullscreen |
 | Hotkeys, tray, startup (`main/hotkeys.ts`, `main/index.ts`, `main/tray.ts`) | hotkeys, safety |
 | Settings and their defaults (`shared/settings.ts`, `renderer/settings/`) | settings, plus the suite of the feature the setting drives |
