@@ -16,16 +16,16 @@ export function General({ snap, set }: SectionProps) {
       <LaunchAtLogin />
 
       <Group title="After a capture">
-        <Row label="Quick area capture" desc="Copy the area as soon as you finish drawing it, skipping the adjust-and-annotate step. Off: adjust, draw, then copy.">
+        <Row label="Quick area capture" desc="Copies the area the moment you let go. No editing step.">
           <Toggle label="Quick area capture" value={s.capture.quickCopy} onChange={(quickCopy) => set({ capture: { quickCopy } })} />
         </Row>
-        <Row label="Full-screen capture also copies" desc="Off: it only goes to the floating preview and history.">
-          <Toggle label="Full-screen capture also copies" value={s.capture.fullscreenCopy} onChange={(fullscreenCopy) => set({ capture: { fullscreenCopy } })} />
+        <Row label="Copy full-screen captures right away" desc="Off: they only go to the floating preview and history.">
+          <Toggle label="Copy full-screen captures right away" value={s.capture.fullscreenCopy} onChange={(fullscreenCopy) => set({ capture: { fullscreenCopy } })} />
         </Row>
-        <Row label="Floating preview after copy" desc="Keep the result in the corner to copy again, edit or pin. The pin button turns it on or off per capture.">
+        <Row label="Floating preview after copy" desc='Keeps the result in a corner. Use the "Pin" button to turn it on or off.'>
           <Toggle label="Floating preview after copy" value={s.pin.afterCopy} onChange={(v) => set({ pin: { afterCopy: v } })} />
         </Row>
-        <Row label="Background on by default" desc="Copy and save include the background preset. The layers button turns it on or off per capture.">
+        <Row label="Background on by default" desc='Automatically adds the background when you copy or save. Use the "Background" button to turn it on or off.'>
           <Toggle label="Background on by default" value={s.beautify.applyOnCopy} onChange={(v) => set({ beautify: { applyOnCopy: v } })} />
         </Row>
       </Group>
@@ -58,7 +58,7 @@ export function General({ snap, set }: SectionProps) {
         <Row label="When copied">
           <Toggle label="Notify when copied" value={s.notifications.onCopy} onChange={(v) => set({ notifications: { onCopy: v } })} />
         </Row>
-        <Row label="When saved" desc="Click the notification to show the file.">
+        <Row label="When saved" desc="Click it to show the file.">
           <Toggle label="Notify when saved" value={s.notifications.onSave} onChange={(v) => set({ notifications: { onSave: v } })} />
         </Row>
       </Group>
@@ -81,7 +81,7 @@ function LaunchAtLogin() {
     <Group title="Startup">
       <Row
         label="Launch at login"
-        desc={state?.needsApproval ? 'Waiting for your OK in System Settings → General → Login Items.' : 'Start Snapkit in the menu bar when you log in.'}
+        desc={state?.needsApproval ? 'Approve it in System Settings → General → Login Items.' : 'Start Snapkit when you log in.'}
       >
         {state?.needsApproval && (
           <button className="st-btn" onClick={() => api.openUrl('login-items')}>
@@ -106,12 +106,16 @@ function HistorySettings({ snap, set }: SectionProps) {
   return (
     <Group
       title="History"
-      note={`Copied, saved and pinned captures are kept so you can copy them again: ${snap.settings.hotkeys.history ? formatAccelerator(snap.settings.hotkeys.history) + ' or ' : ''}History… in the menu bar. Starred ones are never removed by the limits.`}
+      note={`Your copies, saves and pins, to reuse. Open it with ${snap.settings.hotkeys.history ? formatAccelerator(snap.settings.hotkeys.history) + ' or ' : ''}History… in the menu bar. Starred ones are never removed.`}
     >
-      <Row label="Keep" desc={`The most recent captures, up to ${HISTORY_LIMITS.maxCount}.`}>
+      {/* Same switch as in the History window: on = recording. */}
+      <Row label="Recording" desc="Off: new captures aren't kept.">
+        <Toggle label="Recording" value={!h.paused} onChange={(on) => set({ history: { paused: !on } })} />
+      </Row>
+      <Row label="Keep" desc={`Up to ${HISTORY_LIMITS.maxCount} recent captures.`}>
         <SliderField label="Captures to keep" min={1} max={HISTORY_LIMITS.maxCount} value={Math.min(h.maxCount, HISTORY_LIMITS.maxCount)} onChange={(maxCount) => set({ history: { maxCount } })} />
       </Row>
-      <Row label="Size limit" desc={`Over it, the oldest go first. Up to ${HISTORY_LIMITS.maxMB / 1000} GB.`}>
+      <Row label="Size limit" desc={`When full, the oldest go first. Max ${HISTORY_LIMITS.maxMB / 1000} GB.`}>
         <SliderField label="History size limit" min={50} max={HISTORY_LIMITS.maxMB} step={50} value={Math.min(h.maxMB, HISTORY_LIMITS.maxMB)} format={(n) => `${n} MB`} onChange={(maxMB) => set({ history: { maxMB } })} />
       </Row>
       <Row label="Keep for">
@@ -124,16 +128,13 @@ function HistorySettings({ snap, set }: SectionProps) {
           <option value={0}>Forever</option>
         </select>
       </Row>
-      <Row label="Pause history" desc="Record nothing while paused (also in the menu-bar menu).">
-        <Toggle label="Pause history" value={h.paused} onChange={(paused) => set({ history: { paused } })} />
-      </Row>
       <Row label="Stored" desc={use ? use.folder : ''}>
         <span className="st-muted">{use ? `${use.count} ${use.count === 1 ? 'capture' : 'captures'} · ${mb(use.bytes)}` : '…'}</span>
         <button className="st-btn" onClick={() => api.historyReveal()}>
           <FolderOpen size={14} /> Show folder
         </button>
       </Row>
-      <Row label="Clear history" desc="Deletes the stored captures for good. Files you saved elsewhere aren't touched.">
+      <Row label="Clear history" desc="Deletes all history.">
         <button className="st-btn" disabled={!use?.count} onClick={() => void api.historyClear(true).then(setUse)}>
           Clear, keep starred
         </button>
@@ -158,14 +159,14 @@ export function Shortcuts({ snap, set }: SectionProps) {
   const taken = (id: string, k: string) => !!k && tools.some((t) => t.id !== id && keyOf(t.id) === k)
   // A global shortcut another app holds right now: Snapkit keeps trying and takes it once it's free.
   const held = (name: SettingsSnapshot['hotkeysTaken'][number], desc: string) =>
-    snap.hotkeysTaken?.includes(name) ? `${desc} ⚠ Another app is using this shortcut right now; Snapkit takes it as soon as it's free.` : desc
+    snap.hotkeysTaken?.includes(name) ? `${desc ? desc + ' ' : ''}⚠ In use by another app. Snapkit takes it once it's free.` : desc || undefined
   return (
     <>
       <Group title="Global">
-        <Row label="Capture area" desc={held('capture', 'Works from any app.')}>
+        <Row label="Capture area" desc={held('capture', '')}>
           <HotkeyField value={s.hotkeys.capture} onChange={(acc) => api.settingsSetHotkey(acc)} />
         </Row>
-        <Row label="Capture full screen" desc={held('fullscreen', 'The whole screen under the pointer, straight to the floating preview (copy, edit or pin from there).')}>
+        <Row label="Capture full screen" desc={held('fullscreen', '')}>
           <HotkeyField value={s.hotkeys.fullscreen} onChange={(acc) => api.settingsSetHotkey(acc, 'fullscreen')} />
           {s.hotkeys.fullscreen && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'fullscreen')} title="No shortcut; use the menu bar">
@@ -173,7 +174,7 @@ export function Shortcuts({ snap, set }: SectionProps) {
             </button>
           )}
         </Row>
-        <Row label="Open history" desc={held('history', 'The panel of past captures.')}>
+        <Row label="History" desc={held('history', '')}>
           <HotkeyField value={s.hotkeys.history} onChange={(acc) => api.settingsSetHotkey(acc, 'history')} />
           {s.hotkeys.history && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'history')} title="No shortcut; use the menu bar">
@@ -181,7 +182,7 @@ export function Shortcuts({ snap, set }: SectionProps) {
             </button>
           )}
         </Row>
-        <Row label="Open settings" desc={held('settings', 'This window, from any app (capture mode closes first).')}>
+        <Row label="Settings" desc={held('settings', '')}>
           <HotkeyField value={s.hotkeys.settings} onChange={(acc) => api.settingsSetHotkey(acc, 'settings')} />
           {s.hotkeys.settings && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'settings')} title="No shortcut; use the menu bar">
@@ -191,7 +192,7 @@ export function Shortcuts({ snap, set }: SectionProps) {
         </Row>
       </Group>
 
-      <Group title="Tools in capture mode" note="One letter or digit each. Press a tool's key again to go back to moving the selection.">
+      <Group title="Tools in capture mode" note="One key each. Press it again to go back to moving the selection.">
         {tools.map((t) => {
           const k = keyOf(t.id)
           return (
@@ -237,7 +238,7 @@ export function Appearance({ snap, set }: SectionProps) {
   return (
     <>
       <Group title="Theme">
-        <Row label="Appearance" desc="For toolbars, menus, the editor, pins and this window. Gray is a lighter dark. System follows your Mac.">
+        <Row label="Appearance" desc="Gray is a softer Dark. System follows your computer.">
           <Segmented
             label="Appearance"
             value={s.appearance.mode}
@@ -250,10 +251,10 @@ export function Appearance({ snap, set }: SectionProps) {
             onChange={(mode) => set({ appearance: { mode } })}
           />
         </Row>
-        <Row label="Liquid Glass" desc="Frosted, see-through panels that bend what's behind them at the edges. Off: solid panels.">
+        <Row label="Liquid Glass" desc="Frosted, see-through panels. Off: solid.">
           <Toggle label="Liquid Glass" value={s.appearance.glass} onChange={(glass) => set({ appearance: { glass } })} />
         </Row>
-        <Row label="Highlight color" desc="Selected tool, switches and main buttons. Theme: white in Light, gray in Dark.">
+        <Row label="Highlight color" desc="The selected tool, switches and main buttons.">
           <Segmented
             label="Highlight color"
             value={s.appearance.accent ? 'custom' : 'theme'}
@@ -268,10 +269,10 @@ export function Appearance({ snap, set }: SectionProps) {
       </Group>
 
       <Group title="Capture mode">
-        <Row label="Dim outside the selection">
+        <Row label="Dim amount">
           <SliderField label="Dim amount" min={0.1} max={0.9} step={0.05} value={s.capture.dimOpacity} format={(v) => `${Math.round(v * 100)}%`} onChange={(dimOpacity) => set({ capture: { dimOpacity } })} />
         </Row>
-        <Row label="Dim color" desc="Black by default; the amount above sets how strong it is.">
+        <Row label="Dim color">
           <ColorField label="Dim color" value={s.capture.dimColor} onChange={(dimColor) => set({ capture: { dimColor } })} />
         </Row>
         <Row label="Selection outline color">
@@ -293,7 +294,7 @@ export function About({ snap, set }: SectionProps) {
         <div className="st-muted">Version {snap.version}</div>
       </div>
       <Group title="Advanced">
-        <Row label="Capture engine" desc="How screens are grabbed. Auto uses the fastest one that works and falls back if it fails.">
+        <Row label="Capture engine" desc="Auto picks the fastest one that works.">
           <select className="st-select" aria-label="Capture engine" value={snap.settings.capture.engine} onChange={(e) => set({ capture: { engine: e.target.value } })}>
             <option value="auto">Auto</option>
             {snap.engines.map((e) => (
@@ -317,7 +318,7 @@ export function About({ snap, set }: SectionProps) {
             Show in Finder
           </button>
         </Row>
-        <Row label="Reset all settings" desc="Every section back to its defaults, including the hotkey.">
+        <Row label="Reset all settings" desc="Every section, including shortcuts.">
           <button
             className="st-btn danger"
             onClick={() => {
@@ -355,7 +356,7 @@ function NameBuilder({ rule, next, set }: { rule: NameRule; next: number; set: S
     <div className="st-row st-namer">
       <div className="st-label">
         <span>File name</span>
-        <small>Text, plus the date and time and/or a number that counts up with each save.</small>
+        <small>Text, plus the date and/or a counter.</small>
       </div>
       <div className="st-namer-fields">
         <label className="st-field">
@@ -376,7 +377,7 @@ function NameBuilder({ rule, next, set }: { rule: NameRule; next: number; set: S
           <label className="st-field">
             <span>Starting number</span>
             <NumberField label="Starting number" min={0} max={99999999} value={next} onChange={(nextNumber) => set({ save: { nextNumber } })} />
-            <small>The next save gets this number, then it counts up.</small>
+            <small>The next save starts with this number.</small>
           </label>
           <label className="st-field">
             <span>Number of digits</span>

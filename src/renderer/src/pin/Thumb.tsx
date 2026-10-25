@@ -74,10 +74,10 @@ export function Thumb() {
           <PencilLine size={14} /> Edit
         </button>
       </div>
-      <button className="thumb-icon thumb-pin" aria-label="Pin to screen" title="Pin to screen (full size, always on top)" onClick={() => api.thumbPin()}>
+      <button className="thumb-icon thumb-pin" aria-label="Pin to screen" title="Pin to screen" onClick={() => api.thumbPin()}>
         <Pin size={13} />
       </button>
-      <button className="thumb-icon thumb-move" aria-label="Move" title="Drag to move (drag the image to drop it into another app)" onPointerDown={move}>
+      <button className="thumb-icon thumb-move" aria-label="Move" title="Drag to move. Drag the image into an app to drop it." onPointerDown={move}>
         <Move size={13} />
       </button>
       <button className="thumb-icon thumb-close" aria-label="Close" title="Close (Esc)" onClick={() => api.pinClose()}>

@@ -39,6 +39,8 @@ try {
   await wait(1000)
   const h = windowFor('history')[0]
   console.log('history entries:', await h.$$eval('.hist-card', (c) => c.length))
+  // Windows has no window close button of its own (frameless): the History window brings one.
+  console.log('history close button:', !!(await h.$('button[aria-label="Close history"]')))
   // Resizable: more columns when wider, and the size is remembered.
   const cols = () => h.$eval('.hist-grid', (g) => getComputedStyle(g).gridTemplateColumns.split(' ').length)
   const before = await cols()

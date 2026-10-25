@@ -77,7 +77,7 @@ export function registerHotkeys(a: Record<HotkeyName, () => void>, startup = fal
     const k = getSettings().hotkeys.capture.replace('CommandOrControl', process.platform === 'darwin' ? '⌘' : 'Ctrl')
     new Notification({
       title: `${k} is used by another app`,
-      body: `Snapkit takes it as soon as it's free. Until then, capture from the menu bar / tray, or pick another shortcut in Settings → Shortcuts.`,
+      body: `Snapkit takes it once it's free. Meanwhile, use the menu bar or pick another in Settings.`,
       silent: true
     }).show()
   }
@@ -109,7 +109,7 @@ export function setHotkey(name: HotkeyName, accelerator: string): string | null 
   }
   if (!ok) {
     if (old) globalShortcut.register(old, actions[name])
-    return `${accelerator.replace('CommandOrControl', process.platform === 'darwin' ? '⌘' : 'Ctrl')} can't be used. It may be taken by another app or by the system.`
+    return `${accelerator.replace('CommandOrControl', process.platform === 'darwin' ? '⌘' : 'Ctrl')} is taken by another app or the system.`
   }
   updateSettings({ hotkeys: { [name]: accelerator } })
   return null

@@ -23,7 +23,7 @@ export function BackgroundSection({ snap, set }: SectionProps) {
 
   return (
     <>
-      <Group title="Default background" note="Used when the background is on. Change it here or pick one below.">
+      <Group title="Default background" note="Used when Background is on.">
         <div className="st-bg-preview" style={{ background: cssBackground(def.background), padding: Math.min(44, def.padding / 2) }}>
           <div
             className="st-bg-shot"
@@ -51,8 +51,8 @@ export function BackgroundSection({ snap, set }: SectionProps) {
             />
           </Row>
         )}
-        <Row label="Remember the last background used" desc="On: whatever you copy or save with becomes the default (background and layout).">
-          <Toggle label="Remember the last background used" value={b.rememberLast} onChange={(rememberLast) => set({ beautify: { rememberLast } })} />
+        <Row label="Remember last background" desc="The last one you copied or saved with becomes the default.">
+          <Toggle label="Remember last background" value={b.rememberLast} onChange={(rememberLast) => set({ beautify: { rememberLast } })} />
         </Row>
       </Group>
 

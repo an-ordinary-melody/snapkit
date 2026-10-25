@@ -36,7 +36,8 @@ export function refreshTrayMenu() {
       { label: 'Capture Full Screen', accelerator: fullscreenKey || undefined, click: onFullscreen },
       { type: 'separator' },
       { label: 'History…', accelerator: historyKey || undefined, click: onHistory },
-      { label: 'Pause History', type: 'checkbox', checked: paused, click: () => updateSettings({ history: { paused: !paused } }) },
+      // Same as the History window's switch: checked = recording.
+      { label: 'Record History', type: 'checkbox', checked: !paused, click: () => updateSettings({ history: { paused: !paused } }) },
       { type: 'separator' },
       { label: 'Open Screenshots Folder', click: () => shell.openPath(defaultSaveFolder()) },
       { label: 'Close All Pins', click: closeAllPins },

@@ -594,9 +594,9 @@ export function Overlay() {
   const tips = {
     pin: {
       text: floating ? 'Floating preview: on' : 'Floating preview: off',
-      sub: 'After copying, keep it in the corner to copy again, edit or pin'
+      sub: 'Keep the result in a corner after copying'
     },
-    beautify: { text: beautify?.on ? 'Background: on' : 'Background: off', sub: 'Click to turn it ' + (beautify?.on ? 'off' : 'on') + ' for copy & save' }
+    beautify: { text: beautify?.on ? 'Background: on' : 'Background: off', sub: 'Automatically add background' }
   }
   // Editing a floating preview: leaving the editor keeps the edits there and ends the session.
   const closeEditor = useCallback(() => (cap?.edit ? void runAction('editDone') : setEditorOpen(false)), [cap, runAction])

@@ -1,9 +1,10 @@
-import { Copy, FolderOpen, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
+import { Copy, FolderOpen, X, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HistoryItem } from '@shared/ipc'
 import { applyTheme } from '../theme'
 
 const api = window.snapkit
+const isMac = /Mac/.test(navigator.userAgent)
 type Action = 'copy' | 'edit' | 'pin' | 'save' | 'delete' | 'star' | 'unstar'
 
 /** Thumbnail URLs by entry id, loaded once (lazily, as cards scroll into view). */
@@ -90,10 +91,10 @@ export function History() {
   const total = items.reduce((n, i) => n + i.bytes, 0)
   return (
     <div className="hist">
-      <header className="hist-head">
+      <header className={`hist-head${isMac ? '' : ' no-traffic-lights'}`}>
         <span className="hist-title">History</span>
         <span className="hist-meta">{items.length ? `${items.length} · ${mb(total)}` : ''}</span>
-        <label className="hist-record" title="Keep new copies, saves and pins here">
+        <label className="hist-record" title="Record new copies, saves and pins">
           <button
             role="switch"
             aria-checked={recording}
@@ -138,12 +139,18 @@ export function History() {
           <button aria-label="History settings" title="Settings" onClick={() => api.openSettings()}>
             <Settings2 size={15} />
           </button>
+          {/* macOS has the window's own close button; Windows gets one here. */}
+          {!isMac && (
+            <button aria-label="Close history" title="Close (Esc)" onClick={() => api.historyClose()}>
+              <X size={16} />
+            </button>
+          )}
         </span>
       </header>
       {items.length === 0 ? (
         <div className="hist-empty">
           <p>No captures yet.</p>
-          <p className="hist-hint">Everything you copy or save shows up here, so you can copy it again later.</p>
+          <p className="hist-hint">Copies and saves show up here to reuse.</p>
         </div>
       ) : (
         <div className="hist-grid" role="listbox" aria-label="Past captures">
@@ -211,8 +218,8 @@ function Card({ item, selected, onSelect, act }: { item: HistoryItem; selected: 
       </div>
       <button
         className={`hist-star${item.starred ? ' on' : ''}`}
-        aria-label={item.starred ? 'Unstar' : 'Star (keep forever)'}
-        title={item.starred ? 'Starred: kept forever' : 'Star: keep forever'}
+        aria-label={item.starred ? 'Unstar' : 'Star to keep'}
+        title={item.starred ? 'Starred: kept' : 'Star to keep'}
         onClick={(e) => {
           e.stopPropagation()
           act(item.starred ? 'unstar' : 'star')

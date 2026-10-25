@@ -54,7 +54,7 @@ function ReorderList(props: { title: string; items: FeatureDef[]; enabled(f: Fea
   const [dragging, setDragging] = useState<number | null>(null)
   const [over, setOver] = useState<number | null>(null)
   return (
-    <Group title={title} note="Drag a row, or use the arrows, to reorder. A group is one button; right-click it while capturing to pick a style.">
+    <Group title={title} note="Drag or use the arrows to reorder. Right-click a group while capturing to pick a style.">
       {items.map((f, i) => (
         <div
           key={f.id}
@@ -151,8 +151,8 @@ export function ToolsSection({ snap, set }: SectionProps) {
   const setText = (patch: Partial<Settings['annotate']['text']>) => set({ annotate: { text: patch } })
   return (
     <>
-      <Group title="Colors" note="Picks you make while capturing stay until you change these settings or quit Snapkit.">
-        <Row label="Quick colors" desc="The five in the style bar; the first is the starting color.">
+      <Group title="Colors" note="Changes made while capturing last until you quit.">
+        <Row label="Quick colors" desc="Shown in the style bar. The first is the default.">
           <PaletteEditor label="Color" colors={a.palette} defaults={snap.defaults.annotate.palette} onChange={(palette) => setA({ palette })} />
         </Row>
         <Row label="Highlighter colors" desc="Light colors work best.">
@@ -244,7 +244,7 @@ export function ToolsSection({ snap, set }: SectionProps) {
           <ColorField label="Stroke color" value={a.text.strokeColor} onChange={(strokeColor) => setText({ strokeColor })} />
           <NumberField label="Stroke width" min={1} max={12} value={a.text.strokeWidth} unit="px" onChange={(strokeWidth) => setText({ strokeWidth })} />
         </Row>
-        <Row label="Background color" desc="For the background style; the text turns black or white to stay readable.">
+        <Row label="Background color" desc="For the background style. Text stays readable on it.">
           <ColorField label="Text background color" value={a.text.background || '#ffffff'} onChange={(background) => setText({ background })} />
         </Row>
         <Row label="Shadow">
@@ -253,13 +253,13 @@ export function ToolsSection({ snap, set }: SectionProps) {
       </Group>
 
       <Group title="Numbered steps">
-        <Row label="Badge color" desc="For new steps; pick another in the style bar while capturing.">
+        <Row label="Badge color" desc="For new steps. Change it while capturing in the style bar.">
           <ColorField label="Step badge color" value={a.stepColor} onChange={(stepColor) => setA({ stepColor })} />
         </Row>
         <Row label="Badge size">
           <SliderField label="Step badge size" min={18} max={72} value={a.stepSize} format={(n) => `${n} px`} onChange={(stepSize) => setA({ stepSize })} />
         </Row>
-        <Row label="Number color" desc="Auto: black or white, whichever reads better on the badge.">
+        <Row label="Number color" desc="Auto picks black or white for contrast.">
           <Segmented
             label="Number color"
             value={a.stepTextColor ? 'custom' : 'auto'}
@@ -271,7 +271,7 @@ export function ToolsSection({ snap, set }: SectionProps) {
           />
           {a.stepTextColor && <ColorField label="Number color" value={a.stepTextColor} onChange={(stepTextColor) => setA({ stepTextColor })} />}
         </Row>
-        <Row label="Outline" desc="The ring around each badge. 0 px: no outline.">
+        <Row label="Outline" desc="0 px for none.">
           <NumberField label="Step outline width" min={0} max={8} value={a.stepStroke.width} unit="px" onChange={(width) => setA({ stepStroke: { ...a.stepStroke, width } })} />
           {a.stepStroke.width > 0 && <ColorField label="Step outline color" value={a.stepStroke.color} onChange={(color) => setA({ stepStroke: { ...a.stepStroke, color } })} />}
         </Row>

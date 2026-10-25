@@ -42,10 +42,13 @@ try {
   console.log('quick area capture switch:', await st.$eval('button[aria-label="Quick area capture"]', (e) => e.getAttribute('aria-checked')).catch(() => 'missing'))
   console.log('saving rows:', await st.evaluate(() => [...[...document.querySelectorAll('.st-group')].find((g) => g.querySelector('h3')?.textContent === 'Saving').querySelectorAll('.st-label > span')].map((e) => e.textContent).slice(0, 3).join(' | ')))
   console.log('dim default:', await st.evaluate(() => window.snapkit.settingsGet().then((x) => x.defaults.capture.dimOpacity + ' / mode ' + x.defaults.appearance.mode)))
+  console.log('history recording switch:', await st.$eval('button[aria-label="Recording"]', (e) => e.getAttribute('aria-checked')))
+  console.log('dropdown options:', await st.$eval('select[aria-label="Keep captures for"] option', (o) => `${getComputedStyle(o).color} on ${getComputedStyle(o).backgroundColor}`))
   console.log('history keep slider:', await st.$eval('input[aria-label="Captures to keep"]', (e) => `${e.value} of ${e.max}`))
   // Open settings is a global hotkey, registered from the start.
   await section('Shortcuts')
-  console.log('settings hotkey row:', await st.$eval('.st-row:has-text("Open settings") .st-hotkey', (e) => e.textContent),
+  console.log('shortcut rows without descriptions:', await st.evaluate(() => [...[...document.querySelectorAll('.st-group')].find((g) => g.querySelector('h3')?.textContent === 'Global').querySelectorAll('.st-row')].map((r) => r.querySelector('.st-label > span').textContent + (r.querySelector('.st-label small') ? '+desc' : '')).join(', ')))
+  console.log('settings hotkey row:', await st.evaluate(() => [...[...document.querySelectorAll('.st-group')].find((g) => g.querySelector('h3')?.textContent === 'Global').querySelectorAll('.st-row')].find((r) => r.querySelector('.st-label > span')?.textContent === 'Settings').querySelector('.st-hotkey').textContent),
     '| registered:', await app.evaluate(({ globalShortcut }) => globalShortcut.isRegistered('CommandOrControl+Shift+2')))
   // Switches are blue when on.
   await section('General')
@@ -148,7 +151,7 @@ try {
   await wait(200)
   const defPreset = saved().beautify.presets.find((p) => p.id === (saved().beautify.preset ?? 'ocean'))
   console.log('default background now:', JSON.stringify(defPreset?.background), '| marked:', await st.$$eval('.st-lib-default', (e) => e.length))
-  await st.click('button[aria-label="Remember the last background used"]')
+  await st.click('button[aria-label="Remember last background"]')
   await wait(150)
   console.log('remember last:', saved().beautify.rememberLast)
   const before = await st.$$eval('.st-group:has-text("Gradient library") .st-lib-swatch', (b) => b.length)

@@ -112,6 +112,12 @@
 
 * { box-sizing: border-box; }
 
+/* Native controls (the open list of a dropdown on Windows) follow the theme, with readable options. */
+:root { color-scheme: light; --ui-option-bg: #ffffff; --ui-option-fg: #1c1c1e; }
+:root[data-mode="dark"] { color-scheme: dark; --ui-option-bg: #2c2c30; --ui-option-fg: #f2f2f4; }
+:root[data-tone="gray"] { --ui-option-bg: #46464b; }
+select option { background-color: var(--ui-option-bg); color: var(--ui-option-fg); }
+
 /* Scrollbars: thin, rounded, no track or background strip, in the theme's colors (like macOS overlay bars). */
 :root { --ui-scroll-thumb: rgba(0,0,0,.22); --ui-scroll-thumb-hover: rgba(0,0,0,.4); }
 :root[data-mode="dark"] { --ui-scroll-thumb: rgba(255,255,255,.22); --ui-scroll-thumb-hover: rgba(255,255,255,.4); }
@@ -447,6 +453,8 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
 :root[data-glass="off"][data-tone="gray"] { --hist-bg: #38383c; }
 /* Title bar area: room for the window buttons on the left; drag to move. */
 .hist-head { display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px 0 82px; flex: none; -webkit-app-region: drag; }
+/* Windows: no traffic lights on the left, a close button on the right instead. */
+.hist-head.no-traffic-lights { padding-left: 16px; }
 .hist-head button, .hist-head label { -webkit-app-region: no-drag; }
 .hist-record { display: inline-flex; align-items: center; gap: 7px; margin-left: 12px; font-size: 12px; color: var(--ui-fg-dim); }
 .hist-title { font-size: 14px; font-weight: 600; }

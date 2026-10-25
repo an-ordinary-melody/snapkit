@@ -27,9 +27,8 @@ export async function ensureScreenPermission(): Promise<boolean> {
     type: 'info',
     message: 'Snapkit needs Screen Recording permission',
     detail:
-      'Open System Settings → Privacy & Security → Screen & System Audio Recording and turn on Snapkit.\n\n' +
-      'If Snapkit is already listed and turned on (for example after an update), remove it with the “–” button and add it again.\n\n' +
-      'Then quit and reopen Snapkit.',
+      'Turn on Snapkit in System Settings → Privacy & Security → Screen & System Audio Recording, then reopen it.\n\n' +
+      'Already on (e.g. after an update)? Remove it with “–” and add it again.',
     buttons: ['Open System Settings', 'Cancel'],
     defaultId: 0,
     cancelId: 1
