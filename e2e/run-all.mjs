@@ -110,6 +110,13 @@ const SUITES = {
     // Only Windows refuses a shortcut another app holds (macOS lets both have it).
     ...(process.platform === 'win32' ? [[/Snapkit sees taken: capture/, 'notices a shortcut another app holds']] : [])
   ],
+  // Windows only (skipped elsewhere): films the screen while capture mode opens.
+  flash: process.platform === 'win32'
+    ? [
+        [/capture opens without a white flash: true/, 'Windows: capture mode opens straight to the dim, no white flash'],
+        [/the dim shows: true/, 'Windows: the dim appears']
+      ]
+    : [[/flash test: skipped/, 'Windows-only test']],
   safety: [
     [/hotkey toggles: true -> false/, 'capture hotkey again closes capture mode'],
     [/idle closes it: true/, 'idle timeout'],
