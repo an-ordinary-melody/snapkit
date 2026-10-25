@@ -1,5 +1,24 @@
 [
   {
+    "version": "0.2.0-beta.10",
+    "date": "2026-10-25",
+    "intro": "Tenth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**Windows: no white flash when capture mode opens.** Windows animated the capture window each time it appeared (fading in while growing), which briefly uncovered the screen's edges. Snapkit now turns that animation off for its capture windows, and shows the dim only once it's drawn.",
+        "sub": []
+      },
+      {
+        "text": "**Dim amount** moves in 1% steps (was 5%).",
+        "sub": []
+      },
+      {
+        "text": "**The website updates itself** after each release, so its download buttons always point to the newest version.",
+        "sub": []
+      }
+    ]
+  },
+  {
     "version": "0.2.0-beta.9",
     "date": "2026-10-25",
     "intro": "Ninth beta of Snapkit, a fast screenshot tool for macOS and Windows.",

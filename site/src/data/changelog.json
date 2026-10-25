@@ -2,7 +2,7 @@
   {
     "title": "Polish and a new look",
     "from": "0.2.0-beta.2",
-    "upTo": "0.2.0-beta.9",
+    "upTo": "0.2.0-beta.10",
     "items": [
       "New snapping-hand icon, with Liquid Glass on macOS 26",
       "Quick area capture: copied the moment you let go",
@@ -10,7 +10,7 @@
       "Editor zoom: ⌘ + scroll or pinch, hold Space to pan",
       "More to tune: step outline and shadow, dim color",
       "Shortcuts held by another app come back on their own",
-      "Smaller installers; on Windows, sharper text and a preview that stays on top"
+      "Smaller installers; on Windows, sharper text, no flash and a preview that stays on top"
     ]
   },
   {

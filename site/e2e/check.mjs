@@ -242,6 +242,17 @@ try {
     )
   }
 
+  // The download buttons offer the newest published release, as GitHub says (not just what the site thinks).
+  {
+    const list = await (await fetch('https://api.github.com/repos/an-ordinary-melody/snapkit/releases?per_page=30', { headers: { 'User-Agent': 'snapkit-check' } })).json().catch(() => null)
+    if (Array.isArray(list)) {
+      const newest = list.filter((r) => !r.draft && r.assets.some((a) => a.name.endsWith('.dmg'))).sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))[0]
+      const html = await (await fetch(base + '/')).text()
+      const offered = html.match(/Snapkit-([\d.]+-?[\w.]*)-mac-arm64\.dmg/)?.[1]
+      check('downloads offer the newest GitHub release', `v${offered}` === newest?.tag_name, `site v${offered}, GitHub ${newest?.tag_name}`)
+    } else console.log('(skipped: GitHub API not reachable)')
+  }
+
   const og = await (await fetch(base + '/og.png')).arrayBuffer().catch(() => new ArrayBuffer(0))
   check('share image is served', og.byteLength > 10000)
 } finally {

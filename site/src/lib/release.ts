@@ -23,7 +23,10 @@ async function fetchReleases(): Promise<Release[] | null> {
       }
     })
     if (!res.ok) throw new Error(`GitHub ${res.status}`)
-    return ((await res.json()) as Release[]).filter((r) => !r.draft)
+    // Newest first by publish time: GitHub's own order isn't by version (beta.9 came before beta.10).
+    return ((await res.json()) as Release[])
+      .filter((r) => !r.draft && r.published_at)
+      .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))
   } catch (e) {
     console.warn(`release lookup failed, using ${FALLBACK}:`, (e as Error).message)
     return null
