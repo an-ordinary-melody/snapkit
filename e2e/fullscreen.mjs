@@ -21,7 +21,9 @@ try {
   }
   const thumbs = windowFor('thumb')
   console.log('floating previews:', thumbs.length, '| overlay shown:', await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.webContents.getURL().endsWith('#overlay') && w.isVisible())))
-  console.log('clipboard image:', JSON.stringify(await app.evaluate(({ clipboard }) => clipboard.readImage().getSize())))
+  // The plain full-screen capture's size (compared with the one on a background below).
+  const plainClip = await app.evaluate(({ clipboard }) => clipboard.readImage().getSize())
+  console.log('clipboard image:', JSON.stringify(plainClip))
   if (thumbs[0]) writeFileSync(join(out, 'fullscreen-thumb.png'), await thumbs[0].screenshot())
 
   // Edit from the preview: the editor opens with the full screen and the background off.
@@ -78,10 +80,10 @@ try {
   await app.evaluate(({ clipboard }) => clipboard.clear())
   await app.evaluate(({ app }) => app.emit('second-instance', {}, ['--fullscreen']))
   await wait(2500)
-  const bg = await app.evaluate(({ clipboard, screen }) => {
+  const bg = await app.evaluate(({ clipboard, screen }, plain) => {
     const d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
-    return { clip: clipboard.readImage().getSize(), plain: { width: Math.round(d.size.width * d.scaleFactor), height: Math.round(d.size.height * d.scaleFactor) }, pad: Math.round(48 * d.scaleFactor) }
-  })
+    return { clip: clipboard.readImage().getSize(), plain, pad: Math.round(48 * d.scaleFactor) }
+  }, plainClip)
   const items = await h.evaluate(() => window.snapkit.historyList())
   console.log('full screen with background:', bg.clip.width === bg.plain.width + 2 * bg.pad && bg.clip.height === bg.plain.height + 2 * bg.pad,
     '| history entry has it too:', items[0]?.width === bg.clip.width, JSON.stringify(bg))
