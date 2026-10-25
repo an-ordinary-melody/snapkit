@@ -72,6 +72,8 @@ export interface OutputOptions {
   compress: boolean
   preset: CompressPreset
   scale: number
+  /** The selection in overlay CSS px, remembered for "Capture last area" (not sent when editing a stored capture). */
+  area?: { x: number; y: number; w: number; h: number }
 }
 
 export interface CopyExtra {
@@ -90,6 +92,8 @@ export interface ArmPayload {
   settings: Settings
   /** Open this capture in the editor instead of starting a new one (no pixels step follows). */
   edit?: CaptureDoc
+  /** "Capture last area": start with this area selected (CSS px on this display). */
+  area?: { x: number; y: number; w: number; h: number }
 }
 
 export interface PixelsPayload {
@@ -190,7 +194,7 @@ export interface SettingsSnapshot {
   /** Screen capture engines for this OS, in the order Auto tries them. */
   engines: { id: string; label: string; available: boolean }[]
   /** Hotkeys another app holds right now (Snapkit takes them once they're free). */
-  hotkeysTaken: ('capture' | 'history' | 'fullscreen' | 'settings')[]
+  hotkeysTaken: ('capture' | 'history' | 'fullscreen' | 'settings' | 'lastArea')[]
 }
 
 /** A full-screen capture to put on the default background (see captureFullScreen). */
@@ -290,7 +294,7 @@ export interface SnapkitApi {
   settingsReset(sections?: (keyof Settings)[]): Promise<SettingsSnapshot>
   onSettingsChanged(cb: (s: SettingsSnapshot) => void): void
   /** Change a hotkey; resolves to an error message if it can't be used. '' turns the history hotkey off. */
-  settingsSetHotkey(accelerator: string, name?: 'capture' | 'history' | 'fullscreen' | 'settings'): Promise<string | null>
+  settingsSetHotkey(accelerator: string, name?: 'capture' | 'history' | 'fullscreen' | 'settings' | 'lastArea'): Promise<string | null>
   /** Pick a folder; null if cancelled. */
   settingsChooseFolder(): Promise<string | null>
   /** Show the log folder or the settings file in Finder / Explorer. */

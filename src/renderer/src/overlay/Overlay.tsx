@@ -237,8 +237,8 @@ export function Overlay() {
       const scale = doc ? doc.scale : p.width / window.innerWidth
       flushSync(() => {
         setScreen({ w: window.innerWidth, h: window.innerHeight })
-        // Editing: the stored crop becomes the whole "screen", selected.
-        setSel(doc ? { x: 0, y: 0, w: doc.width / scale, h: doc.height / scale } : null)
+        // Editing: the stored crop becomes the whole "screen", selected. "Capture last area": that area.
+        setSel(doc ? { x: 0, y: 0, w: doc.width / scale, h: doc.height / scale } : (p.area ?? null))
         setDrag(null)
         setCap({ session: p.session, width: p.width, height: p.height, scale, settings: p.settings, edit: !!doc, historyId: doc?.historyId })
         setHistory(doc ? { past: [], present: doc.shapes as Shape[], future: [] } : emptyHistory())
@@ -401,7 +401,7 @@ export function Overlay() {
           const thumb = toHistory ? thumbnail(canvas) : null
           // The floating preview (and edits of it) need the document with the output itself.
           const doc = floating || cap.edit ? await encodeDoc(snap) : null
-          const out = { compress: compress.on, preset: compress.preset, scale: cap.scale }
+          const out = { compress: compress.on, preset: compress.preset, scale: cap.scale, area: cap.edit ? undefined : sel }
           if (id === 'copy') api.copy(cap.session, png, doc ? { doc, rect: sel } : undefined, out)
           else if (id === 'editDone') api.editDone(cap.session, png, doc!)
           else api.save(cap.session, png, out)

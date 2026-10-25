@@ -2,7 +2,8 @@ import { app, globalShortcut, screen } from 'electron'
 import { rmSync } from 'fs'
 import { join } from 'path'
 import { setPreferredEngine, warmUpCapture } from './capture'
-import { captureFullScreen } from './fullscreen'
+import { captureFullScreen, captureRect } from './fullscreen'
+import { lastArea } from './lastArea'
 import { captureModeChanged, registerHotkeys, setHotkey } from './hotkeys'
 import { lockDownWebContents } from './security'
 import { onUpdateCheck, registerSystemIpc, scheduleUpdateChecks } from './system'
@@ -21,7 +22,13 @@ if (!app.requestSingleInstanceLock()) {
   lockDownWebContents()
   // Opening Snapkit again captures; --history opens the history panel, --fullscreen captures the whole screen.
   app.on('second-instance', (_e, argv: string[] = []) =>
-    argv.includes('--history') ? toggleHistoryPanel() : argv.includes('--fullscreen') ? fullscreen() : capture()
+    argv.includes('--history')
+      ? toggleHistoryPanel()
+      : argv.includes('--fullscreen')
+        ? fullscreen()
+        : argv.includes('--last-area')
+          ? captureLastArea()
+          : capture()
   )
   app.whenReady().then(init)
 }
@@ -43,7 +50,23 @@ function capture() {
   })
 }
 
-const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel(), fullscreen: () => fullscreen(), settings: () => openSettings() }
+/**
+ * "Capture last area": the area last copied or saved (or the whole screen after a full-screen
+ * capture), copied right away or opened selected in capture mode. Nothing yet: a normal capture.
+ */
+function captureLastArea() {
+  const t0 = Date.now()
+  const go = () => {
+    const last = isCapturing() ? null : lastArea()
+    if (!last) return void startCapture(t0)
+    if (getSettings().capture.lastAreaInstant) captureRect(last.display, last.rect, t0)
+    else void startCapture(t0, last)
+  }
+  if (hasScreenPermission()) return go()
+  void ensureScreenPermission().then((ok) => ok && go())
+}
+
+const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel(), fullscreen: () => fullscreen(), settings: () => openSettings(), lastArea: captureLastArea }
 
 /** From anywhere, capture mode included (it closes, so the window isn't hidden behind it). */
 function openSettings() {
@@ -72,7 +95,7 @@ function init() {
   setInterval(() => void prune(), 6 * 60 * 60 * 1000).unref()
   registerHistoryIpc()
   preloadHistoryPanel()
-  createTray(capture, openSettings, toggleHistoryPanel, fullscreen)
+  createTray(capture, openSettings, toggleHistoryPanel, fullscreen, captureLastArea)
   registerHotkeys(HOTKEY_ACTIONS, true)
   onCaptureMode(captureModeChanged)
   registerSettingsIpc(setHotkey)

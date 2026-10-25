@@ -55,6 +55,15 @@ const SUITES = {
     [/smallest copy is 1× size: true/, 'Smallest brings HiDPI captures to 1×'],
     [/renderer errors: none/, 'no page errors']
   ],
+  lastarea: [
+    [/first use opens a normal capture: true/, 'Capture last area with nothing remembered: a normal capture'],
+    [/reopens the same area: true .* \| toolbar shown: true/, 'Capture last area reopens the last copied area'],
+    [/a cancelled capture is not remembered: true/, 'a cancelled capture is not remembered'],
+    [/after full screen it selects the whole screen: true/, 'a full-screen capture counts as the whole screen'],
+    [/copy right away: no capture mode: true \| copied the area: .* true/, 'Copy last area right away'],
+    [/remembered after a restart: true/, 'the last area survives a restart'],
+    [/renderer errors: none/, 'no page errors']
+  ],
   textedit: [
     [/selected text, click -> \["Hello world",11\]/, 'click into selected text to edit it'],
     [/text now: Hello world!/, 'edits are kept'],
@@ -143,7 +152,7 @@ const SUITES = {
     [/dim default: 0.75 \/ mode dark/, 'defaults: 75% dim, Dark'],
     [/history keep slider: 10 of 30/, 'history keeps 10, up to 30'],
     [/history recording switch: true/, '"Recording" switch in History settings, on by default (matches the History window)'],
-    [/shortcut rows without descriptions: Capture area, Capture full screen, History, Settings$/m, 'short shortcut names, no descriptions'],
+    [/shortcut rows without descriptions: Capture area, Capture last area, Capture full screen, History, Settings$/m, 'short shortcut names, no descriptions'],
     [/settings hotkey row: ⌘⇧2 \| registered: true/, 'Open Settings shortcut'],
     [/switch on color: rgb\((9|10|11), 13[1-3], 25[4-5]\)/, 'blue switches'],
     [/name preview: Example: Bug 001.png/, 'file naming'],

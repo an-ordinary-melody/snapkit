@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, type Display, type Rectangle } from 'electron'
 import { readFile, stat } from 'fs/promises'
 import { extname, join } from 'path'
 import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type DecorateResult, type OutputOptions, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
@@ -6,6 +6,7 @@ import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import type { CompressPreset } from '@shared/settings'
 import { compressPng } from './compress'
+import { rememberArea } from './lastArea'
 import { copyPng, savePng } from './output'
 import { log } from './log'
 import { disableWindowAnimations } from './noAnimation'
@@ -203,7 +204,8 @@ export function returnFocus() {
   if (hasPins()) app.show()
 }
 
-export async function startCapture(t0 = Date.now()) {
+/** `preset`: "Capture last area" opens with that area selected on its display. */
+export async function startCapture(t0 = Date.now(), preset?: { display: Display; rect: Rectangle }) {
   // The hotkey again closes capture mode, whatever state it's in: a way out
   // that doesn't depend on the overlay page responding.
   if (active) return forceEndCapture('hotkey pressed again')
@@ -228,8 +230,7 @@ export async function startCapture(t0 = Date.now()) {
 
   if (isMac) app.show() // undo releaseFocus() so the overlays can appear
 
-  const cursor = screen.getCursorScreenPoint()
-  const focusDisplay = screen.getDisplayNearestPoint(cursor)
+  const focusDisplay = preset?.display ?? screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
 
   await Promise.all(
     grabs.map(async (g) => {
@@ -239,6 +240,7 @@ export async function startCapture(t0 = Date.now()) {
 
       // Step 1: show the dim right away over the live screen (it still looks identical).
       const arm: ArmPayload = { session: id, displayId: g.display.id, width: g.width, height: g.height, settings }
+      if (preset && preset.display.id === g.display.id) arm.area = { x: preset.rect.x, y: preset.rect.y, w: preset.rect.width, h: preset.rect.height }
       const armed = waitFor(IPC.armed, win, id, 1000)
       win.webContents.send(IPC.arm, arm)
       if (!(await armed)) {
@@ -364,6 +366,15 @@ export function decorateCapture(png: Buffer, scale: number): Promise<{ png: Buff
 
 const IMAGE_TYPES = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.heic'])
 
+/** "Capture last area": remember the area just copied or saved, on the display of the overlay it came from. */
+function rememberSelection(sender: Electron.WebContents, out?: OutputOptions) {
+  const a = out?.area
+  if (!a) return
+  const displayId = [...overlays].find(([, w]) => !w.isDestroyed() && w.webContents === sender)?.[0]
+  const display = screen.getAllDisplays().find((d) => d.id === displayId)
+  if (display) rememberArea(display, { x: a.x, y: a.y, width: a.w, height: a.h })
+}
+
 export function registerOverlayIpc() {
   const valid = (s: number) => active && s === session
 
@@ -399,6 +410,7 @@ export function registerOverlayIpc() {
   })
   ipcOn(IPC.copy, (e, s: number, png: ArrayBuffer, extra: CopyExtra | undefined, out?: OutputOptions) => {
     if (!valid(s)) return
+    rememberSelection(e.sender, out)
     const target = editTarget
     const origin = BrowserWindow.fromWebContents(e.sender)?.getBounds() ?? { x: 0, y: 0 }
     endCapture()
@@ -423,8 +435,9 @@ export function registerOverlayIpc() {
     endCapture()
     releaseFocus()
   })
-  ipcOn(IPC.save, async (_e, s: number, png: ArrayBuffer, out?: OutputOptions) => {
+  ipcOn(IPC.save, async (e, s: number, png: ArrayBuffer, out?: OutputOptions) => {
     if (!valid(s)) return
+    rememberSelection(e.sender, out)
     endCapture() // hide first so the save dialog isn't covered by the overlay
     await savePng(Buffer.from(png), out)
     releaseFocus()

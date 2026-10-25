@@ -37,6 +37,8 @@ export interface Settings {
     fullscreen: string
     /** Opens the settings window from anywhere. '' = none. */
     settings: string
+    /** Captures the last area copied or saved again. '' = none. */
+    lastArea: string
   }
   /** Update checks: notify and download; nothing installs by itself. */
   updates: {
@@ -79,6 +81,8 @@ export interface Settings {
     fullscreenCopy: boolean
     /** Quick area capture: the first area drawn is copied right away, with no adjusting or drawing step. */
     quickCopy: boolean
+    /** "Capture last area" copies that area right away (no capture mode). Off: capture mode opens with it selected. */
+    lastAreaInstant: boolean
   }
   save: {
     /** Empty string = default folder (Pictures/Snapkit). */
@@ -182,7 +186,8 @@ export const DEFAULT_SETTINGS: Settings = {
     capture: 'Alt+Shift+Z',
     history: 'CommandOrControl+Shift+1',
     fullscreen: 'CommandOrControl+Shift+9',
-    settings: 'CommandOrControl+Shift+2'
+    settings: 'CommandOrControl+Shift+2',
+    lastArea: 'Alt+Shift+X'
   },
   updates: {
     autoCheck: true,
@@ -206,7 +211,8 @@ export const DEFAULT_SETTINGS: Settings = {
     accentColor: '#3b82f6',
     engine: 'auto',
     fullscreenCopy: false,
-    quickCopy: false
+    quickCopy: false,
+    lastAreaInstant: false
   },
   save: {
     folder: '',

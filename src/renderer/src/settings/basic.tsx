@@ -19,6 +19,9 @@ export function General({ snap, set }: SectionProps) {
         <Row label="Quick area capture" desc="Copies the area the moment you let go. No editing step.">
           <Toggle label="Quick area capture" value={s.capture.quickCopy} onChange={(quickCopy) => set({ capture: { quickCopy } })} />
         </Row>
+        <Row label="Copy last area right away" desc="For Capture last area. Off: opens capture mode with the area selected.">
+          <Toggle label="Copy last area right away" value={s.capture.lastAreaInstant} onChange={(lastAreaInstant) => set({ capture: { lastAreaInstant } })} />
+        </Row>
         <Row label="Copy full-screen captures right away" desc="Off: they only go to the floating preview and history.">
           <Toggle label="Copy full-screen captures right away" value={s.capture.fullscreenCopy} onChange={(fullscreenCopy) => set({ capture: { fullscreenCopy } })} />
         </Row>
@@ -195,6 +198,14 @@ export function Shortcuts({ snap, set }: SectionProps) {
       <Group title="Global">
         <Row label="Capture area" desc={held('capture', '')}>
           <HotkeyField value={s.hotkeys.capture} onChange={(acc) => api.settingsSetHotkey(acc)} />
+        </Row>
+        <Row label="Capture last area" desc={held('lastArea', '')}>
+          <HotkeyField value={s.hotkeys.lastArea} onChange={(acc) => api.settingsSetHotkey(acc, 'lastArea')} />
+          {s.hotkeys.lastArea && (
+            <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'lastArea')} title="No shortcut; use the menu bar">
+              Off
+            </button>
+          )}
         </Row>
         <Row label="Capture full screen" desc={held('fullscreen', '')}>
           <HotkeyField value={s.hotkeys.fullscreen} onChange={(acc) => api.settingsSetHotkey(acc, 'fullscreen')} />

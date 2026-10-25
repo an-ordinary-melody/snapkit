@@ -6,7 +6,7 @@ import { engineInfo } from './capture'
 import { defaultSaveFolder } from './output'
 import { ipcHandle, ipcOn } from './security'
 import { DEFAULTS, getSettings, onSettingsChange, resetSettings, settingsFile, updateSettings } from './settings'
-import { onHotkeyStatus, takenHotkeys, type HotkeyName } from './hotkeys'
+import { HOTKEY_NAMES, onHotkeyStatus, takenHotkeys, type HotkeyName } from './hotkeys'
 
 const isMac = process.platform === 'darwin'
 let win: BrowserWindow | null = null
@@ -70,7 +70,7 @@ export function registerSettingsIpc(setHotkey: (name: HotkeyName, accelerator: s
     return snapshot()
   })
   ipcHandle(IPC.settingsSetHotkey, (_e, accelerator: string, name: HotkeyName = 'capture') =>
-    setHotkey(name === 'history' || name === 'fullscreen' || name === 'settings' ? name : 'capture', String(accelerator))
+    setHotkey(HOTKEY_NAMES.includes(name) ? name : 'capture', String(accelerator))
   )
   ipcHandle(IPC.settingsChooseFolder, async () => {
     const res = await dialog.showOpenDialog(win ?? undefined!, { properties: ['openDirectory', 'createDirectory'], defaultPath: defaultSaveFolder() })
