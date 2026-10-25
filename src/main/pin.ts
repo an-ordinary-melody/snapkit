@@ -50,6 +50,47 @@ export function keepPinsOnTop() {
   }
 }
 
+/** Windows: is the window really marked always-on-top right now (WS_EX_TOPMOST)? null: can't tell. */
+let getExStyle: ((hwnd: bigint, index: number) => bigint | number) | null | undefined
+function reallyOnTop(win: BrowserWindow): boolean | null {
+  if (getExStyle === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      getExStyle = require('koffi').load('user32.dll').func('intptr_t __stdcall GetWindowLongPtrW(intptr_t hwnd, int index)')
+    } catch (err) {
+      getExStyle = null
+      log('[pin] can\'t check the on-top flag:', String(err))
+    }
+  }
+  if (!getExStyle) return null
+  return (Number(getExStyle(win.getNativeWindowHandle().readBigInt64LE(0), -20 /* GWL_EXSTYLE */)) & 0x8 /* WS_EX_TOPMOST */) !== 0
+}
+
+/**
+ * Windows: every half second while floating windows are up, put them back on
+ * top if Windows dropped their on-top flag. It rarely happens right after a
+ * copy (cause unknown), and the preview then sinks behind the app the user
+ * goes back to.
+ */
+let watchdog: NodeJS.Timeout | null = null
+function watchOnTop() {
+  if (isMac || watchdog) return
+  watchdog = setInterval(() => {
+    if (!pins.size) {
+      clearInterval(watchdog!)
+      watchdog = null
+      return
+    }
+    for (const p of pins.values()) {
+      if (p.win.isDestroyed() || !p.win.isVisible() || reallyOnTop(p.win) !== false) continue
+      log(`[pin] ${p.kind} lost its on-top place: restored`)
+      keepPinsOnTop()
+      return
+    }
+  }, 500)
+  watchdog.unref()
+}
+
 const ZOOM_MIN = 0.1
 const ZOOM_MAX = 5
 const OPACITY_MIN = 0.15
@@ -98,6 +139,7 @@ function tempFile(png: Buffer, tag: number) {
 function track(pin: Pin) {
   const id = pin.win.webContents.id
   pins.set(id, pin)
+  watchOnTop()
   pin.win.on('closed', () => {
     pins.delete(id)
     rmSync(pin.file, { force: true })

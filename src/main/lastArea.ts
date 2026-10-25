@@ -27,7 +27,7 @@ function load(): LastArea | null {
 }
 
 export function rememberArea(display: Display, rect: Rectangle) {
-  const r = { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) }
+  const r = { x: rect.x, y: rect.y, width: rect.width, height: rect.height } // not rounded: 125% / 150% screens have fractional points
   if (r.width < 1 || r.height < 1) return
   last = { displayId: display.id, displayBounds: display.bounds, rect: r }
   try {

@@ -19,12 +19,14 @@ const lastArea = async () => {
 const selection = () =>
   overlay().evaluate(() => {
     const r = document.querySelector('.selection')
-    return r ? [r.style.left, r.style.top, r.style.width, r.style.height].map((v) => Math.round(parseFloat(v))).join(',') : null
+    return r ? [r.style.left, r.style.top, r.style.width, r.style.height].map((v) => Math.round(parseFloat(v) * 10) / 10).join(',') : null
   })
 const clip = () => app.evaluate(({ clipboard }) => clipboard.readImage().getSize())
 const close = async () => { for (let i = 0; i < 3 && (await capturing()); i++) { await overlay().keyboard.press('Escape'); await wait(400) } }
+const ready = async () => { for (let i = 0; i < 40 && !overlay(); i++) await wait(250) }
 try {
   await wait(2500)
+  await ready()
   overlay().on('pageerror', (e) => errors.push(e.message))
   // First use: nothing remembered yet, so a normal capture (nothing selected).
   await lastArea()
@@ -50,9 +52,11 @@ try {
   // Full screen counts as the whole screen.
   await app.evaluate(({ app }) => app.emit('second-instance', {}, ['--fullscreen'])); await wait(1800)
   await lastArea()
-  const whole = await overlay().evaluate(() => `0,0,${window.innerWidth},${window.innerHeight}`)
+  // The whole screen (within 1 px: the 150% CI run's screen is 455.x points, its window 456 px).
+  const [vw, vh] = await overlay().evaluate(() => [window.innerWidth, window.innerHeight])
   const full = await selection()
-  console.log('after full screen it selects the whole screen:', full === whole, full)
+  const [fx, fy, fw, fh] = (full ?? '').split(',').map(Number)
+  console.log('after full screen it selects the whole screen:', fx === 0 && fy === 0 && Math.abs(fw - vw) <= 1 && Math.abs(fh - vh) <= 1, full, `${vw}×${vh}`)
   await close()
 
   // Copy right away: no capture mode, the area goes to the clipboard.
@@ -64,12 +68,14 @@ try {
   await app.evaluate(({ clipboard }) => clipboard.clear())
   await lastArea(); await wait(800)
   const c = await clip()
-  console.log('copy right away: no capture mode:', !(await capturing()), '| copied the area:', JSON.stringify(c), c.width > 0 && Math.abs(c.width / c.height - 300 / 200) < 0.05)
+  const [, , dw, dh] = drawn.split(',').map(Number) // the area drawn (clipped on a small screen)
+  console.log('copy right away: no capture mode:', !(await capturing()), '| copied the area:', JSON.stringify(c), c.width > 0 && Math.abs(c.width / c.height - dw / dh) < 0.02)
 
   // Remembered after a restart.
   await app.close()
   app = await electron.launch({ args })
   await wait(2500)
+  await ready()
   await overlay().evaluate(() => window.snapkit.settingsUpdate({ capture: { lastAreaInstant: false } })); await wait(300)
   await lastArea()
   console.log('remembered after a restart:', (await selection()) === drawn)
