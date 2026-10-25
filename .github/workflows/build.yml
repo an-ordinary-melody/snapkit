@@ -42,6 +42,15 @@ jobs:
       - run: npm run ${{ matrix.script }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Packaged app starts (Windows), and its log
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist/win-unpacked/Snapkit.exe -PassThru
+          Start-Sleep -Seconds 10
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Get-ChildItem "$env:APPDATA\Snapkit\logs" -ErrorAction SilentlyContinue
+          Get-Content "$env:APPDATA\Snapkit\logs\main.log" -ErrorAction SilentlyContinue | Select-Object -Last 25
       - name: What Windows shows as the app's name and publisher
         if: runner.os == 'Windows'
         shell: pwsh
