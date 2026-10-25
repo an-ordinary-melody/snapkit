@@ -56,8 +56,9 @@ function createOverlay(display: Display): BrowserWindow {
     roundedCorners: false,
     transparent: true,
     backgroundColor: '#00000000',
-    // A non-activating panel can sit above full-screen apps on macOS.
-    ...(isMac ? { type: 'panel' as const } : {}),
+    // A non-activating panel can sit above full-screen apps on macOS. Windows: a tool window,
+    // so the (always shown, see keepShown) window stays out of Alt+Tab and the taskbar.
+    ...(isMac ? { type: 'panel' as const } : { type: 'toolbar' as const }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
@@ -69,7 +70,12 @@ function createOverlay(display: Display): BrowserWindow {
   if (isMac) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
   win.setBounds(display.bounds)
   win.setOpacity(0)
-  disableWindowAnimations(win) // Windows: no fade-and-grow when capture mode opens
+  disableWindowAnimations(win)
+  // Windows: shown once, invisible, and then kept that way between captures (see keepShown).
+  if (keepShown) {
+    conceal(win)
+    win.once('ready-to-show', () => !win.isDestroyed() && !active && win.showInactive())
+  }
   overlayUrl(win)
   win.on('closed', () => overlays.delete(display.id))
   // Diagnostics: overlay errors and crashes go to main.log.
@@ -117,11 +123,41 @@ export function forceEndCapture(reason: string) {
   if (!active) return
   log(`capture closed: ${reason}`)
   endCapture()
-  for (const win of overlays.values()) if (!win.isDestroyed()) win.hide()
+  for (const win of overlays.values()) if (!win.isDestroyed()) conceal(win)
   releaseFocus()
 }
 
 /** A stuck overlay page is replaced so the next capture starts clean. */
+/**
+ * Windows animates a window every time it's shown (it fades in while growing from about 95%),
+ * which left the screen's edges uncovered for a moment when capture mode opened. Turning that
+ * off per window (disableWindowAnimations) isn't enough: Chromium resets it when it shows the
+ * window. So on Windows the capture window is never hidden: between captures it stays shown,
+ * invisible (opacity 0), click-through and behind other windows; capture mode only raises it.
+ */
+const keepShown = process.platform === 'win32'
+
+/** Out of the way until the next capture: hidden on macOS; on Windows invisible, click-through, not on top. */
+function conceal(win: BrowserWindow, immediately = true) {
+  win.setOpacity(0)
+  if (!keepShown) {
+    if (immediately) win.hide()
+    return
+  }
+  win.setIgnoreMouseEvents(true)
+  win.setAlwaysOnTop(false)
+  if (win.isFocused()) win.blur() // the keyboard goes back to the app below
+}
+
+/** On screen for capture mode, still invisible (setOpacity(1) shows it once the dim is drawn). */
+function reveal(win: BrowserWindow) {
+  if (!keepShown) return win.showInactive()
+  win.setIgnoreMouseEvents(false)
+  win.setAlwaysOnTop(true, 'screen-saver')
+  if (!win.isVisible()) win.showInactive() // e.g. after "Show desktop"
+  win.moveTop()
+}
+
 function replaceOverlay(display: Display) {
   const old = overlays.get(display.id)
   if (old && !old.isDestroyed()) old.destroy()
@@ -136,12 +172,12 @@ function endCapture() {
   const endedSession = session
   for (const win of overlays.values()) {
     if (win.isDestroyed()) continue
-    win.setOpacity(0) // disappears instantly
+    conceal(win, false) // disappears instantly (Windows: and gives the keyboard back right away)
     win.webContents.send(IPC.reset)
-    // Hide only after the renderer has painted an empty frame, so the next
+    // macOS: hide only after the renderer has painted an empty frame, so the next
     // show() can't flash the previous screenshot.
     waitFor(IPC.cleared, win, null, 150).then(() => {
-      if (!active && session === endedSession && !win.isDestroyed()) win.hide()
+      if (!keepShown && !active && session === endedSession && !win.isDestroyed()) win.hide()
       keepPinsOnTop() // Windows: a preview shown while this window was up can lose its on-top place
     })
   }
@@ -211,7 +247,7 @@ export async function startCapture(t0 = Date.now()) {
       }
       if (id !== session || !active) return
       win.setBounds(g.display.bounds)
-      win.showInactive()
+      reveal(win)
       // Windows: a hidden window draws nothing, so right after showing it Windows paints a blank
       // white surface until the page's first frame. Keep it invisible until the page has drawn the
       // dim (at most 150 ms, so capture never waits on a stuck page).
@@ -266,7 +302,7 @@ export async function startEdit(doc: CaptureDoc, onDone: (png: Buffer, doc: Capt
   await armed
   if (id !== session || !active) return
   win.setBounds(display.bounds)
-  win.showInactive()
+  reveal(win)
   win.setOpacity(1)
   if (isMac) app.focus({ steal: true })
   win.focus()

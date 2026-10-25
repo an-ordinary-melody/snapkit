@@ -110,6 +110,14 @@ const SUITES = {
     // Only Windows refuses a shortcut another app holds (macOS lets both have it).
     ...(process.platform === 'win32' ? [[/Snapkit sees taken: capture/, 'notices a shortcut another app holds']] : [])
   ],
+  // Windows only (skipped elsewhere): the capture window stays shown but invisible between captures.
+  winkeep: process.platform === 'win32'
+    ? [
+        [/between captures: shown but invisible: true/, 'Windows: capture window kept shown, invisible, not on top (no show animation)'],
+        [/round 1: opened true \| closed invisible true \| keyboard back to: Another app/, 'Windows: keyboard returns to the previous app after capture (1)'],
+        [/round 3: opened true \| closed invisible true \| keyboard back to: Another app/, 'Windows: keyboard returns to the previous app after capture (3)']
+      ]
+    : [[/winkeep test: skipped/, 'Windows-only test']],
   safety: [
     [/hotkey toggles: true -> false/, 'capture hotkey again closes capture mode'],
     [/idle closes it: true/, 'idle timeout'],
