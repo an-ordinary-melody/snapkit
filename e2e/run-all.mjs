@@ -79,7 +79,8 @@ const SUITES = {
     [/kept: 5 \(limit 5\) \| folders on disk: 5/, 'history limit prunes old captures'],
     [/panel visible: true \| cards: 5/, 'history panel opens'],
     [/starred: 1/, 'starring'],
-    [/Enter copied: \{"width":800,"height":600\} \| panel closed: true/, 'copy from history'],
+    // A 400×300 area: 800×600 pixels on a Retina Mac, 400×300 at 100% on Windows.
+    [/Enter copied: \{"width":(400,"height":300|600,"height":450|800,"height":600)\} \| panel closed: true/, 'copy from history'],
     [/after edit: count 5 \| same entry on top: true/, 'editing updates the same entry'],
     [/after delete: 4 \| folders: 4/, 'delete removes files'],
     [/after clear \(keep starred\): 1 starred: 1 \| folders: 1/, 'clear keeps starred']
