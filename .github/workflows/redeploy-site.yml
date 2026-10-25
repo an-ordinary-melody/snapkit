@@ -1,0 +1,18 @@
+name: Redeploy website
+
+# Rebuilds the website on Vercel by hand (Actions → Redeploy website → Run workflow), e.g. after
+# editing release notes. Releases already do this at the end of the Build workflow. The hook URL
+# lives only in the VERCEL_DEPLOY_HOOK repository secret, never in the code.
+on:
+  workflow_dispatch:
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+    steps:
+      - name: Trigger the Vercel deploy hook
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then echo "The VERCEL_DEPLOY_HOOK secret isn't set."; exit 1; fi
+          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK" | jq -r '.job | "Vercel accepted the deploy (state: \(.state))"'
