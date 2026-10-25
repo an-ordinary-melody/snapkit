@@ -38,10 +38,13 @@ try {
   await wait(3000)
   const results = []
   for (let round = 1; round <= 3; round++) {
-    const film = spawn('powershell', ['-NoProfile', '-NonInteractive', '-Command', FILM], { env: { ...process.env, FILM_MS: '2200' } })
+    // stdin closed: PowerShell otherwise waits for more input after the command.
+    const film = spawn('powershell', ['-NoProfile', '-NonInteractive', '-Command', FILM], { env: { ...process.env, FILM_MS: '2200' }, stdio: ['ignore', 'pipe', 'pipe'] })
     let text = ''
     film.stdout.on('data', (d) => (text += d))
-    const done = new Promise((r) => film.on('close', r))
+    film.stderr.on('data', (d) => process.stderr.write(d))
+    const killer = setTimeout(() => film.kill(), 20000)
+    const done = new Promise((r) => film.on('close', () => (clearTimeout(killer), r())))
     await wait(700) // a few frames of the normal screen first
     const t = Date.now()
     await app.evaluate(({ app }) => app.emit('second-instance', {}, []))
