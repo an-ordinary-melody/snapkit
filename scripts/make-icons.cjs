@@ -75,9 +75,20 @@ function writeIconDocument() {
     },
     groups: [
       {
-        layers: [{ glass: true, 'image-name': 'hand.svg', name: 'hand' }],
-        shadow: { kind: 'neutral', opacity: 0.5 },
-        translucency: { enabled: true, value: 0.4 }
+        // A frosted glass hand: white at the top fading to see-through light blue, with a light shadow.
+        layers: [
+          {
+            glass: true,
+            'image-name': 'hand.svg',
+            name: 'hand',
+            fill: { 'linear-gradient': ['extended-srgb:1,1,1,0.95', 'extended-srgb:0.80,0.86,1,0.75'] }
+          }
+        ],
+        shadow: { kind: 'neutral', opacity: 0.2 },
+        translucency: { enabled: true, value: 0.5 },
+        specular: true,
+        lighting: 'combined',
+        'blur-material': 0.8
       }
     ],
     'supported-platforms': { squares: 'shared' }
