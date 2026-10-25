@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.2.0-beta.11",
+    "date": "2026-10-25",
+    "intro": "Eleventh beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**Windows: capture mode appears instantly.** The dim no longer zooms in from the middle of the screen, briefly showing the screen's edges. Windows animates a window every time it appears, so Snapkit now keeps its capture window open, invisible and click-through between captures, and just makes it visible when you press the shortcut.",
+        "sub": []
+      },
+      {
+        "text": "**Windows: the floating preview stays on top** more reliably after a copy.",
+        "sub": []
+      }
+    ]
+  },
+  {
     "version": "0.2.0-beta.10",
     "date": "2026-10-25",
     "intro": "Tenth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
