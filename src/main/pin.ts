@@ -238,6 +238,7 @@ export function registerPinIpc() {
     sendState(p)
     p.win.showInactive() // don't take focus from the app the user is in
     keepPinsOnTop()
+    setTimeout(keepPinsOnTop, 300) // once more after capture mode has fully closed (it rarely still lost it)
     log(`[pin] ${p.kind} shown at ${JSON.stringify(p.win.getBounds())}, visible ${p.win.isVisible()}`)
   })
   ipcOn(IPC.pinMoveBy, (e, dx: number, dy: number) => {
