@@ -116,6 +116,9 @@ export const IPC = {
   painted: 'overlay:painted',
   cleared: 'overlay:cleared',
   /** Main → capture page: draw the default background around a full-screen capture; the page answers with `decorated`. */
+  /** Windows: main asks the page to draw a frame now that its window is shown; the page answers with `frameReady`. */
+  frame: 'overlay:frame',
+  frameReady: 'overlay:frame-ready',
   decorate: 'overlay:decorate',
   decorated: 'overlay:decorated',
   selectionStarted: 'overlay:selection-started',
@@ -208,6 +211,9 @@ export interface SnapkitApi {
   painted(session: number): void
   cleared(): void
   /** Full-screen capture with "Background on by default": draw the background (capture page only). */
+  /** Windows: draw a frame, then answer (see startCapture). */
+  onFrame(cb: (session: number) => void): void
+  frameReady(session: number): void
   onDecorate(cb: (p: DecorateRequest) => void): void
   decorated(id: number, result: DecorateResult | null): void
   selectionStarted(session: number): void

@@ -65,6 +65,11 @@ function initialBeautify(s: Settings): BeautifyState {
   return preset ? stateFromPreset(preset, on) : { on: false, presetId: '', padding: 0, radius: 0, shadow: 0 }
 }
 
+// Windows: the window was just shown (still invisible). Answer once a frame with the dim has been
+// drawn, so it never appears as a blank white surface first. Two animation frames: one to draw, one
+// to be sure it reached the screen.
+api.onFrame((s) => requestAnimationFrame(() => requestAnimationFrame(() => api.frameReady(s))))
+
 // A full-screen capture with "Background on by default": the main process has no canvas, so this
 // (preloaded, hidden) page draws the same background a new capture would start with.
 api.onDecorate(async ({ id, png, scale, settings }) => {

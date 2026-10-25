@@ -210,6 +210,15 @@ export async function startCapture(t0 = Date.now()) {
       if (id !== session || !active) return
       win.setBounds(g.display.bounds)
       win.showInactive()
+      // Windows: a hidden window draws nothing, so right after showing it Windows paints a blank
+      // white surface until the page's first frame. Keep it invisible until the page has drawn the
+      // dim (at most 150 ms, so capture never waits on a stuck page).
+      if (!isMac) {
+        const drawn = waitFor(IPC.frameReady, win, id, 150)
+        win.webContents.send(IPC.frame, id)
+        await drawn
+        if (id !== session || !active) return
+      }
       win.setOpacity(1)
       if (g.display.id === focusDisplay.id) {
         if (isMac) app.focus({ steal: true })
