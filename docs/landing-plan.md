@@ -17,8 +17,8 @@ and a soft gray rounded "stage" holding tilted cards and small floating labels.
 
 `site/` gets its own `package.json`, so the site never installs Electron, and the app build never sees the site.
 
-**Deploy only when needed:** Vercel's *Ignored Build Step* set to
-`git diff --quiet HEAD^ HEAD -- site release-notes` skips builds for app-only commits.
+**Every push to main deploys** (no Ignored Build Step: Vercel's shallow clone has no `HEAD^`, so a
+`git diff HEAD^ HEAD` filter fails the build, and a release rebuild must run even when no site file changed).
 
 **Download links stay current:** at build time the site reads the GitHub releases API
 (`/repos/an-ordinary-melody/snapkit/releases`, which, unlike `/releases/latest`, includes betas) and gets the `.dmg` and `-setup.exe` URLs.
