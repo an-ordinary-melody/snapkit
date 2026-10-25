@@ -2,14 +2,15 @@
   {
     "title": "Polish and a new look",
     "from": "0.2.0-beta.2",
-    "upTo": "0.2.0-beta.8",
+    "upTo": "0.2.0-beta.9",
     "items": [
       "New snapping-hand icon, with Liquid Glass on macOS 26",
       "Quick area capture: copied the moment you let go",
+      "Full-screen captures get your default background too",
       "Editor zoom: ⌘ + scroll or pinch, hold Space to pan",
-      "Smaller installers, sharper text on scaled screens",
+      "More to tune: step outline and shadow, dim color",
       "Shortcuts held by another app come back on their own",
-      "Windows: preview stays on top; the app is named just \"Snapkit\""
+      "Smaller installers; on Windows, sharper text and a preview that stays on top"
     ]
   },
   {

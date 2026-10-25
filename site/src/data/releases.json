@@ -1,5 +1,36 @@
 [
   {
+    "version": "0.2.0-beta.9",
+    "date": "2026-10-25",
+    "intro": "Ninth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**Full-screen captures get the background** when \"Background on by default\" is on: in the copy, the floating preview and history (Edit can still change it).",
+        "sub": []
+      },
+      {
+        "text": "**Numbered steps:** set the badge outline (color, width) and shadow in Settings → Tools.",
+        "sub": []
+      },
+      {
+        "text": "**Dim color:** pick the color capture mode dims the screen with (Settings → Appearance; black by default).",
+        "sub": []
+      },
+      {
+        "text": "**History:** \"Recording\" switch in Settings → General, matching the History window and the menu-bar menu.",
+        "sub": []
+      },
+      {
+        "text": "**Windows:** the History window has a close button, and dropdown lists in Settings are readable in the dark themes.",
+        "sub": []
+      },
+      {
+        "text": "**Clearer wording:** shorter descriptions throughout Settings, tooltips and dialogs.",
+        "sub": []
+      }
+    ]
+  },
+  {
     "version": "0.2.0-beta.8",
     "date": "2026-10-24",
     "intro": "Eighth beta of Snapkit, a fast screenshot tool for macOS and Windows. A small Windows fix.",
