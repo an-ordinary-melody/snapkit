@@ -2,7 +2,7 @@
   {
     "title": "Polish and a new look",
     "from": "0.2.0-beta.2",
-    "upTo": "0.2.0-beta.10",
+    "upTo": "0.2.0-beta.11",
     "items": [
       "New snapping-hand icon, with Liquid Glass on macOS 26",
       "Quick area capture: copied the moment you let go",
