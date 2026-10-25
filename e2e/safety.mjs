@@ -18,8 +18,10 @@ const lastLog = (n = 3) => readFileSync(LOG, 'utf8').trim().split('\n').slice(-n
 try {
   await wait(2500)
   // 1. Hotkey again closes capture mode.
-  await hotkey(); await wait(800)
-  const open1 = await capturing()
+  // Wait for it to show (the first capture after launch can take longer on a slow machine).
+  await hotkey()
+  let open1 = false
+  for (let i = 0; i < 30 && !open1; i++) { await wait(100); open1 = await capturing() }
   await hotkey(); await wait(400)
   console.log('hotkey toggles:', open1, '->', await capturing(), '|', lastLog(1))
 
