@@ -1,11 +1,13 @@
-// Runs every end-to-end suite and checks its results, so bugs fixed once stay fixed.
-// Usage: npm run e2e            (builds first)
-//        node e2e/run-all.mjs [suite ...] [--out <dir>]
+// Runs end-to-end suites and checks their results, so bugs fixed once stay fixed.
+// Usage: npm run e2e                     every suite (builds first); a full pass clears the test backlog
+//        npm run e2e:backlog             only the suites on the test backlog (see e2e/backlog.mjs)
+//        node e2e/run-all.mjs [suite ...] [--backlog] [--out <dir>]
 // Each check is a pattern the suite's output must contain, with what it guards.
 import { spawn } from 'child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { describe, loadBacklog, settleBacklog } from './backlog.mjs'
 
 const SUITES = {
   annotate: [
@@ -149,7 +151,14 @@ const SUITES = {
 const args = process.argv.slice(2)
 const outAt = args.indexOf('--out')
 const outRoot = outAt >= 0 ? args.splice(outAt, 2)[1] : mkdtempSync(join(tmpdir(), 'snapkit-e2e-'))
-const names = args.length ? args : Object.keys(SUITES)
+const fromBacklog = args.includes('--backlog')
+if (fromBacklog) args.splice(args.indexOf('--backlog'), 1)
+const full = !fromBacklog && !args.length
+const names = fromBacklog ? [...new Set(loadBacklog().map((i) => i.suite))] : full ? Object.keys(SUITES) : args
+if (!names.length) {
+  console.log('Test backlog: empty, nothing to run.')
+  process.exit(0)
+}
 
 function run(name) {
   const out = join(outRoot, name)
@@ -168,6 +177,7 @@ function run(name) {
 }
 
 let failed = 0
+const passed = []
 for (const name of names) {
   const checks = SUITES[name]
   if (!checks) {
@@ -183,7 +193,9 @@ for (const name of names) {
   console.log(`${ok ? '✓' : '✗'} ${name} (${checks.length - misses.length}/${checks.length} checks, ${Math.round((Date.now() - t0) / 1000)} s)`)
   if (code !== 0) console.log(`    exited with ${code}: ${text.trim().split('\n').filter((l) => !l.startsWith('[main]')).slice(-3).join(' / ')}`)
   for (const [re, what] of misses) console.log(`    missing: ${what}  (${re})`)
-  if (!ok) failed++
+  if (ok) passed.push(name)
+  else failed++
 }
 console.log(failed ? `\n${failed} suite(s) failed. Logs: ${outRoot}` : `\nAll ${names.length} suites passed. Logs: ${outRoot}`)
+console.log(describe(settleBacklog(passed, full && !failed)))
 process.exit(failed ? 1 : 0)

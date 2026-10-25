@@ -2,6 +2,8 @@ node_modules/
 out/
 dist/
 *.log
+# Local test backlog (see e2e/backlog.mjs)
+e2e/.backlog.json
 .DS_Store
 
 # Brand drafts stay local (not in the repo)

@@ -48,7 +48,7 @@ Every push to `main` also builds both installers (the **Actions** tab → latest
 
 **Icons:** the app and tray icons are generated from the logo SVGs in `branding/` (kept out of the repo) with `npx electron scripts/make-icons.cjs`: the hand from `Snapkit Black.svg` on the blue gradient becomes the app icon and the Windows tray icon, `Snapkit Mac Negative.svg` the macOS menu-bar icon. The script also writes `build/AppIcon.icon`, an Icon Composer document for the macOS 26 Liquid Glass icon; compile it with **Actions → Mac icon (Liquid Glass) → Run workflow** (needs Xcode 26) and commit the artifact's `Assets.car` and `AppIcon.icns` to `build/`.
 
-**Releasing:** set the version in `package.json` (`npm version 0.2.0-beta.2 --no-git-tag-version`),
+**Releasing:** run the full tests first (`npm test && npm run e2e`, which also clears the test backlog). Then set the version in `package.json` (`npm version 0.2.0-beta.2 --no-git-tag-version`),
 write `release-notes/v<version>.md`, commit, then tag and push (`git tag v0.2.0-beta.2 && git push origin v0.2.0-beta.2`).
 CI builds both installers and publishes the Release with those notes. To test on Windows, run **Actions → E2E (Windows) → Run workflow** (it runs the suites at 100% and 150% display scaling). A version with a dash
 (`-beta.1`) is published as a GitHub pre-release.
@@ -86,10 +86,28 @@ npm run typecheck
 npm run build:mac  # or build:win (run on that OS)
 ```
 
-**Before a release run `npm test` and `npm run e2e`.** `e2e/run-all.mjs` runs each suite below and checks
-its output against the expected results, each labeled with the bug or feature it guards, so a bug fixed
-once fails the run if it comes back. Run some suites only with `node e2e/run-all.mjs snap textedit`.
-When you fix a bug, add a check for it there (or in `e2e/regressions.mjs`).
+**How testing works (three tiers):**
+
+1. **Every change:** `npm test` (unit tests, seconds) plus the end-to-end suite(s) for the area changed, e.g. `npm run build && node e2e/run-all.mjs snap textedit`.
+2. **If it could affect other features:** run their suites too (see the map below), or put them on the **test backlog** for later: `npm run test:backlog -- add history "changed thumbnail size"`. `npm run test:backlog` lists it; `npm run e2e:backlog` runs just those suites. A suite that passes comes off the backlog.
+3. **Full run (`npm run e2e`, about 3½ minutes):** on demand, and always before a release. A full pass clears the backlog.
+
+`e2e/run-all.mjs` checks each suite's output against expected results, each labeled with the bug or feature it guards, so a bug fixed once fails the run if it comes back. When you fix a bug, add a check for it there (or in `e2e/regressions.mjs`).
+
+| Code you changed | Suites to run (or put on the backlog) |
+|---|---|
+| Drawing tools, text, snapping (`overlay/annotate/`) | annotate, textedit, snap, regressions |
+| Background editor, zoom (`overlay/beautify/`) | regressions, annotate, snap |
+| Capture mode UI (`Overlay.tsx`, `Toolbars.tsx`, `layout.ts`) | annotate, regressions, pin, safety |
+| Capture flow, engines (`main/overlay.ts`, `main/capture/`) | safety, pin, fullscreen, regressions |
+| Floating preview and pins (`main/pin.ts`, `renderer/pin/`) | pin, fullscreen |
+| History (`main/history*.ts`, `renderer/history/`) | history, fullscreen |
+| Hotkeys, tray, startup (`main/hotkeys.ts`, `main/index.ts`, `main/tray.ts`) | hotkeys, safety |
+| Settings and their defaults (`shared/settings.ts`, `renderer/settings/`) | settings, plus the suite of the feature the setting drives |
+| Theme and shared styles (`styles.css`, `theme.ts`) | settings, hotkeys, regressions |
+| Updates, launch at login (`main/system.ts`) | settings |
+| Packaging and icons (`electron-builder.yml`, `build/`, `scripts/make-icons.cjs`) | none; check `npm run build:dir` and the CI build |
+| Anything Windows-specific | also **Actions → E2E (Windows) → Run workflow** |
 
 Linux smoke test (Xvfb): `npm run build && xvfb-run -a node e2e/smoke.mjs`
 
