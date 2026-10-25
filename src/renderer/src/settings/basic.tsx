@@ -270,7 +270,7 @@ export function Appearance({ snap, set }: SectionProps) {
 
       <Group title="Capture mode">
         <Row label="Dim amount">
-          <SliderField label="Dim amount" min={0.1} max={0.9} step={0.05} value={s.capture.dimOpacity} format={(v) => `${Math.round(v * 100)}%`} onChange={(dimOpacity) => set({ capture: { dimOpacity } })} />
+          <SliderField label="Dim amount" min={0.1} max={0.9} step={0.01} value={s.capture.dimOpacity} format={(v) => `${Math.round(v * 100)}%`} onChange={(dimOpacity) => set({ capture: { dimOpacity } })} />
         </Row>
         <Row label="Dim color">
           <ColorField label="Dim color" value={s.capture.dimColor} onChange={(dimColor) => set({ capture: { dimColor } })} />

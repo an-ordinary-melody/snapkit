@@ -91,6 +91,7 @@ try {
   await st.keyboard.press('Enter')
   await wait(200)
   console.log('dim color: default', dimDefault, '| saved', saved().capture?.dimColor)
+  console.log('dim amount step:', await st.$eval('input[aria-label="Dim amount"]', (e) => e.step))
   await st.click('button[aria-label="Liquid Glass"]')
   await wait(200)
   console.log('glass toggled on (default is off):', await st.evaluate(() => document.documentElement.dataset.glass), '| saved:', saved().appearance?.glass)

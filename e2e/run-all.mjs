@@ -135,6 +135,7 @@ const SUITES = {
     [/mode: dark \| saved: dark/, 'theme mode'],
     [/dropdown options: rgb\(242, 242, 244\) on rgb\(44, 44, 48\)/, 'readable dropdown options in the dark theme (Windows lists them natively)'],
     [/dim color: default #000000 \| saved #1e3a8a/, 'dim color setting (black by default)'],
+    [/dim amount step: 0\.01/, 'dim amount moves in 1% steps'],
     [/capture dims in: .*rgba\(30, 58, 138, 0\.75\) 0px 0px 0px 99999px/, 'capture mode dims in the chosen color'],
     [/glass toggled on .*: on \| saved: true/, 'Liquid Glass toggle'],
     [/history window glass: on/, 'theme reaches windows already open'],
