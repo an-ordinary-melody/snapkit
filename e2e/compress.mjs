@@ -28,6 +28,9 @@ const capture = async (setup) => {
 try {
   await wait(2500)
   const scale = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().scaleFactor)
+  const win0 = await capture()
+  console.log('screen (info):', JSON.stringify(await app.evaluate(({ screen }) => ({ ...screen.getPrimaryDisplay().bounds, scale: screen.getPrimaryDisplay().scaleFactor }))), '| overlay css width:', await win0.evaluate(() => [window.innerWidth, window.devicePixelRatio]))
+  await win0.keyboard.press('Escape'); await wait(500)
 
   let win = await capture()
   await win.click('.toolbar button[data-tip="Copy"]'); await wait(1500)

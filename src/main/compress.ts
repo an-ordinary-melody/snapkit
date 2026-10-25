@@ -48,7 +48,7 @@ export async function compressPng(png: Buffer, scale: number, preset: CompressPr
       waiting.set(id, { resolve, reject })
       getWorker().postMessage({ id, bgra, width, height }, [bgra.buffer])
     })
-    log(`[compress] ${preset} ${full.width}×${full.height} → ${width}×${height}: ${kb(png.length)} → ${kb(out.length)} in ${Date.now() - started} ms`)
+    log(`[compress] ${preset} (scale ${scale}) ${full.width}×${full.height} → ${width}×${height}: ${kb(png.length)} → ${kb(out.length)} in ${Date.now() - started} ms`)
     return out.length < png.length || resized ? out : png
   } catch (err) {
     log('[compress] kept the original:', String(err))
