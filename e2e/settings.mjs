@@ -72,7 +72,7 @@ try {
   // Shortcuts: record a new capture hotkey, change a tool letter.
   await section('Shortcuts')
   await st.click('.st-hotkey')
-  await st.keyboard.press('Meta+Alt+Shift+F11')
+  await st.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+Alt+Shift+F11`)
   await wait(300)
   console.log('hotkey button:', await st.$eval('.st-hotkey', (e) => e.textContent), '| saved:', saved().hotkeys?.capture)
   await st.fill('input[aria-label="Arrow key"]', 'w')

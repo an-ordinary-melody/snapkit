@@ -33,7 +33,8 @@ try {
   await w.keyboard.press('m'); await wait(150)
   const m = w.mouse
   await m.move(150, 250); await m.down(); await m.move(350, 250, { steps: 6 }); await m.up(); await wait(300)
-  const scale = await w.evaluate(() => devicePixelRatio)
+  // Image px per screen point: the captured image's width over the window's (not devicePixelRatio: the 150% CI run scales twice).
+  const scale = await w.evaluate(() => document.querySelector('canvas.frozen').width / window.innerWidth)
   const label = await w.evaluate(() => window.Konva.stages[0].findOne('.ruler-label')?.findOne('Text')?.text() ?? null)
   console.log('measures in image pixels:', label === `${Math.round(200 * scale)} px`, label, scale)
   // Drag an end: the length follows.
