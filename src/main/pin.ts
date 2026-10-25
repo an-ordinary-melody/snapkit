@@ -1,10 +1,10 @@
-import { app, BrowserWindow, clipboard, Menu, nativeImage, screen, type Rectangle } from 'electron'
+import { app, BrowserWindow, Menu, nativeImage, screen, type Rectangle } from 'electron'
 import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { IPC, type CaptureDoc, type PinState } from '@shared/ipc'
 import { log } from './log'
 import { ipcOn } from './security'
-import { savePng, timestampName } from './output'
+import { copyPng, savePng, timestampName } from './output'
 import { getSettings } from './settings'
 import { startEdit } from './overlay'
 
@@ -211,8 +211,8 @@ function setOpacity(p: Pin, opacity: number) {
 function showMenu(p: Pin) {
   const pct = (v: number) => `${Math.round(v * 100)}%`
   Menu.buildFromTemplate([
-    { label: 'Copy', accelerator: 'CommandOrControl+C', click: () => clipboard.writeImage(nativeImage.createFromBuffer(p.png)) },
-    { label: 'Save…', accelerator: 'CommandOrControl+S', click: () => void savePng(p.png) },
+    { label: 'Copy', accelerator: 'CommandOrControl+C', click: () => void copyPng(p.png, { scale: p.doc?.scale }) },
+    { label: 'Save…', accelerator: 'CommandOrControl+S', click: () => void savePng(p.png, { scale: p.doc?.scale }) },
     { type: 'separator' },
     {
       label: 'Zoom',
@@ -261,11 +261,11 @@ export function registerPinIpc() {
   })
   ipcOn(IPC.pinCopy, (e) => {
     const p = of(e)
-    if (p) clipboard.writeImage(nativeImage.createFromBuffer(p.png))
+    if (p) void copyPng(p.png, { scale: p.doc?.scale })
   })
   ipcOn(IPC.pinSave, (e) => {
     const p = of(e)
-    if (p) void savePng(p.png)
+    if (p) void savePng(p.png, { scale: p.doc?.scale })
   })
   ipcOn(IPC.pinClose, (e) => of(e)?.win.close())
   ipcOn(IPC.pinMenu, (e) => {

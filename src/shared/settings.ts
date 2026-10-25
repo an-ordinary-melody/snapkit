@@ -20,6 +20,14 @@ export interface BeautifyPreset {
   shadow: number
 }
 
+/** 'standard': at most 256 colors, same size. 'smallest': also 1× size on Retina / HiDPI screens. */
+export type CompressPreset = 'standard' | 'smallest'
+
+/** Does this output get compressed? `on` is the switch for this capture (the setting, unless changed in the editor). */
+export function compressesFor(applyTo: Settings['compress']['applyTo'], on: boolean, output: 'copy' | 'save') {
+  return on && (applyTo === 'both' || applyTo === output)
+}
+
 export interface Settings {
   hotkeys: {
     capture: string
@@ -83,6 +91,14 @@ export interface Settings {
     name: NameRule
     /** The number used in the next name (when the rule has a number). */
     nextNumber: number
+  }
+  /** Smaller PNGs on the way out (copy / save); history and the floating preview keep the original. */
+  compress: {
+    /** Compress by default; the editor's Compress switch changes it for one capture. */
+    enabled: boolean
+    preset: CompressPreset
+    /** Which outputs get compressed when it's on. */
+    applyTo: 'both' | 'copy' | 'save'
   }
   notifications: {
     onCopy: boolean
@@ -198,6 +214,11 @@ export const DEFAULT_SETTINGS: Settings = {
     lastFolder: '',
     name: DEFAULT_NAME_RULE,
     nextNumber: 1
+  },
+  compress: {
+    enabled: false,
+    preset: 'standard',
+    applyTo: 'both'
   },
   notifications: {
     onCopy: false,

@@ -1,12 +1,25 @@
 import { Copy, Save, WandSparkles, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { EDITOR_ZOOM_EVENT } from '../annotate/AnnotationLayer'
-import type { BeautifyBackground, BeautifyPreset } from '@shared/settings'
+import type { BeautifyBackground, BeautifyPreset, CompressPreset } from '@shared/settings'
 import { hexToHsv, hsvToHex, parseHex } from '../annotate/color'
 import { ColorPicker } from '../annotate/ColorPicker'
 import { Slider } from '../Slider'
 import { backgroundOf, beautifyLayout, FRAMES, PLAIN, type BeautifyState, type Frame } from './layout'
 import { drawBeautified, loadBackgroundImage } from './render'
+
+/** Compress for this capture: the switch and preset (they start from the setting). */
+export interface CompressState {
+  on: boolean
+  preset: CompressPreset
+}
+
+const COMPRESS_PRESETS: { id: CompressPreset; label: string; title: string }[] = [
+  { id: 'standard', label: 'Standard', title: 'Fewer colors, same size. Text stays sharp.' },
+  { id: 'smallest', label: 'Smallest', title: 'Fewer colors, and 1× size on Retina / HiDPI screens.' }
+]
+
+const formatBytes = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
 
 /** A pleasant random gradient / color for the magic-wand button. */
 function randomGradient(angle: number): BeautifyBackground {
@@ -52,6 +65,10 @@ interface Props {
   onEscape(): boolean
   onCopy(): void
   onSave(): void
+  compress: CompressState
+  onCompress(next: CompressState): void
+  /** Bytes of the output as it is now, before and after compressing with `preset`. */
+  compressedSize(preset: CompressPreset): Promise<{ before: number; after: number } | null>
 }
 
 export function cssBackground(bg: BeautifyBackground): string {
@@ -67,6 +84,8 @@ const sameFrame = (a: Frame | undefined, b: Frame) => JSON.stringify(a ?? { kind
 /** Full-screen editor: background, layout and output size, with the drawing tools at hand. */
 export function BackgroundEditor(props: Props) {
   const { presets, gradients, solids, state, onChange, selection, exportScale, compose, annotations, toolbar, onClose, onEscape, onCopy, onSave } = props
+  const { compress, onCompress, compressedSize } = props
+  const estimate = useCompressEstimate(compress, compressedSize, state)
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [area, setArea] = useState({ w: 0, h: 0 })
@@ -460,8 +479,26 @@ export function BackgroundEditor(props: Props) {
           {row('Padding', 'padding', 200, 1)}
           {row('Corners', 'radius', 48, 1)}
           {row('Shadow', 'shadow', 1, 0.01, (v) => `${Math.round(v * 100)}%`)}
+
+          <div className="be-section be-section-switch">
+            <span>Compress</span>
+            <button className={`switch${compress.on ? ' on' : ''}`} aria-label="Compress" aria-pressed={compress.on} onClick={() => onCompress({ ...compress, on: !compress.on })}>
+              <span />
+            </button>
+          </div>
+          {compress.on && (
+            <div className="be-chips">
+              {COMPRESS_PRESETS.map((p) => (
+                <button key={p.id} title={p.title} className={`be-chip${compress.preset === p.id ? ' active' : ''}`} onClick={() => onCompress({ ...compress, preset: p.id })}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="be-output">
-            Output: {Math.round(full.width)} × {Math.round(full.height)} px
+            Output: {outputSize(full, compress, exportScale)} px
+            {estimate && ` · ${formatBytes(estimate.after)} (was ${formatBytes(estimate.before)})`}
           </div>
 
           <div className="be-actions">
@@ -485,6 +522,32 @@ export function BackgroundEditor(props: Props) {
 }
 
 /** Hex text field: applies valid values as you type, tidies up on blur. */
+/** Size shown under the layout: "Smallest" brings Retina / HiDPI output back to 1×. */
+function outputSize(full: { width: number; height: number }, c: CompressState, scale: number) {
+  const k = c.on && c.preset === 'smallest' && scale > 1 ? scale : 1
+  return `${Math.round(full.width / k)} × ${Math.round(full.height / k)}`
+}
+
+/** While Compress is on: the output's file size, worked out again shortly after anything changes. */
+function useCompressEstimate(c: CompressState, measure: Props['compressedSize'], state: BeautifyState) {
+  const [size, setSize] = useState<{ before: number; after: number } | null>(null)
+  useEffect(() => {
+    setSize(null)
+    if (!c.on) return
+    let stale = false
+    const t = setTimeout(() => {
+      void measure(c.preset)
+        .then((s) => !stale && setSize(s))
+        .catch(() => !stale && setSize(null))
+    }, 400)
+    return () => {
+      stale = true
+      clearTimeout(t)
+    }
+  }, [c.on, c.preset, measure, state])
+  return size
+}
+
 function HexInput({ label, value, onChange }: { label: string; value: string; onChange(c: string): void }) {
   const [text, setText] = useState(value)
   useEffect(() => setText(value), [value])

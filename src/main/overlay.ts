@@ -1,9 +1,11 @@
 import { app, BrowserWindow, ipcMain, screen, type Display } from 'electron'
 import { readFile, stat } from 'fs/promises'
 import { extname, join } from 'path'
-import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type DecorateResult, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
+import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type DecorateResult, type OutputOptions, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
 import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
+import type { CompressPreset } from '@shared/settings'
+import { compressPng } from './compress'
 import { copyPng, savePng } from './output'
 import { log } from './log'
 import { disableWindowAnimations } from './noAnimation'
@@ -365,6 +367,11 @@ const IMAGE_TYPES = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '
 export function registerOverlayIpc() {
   const valid = (s: number) => active && s === session
 
+  ipcHandle(IPC.compressedSize, async (_e, png: ArrayBuffer, scale: number, preset: CompressPreset) => {
+    if (!(png instanceof ArrayBuffer) || (preset !== 'standard' && preset !== 'smallest')) return 0
+    return (await compressPng(Buffer.from(png), Number(scale) || 1, preset)).length
+  })
+
   // Image backgrounds for beautify: only image files a background setting points at, and not huge ones.
   ipcHandle(IPC.readImage, async (_e, path: unknown) => {
     if (typeof path !== 'string' || !IMAGE_TYPES.has(extname(path).toLowerCase())) return null
@@ -390,13 +397,13 @@ export function registerOverlayIpc() {
     endCapture()
     releaseFocus()
   })
-  ipcOn(IPC.copy, (e, s: number, png: ArrayBuffer, extra?: CopyExtra) => {
+  ipcOn(IPC.copy, (e, s: number, png: ArrayBuffer, extra: CopyExtra | undefined, out?: OutputOptions) => {
     if (!valid(s)) return
     const target = editTarget
     const origin = BrowserWindow.fromWebContents(e.sender)?.getBounds() ?? { x: 0, y: 0 }
     endCapture()
     const buf = Buffer.from(png)
-    copyPng(buf)
+    void copyPng(buf, out)
     if (extra && target) target(buf, extra.doc) // editing a floating preview: update it
     else if (extra) {
       const r = extra.rect
@@ -416,10 +423,10 @@ export function registerOverlayIpc() {
     endCapture()
     releaseFocus()
   })
-  ipcOn(IPC.save, async (_e, s: number, png: ArrayBuffer) => {
+  ipcOn(IPC.save, async (_e, s: number, png: ArrayBuffer, out?: OutputOptions) => {
     if (!valid(s)) return
     endCapture() // hide first so the save dialog isn't covered by the overlay
-    await savePng(Buffer.from(png))
+    await savePng(Buffer.from(png), out)
     releaseFocus()
   })
 }

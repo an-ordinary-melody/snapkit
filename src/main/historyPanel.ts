@@ -1,11 +1,11 @@
-import { app, BrowserWindow, clipboard, nativeImage, screen, shell } from 'electron'
+import { app, BrowserWindow, nativeImage, screen, shell } from 'electron'
 import { copyFileSync, mkdirSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { IPC } from '@shared/ipc'
 import { dateStamp } from '@shared/naming'
 import { clearHistory, deleteEntry, historyDir, historyDoc, historyFile, historyItems, historyPath, onHistoryChange, setStarred, usage } from './history'
 import { returnFocus, startEdit } from './overlay'
-import { savePng } from './output'
+import { copyPng, savePng } from './output'
 import { createPin } from './pin'
 import { getSettings, onSettingsChange, updateSettings } from './settings'
 import { ipcHandle, ipcOn } from './security'
@@ -141,12 +141,14 @@ export function registerHistoryIpc() {
     }
     const png = await historyFile(id, 'final.png')
     if (!png) return
+    // Image px per screen point, for the "Smallest" compression.
+    const scale = getSettings().compress.enabled ? ((await historyDoc(id))?.scale ?? 1) : 1
     if (action === 'copy') {
-      clipboard.writeImage(nativeImage.createFromBuffer(png))
+      void copyPng(png, { scale })
       hidePanel(true)
     } else if (action === 'save') {
       hidePanel(false)
-      await savePng(png)
+      await savePng(png, { scale })
     } else if (action === 'pin') {
       hidePanel(true)
       const { width, height } = nativeImage.createFromBuffer(png).getSize()

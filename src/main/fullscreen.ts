@@ -1,10 +1,11 @@
-import { clipboard, nativeImage, screen } from 'electron'
+import { nativeImage, screen } from 'electron'
 import type { CaptureDoc } from '@shared/ipc'
 import { grabScreens } from './capture'
 import { addToHistory } from './history'
 import { log } from './log'
 import { decorateCapture, isCapturing } from './overlay'
 import { createThumb, linkThumbToHistory } from './pin'
+import { copyPng } from './output'
 import { getSettings } from './settings'
 
 /** Full-screen captures don't have an overlay session; they get their own ids (negative, so they never clash). */
@@ -29,7 +30,7 @@ export function captureFullScreen(t0 = Date.now()) {
       const final = decorated?.png ?? png
       const img = nativeImage.createFromBuffer(final)
       const doc: CaptureDoc = { png: new Uint8Array(png), width: grab.width, height: grab.height, scale: display.scaleFactor, shapes: [], beautify: decorated?.beautify ?? null }
-      if (getSettings().capture.fullscreenCopy) clipboard.writeImage(img)
+      if (getSettings().capture.fullscreenCopy) void copyPng(final, { scale: display.scaleFactor })
       const id = nextId--
       createThumb(final, doc, display.bounds, id)
       log(`[fullscreen] ${grab.width}x${grab.height}${decorated ? ' with background' : ''} in ${Date.now() - t0}ms`)

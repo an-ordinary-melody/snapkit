@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { FEATURES } from '@shared/features'
 import type { CaptureDoc } from '@shared/ipc'
-import { visibleFeatures, type Settings } from '@shared/settings'
+import { visibleFeatures, type CompressPreset, type Settings } from '@shared/settings'
 import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
 import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
 import { hasStyleOptions, StyleBar, type StyleTarget } from './annotate/StyleBar'
 import { withAlpha } from './annotate/color'
-import { BackgroundEditor } from './beautify/BackgroundEditor'
+import { BackgroundEditor, type CompressState } from './beautify/BackgroundEditor'
 import { backgroundOf, stateFromPreset, type BeautifyState } from './beautify/layout'
 import { renderBeautified } from './beautify/render'
 import { moveRect, rectFromPoints, resizeRect, type Handle, type Point, type Rect } from './layout'
@@ -205,6 +205,8 @@ export function Overlay() {
   const [editorOpen, setEditorOpen] = useState(false)
   /** Floating preview after copy, for this capture (the pin button). */
   const [floating, setFloating] = useState(false)
+  /** Compress for this capture (starts from the setting; the editor's Compress switch changes it). */
+  const [compress, setCompress] = useState<CompressState>({ on: false, preset: 'standard' })
   const capRef = useRef(cap)
   capRef.current = cap
   /** Bumped when the frozen image is painted, so anything built from it redraws. */
@@ -246,6 +248,7 @@ export function Overlay() {
         // A full-screen capture has no background state yet: start from the defaults (off).
         setBeautify((doc?.beautify as BeautifyState | null) ?? initialBeautify(p.settings))
         setFloating(doc ? true : p.settings.pin.afterCopy)
+        setCompress({ on: p.settings.compress.enabled, preset: p.settings.compress.preset })
         // Default shape/arrow styles from settings; picks made this session win.
         setVariants({ ...p.settings.toolVariants, ...lastVariants })
         setEditorOpen(!!doc)
@@ -340,7 +343,7 @@ export function Overlay() {
 
   /** The output (drawings and background baked in) as a canvas and PNG. */
   const renderOutput = useCallback(
-    async (r: Rect): Promise<{ canvas: HTMLCanvasElement; png: ArrayBuffer }> => {
+    async (r: Rect, remember = true): Promise<{ canvas: HTMLCanvasElement; png: ArrayBuffer }> => {
       await painted.current.promise // the frozen image may still be arriving
       const scale = cap!.scale
       let out = composeSelection(r, scale)
@@ -350,7 +353,7 @@ export function Overlay() {
         out = await renderBeautified(out, bg, b, scale)
         // "Remember the last background used": this one becomes the default.
         const set = cap!.settings.beautify
-        if (set.rememberLast) {
+        if (set.rememberLast && remember) {
           const look = { background: bg, padding: b.padding, radius: b.radius, shadow: b.shadow }
           void api.settingsUpdate({ beautify: { presets: set.presets.map((p) => (p.id === set.preset ? { ...p, ...look } : p)) } })
         }
@@ -398,9 +401,10 @@ export function Overlay() {
           const thumb = toHistory ? thumbnail(canvas) : null
           // The floating preview (and edits of it) need the document with the output itself.
           const doc = floating || cap.edit ? await encodeDoc(snap) : null
-          if (id === 'copy') api.copy(cap.session, png, doc ? { doc, rect: sel } : undefined)
+          const out = { compress: compress.on, preset: compress.preset, scale: cap.scale }
+          if (id === 'copy') api.copy(cap.session, png, doc ? { doc, rect: sel } : undefined, out)
           else if (id === 'editDone') api.editDone(cap.session, png, doc!)
-          else api.save(cap.session, png)
+          else api.save(cap.session, png, out)
           // History after the output, so the copy is never held up by it.
           if (thumb) {
             const [full, small] = await Promise.all([doc ?? encodeDoc(snap), toBlob(thumb, 'image/jpeg', 0.8)])
@@ -412,7 +416,7 @@ export function Overlay() {
         }
       }
     },
-    [cap, sel, renderOutput, floating, snapshotDoc]
+    [cap, sel, renderOutput, floating, snapshotDoc, compress]
   )
 
   /** Letter -> drawing tool, for the tools that are switched on. */
@@ -636,6 +640,15 @@ export function Overlay() {
     return false
   }, [selectedId])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- paintedVersion: rebuild once the image has arrived
+  /** The editor's size estimate: the output as it is now, before and after compressing. */
+  const compressedSize = useCallback(
+    async (preset: CompressPreset) => {
+      if (!sel || !cap) return null
+      const { png } = await renderOutput(sel, false)
+      return { before: png.byteLength, after: await api.compressedSize(png, cap.scale, preset) }
+    },
+    [sel, cap, renderOutput]
+  )
   const composeForEditor = useCallback((scale: number) => composeSelection(sel!, scale, false), [composeSelection, sel, paintedVersion])
 
   // One drawing layer: in capture mode over the selection, or inside the background editor.
@@ -745,6 +758,9 @@ export function Overlay() {
           selection={sel}
           exportScale={scale}
           compose={composeForEditor}
+          compress={compress}
+          onCompress={setCompress}
+          compressedSize={compressedSize}
           annotations={(place) => (
             // Overlay coordinates, scaled onto the preview.
             <div className="be-ann" style={{ left: place.left, top: place.top, width: sel.w, height: sel.h, transform: `scale(${place.k})` }}>

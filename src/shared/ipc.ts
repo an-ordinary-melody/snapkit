@@ -1,4 +1,4 @@
-import type { Settings, SettingsPatch } from './settings'
+import type { CompressPreset, Settings, SettingsPatch } from './settings'
 
 /**
  * Capture mode starts in two steps so the dim appears instantly:
@@ -67,6 +67,13 @@ export interface HistoryUsage {
 }
 
 /** Sent with a copy when a floating preview should stay afterwards. */
+/** How the editor wants this output compressed: its Compress switch and preset, and image px per screen point. */
+export interface OutputOptions {
+  compress: boolean
+  preset: CompressPreset
+  scale: number
+}
+
 export interface CopyExtra {
   doc: CaptureDoc
   /** The selection, in overlay CSS px. */
@@ -128,6 +135,7 @@ export const IPC = {
   cancel: 'capture:cancel',
   editDone: 'capture:edit-done',
   readImage: 'beautify:read-image',
+  compressedSize: 'capture:compressed-size',
   // main -> pin
   pinImage: 'pin:image',
   pinState: 'pin:state',
@@ -220,13 +228,15 @@ export interface SnapkitApi {
   /** Input happened in capture mode (pushes the idle timeout back). */
   activity(session: number): void
   /** Copy the output; with `extra`, a floating preview stays afterwards (or, when editing one, it's updated). */
-  copy(session: number, png: ArrayBuffer, extra?: CopyExtra): void
-  save(session: number, png: ArrayBuffer): void
+  copy(session: number, png: ArrayBuffer, extra: CopyExtra | undefined, out: OutputOptions): void
+  save(session: number, png: ArrayBuffer, out: OutputOptions): void
   cancel(session: number): void
   /** Leaving the editor while editing a floating preview: keep the edits there. */
   editDone(session: number, png: ArrayBuffer, doc: CaptureDoc): void
   /** Bytes of a local image file (for image backgrounds), or null if it can't be read. */
   readImage(path: string): Promise<Uint8Array | null>
+  /** Byte size of `png` after compressing it with `preset` (for the editor's size estimate). */
+  compressedSize(png: ArrayBuffer, scale: number, preset: CompressPreset): Promise<number>
 
   // Pin windows
   onPinImage(cb: (p: PinImagePayload) => void): void

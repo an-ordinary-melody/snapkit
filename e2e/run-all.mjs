@@ -47,6 +47,14 @@ const SUITES = {
     [/editor tools fit a small screen: true/, 'editor tools clipped on a small or scaled screen (Windows 150%)'],
     [/renderer errors: none/, 'no page errors']
   ],
+  compress: [
+    [/standard copy: exact PNG on the clipboard: true \| smaller than a plain PNG: true \| full size: true/, 'copies are smaller PNGs, kept exactly on the clipboard'],
+    [/editor Compress switch follows the setting: true \| size shown: true/, 'editor Compress switch starts from the setting, shows the size'],
+    [/switched off: false \| chips hidden: true/, 'Compress switch turns off'],
+    [/copy with Compress off is the original: true/, 'Compress off copies the original'],
+    [/smallest copy is 1× size: true/, 'Smallest brings HiDPI captures to 1×'],
+    [/renderer errors: none/, 'no page errors']
+  ],
   textedit: [
     [/selected text, click -> \["Hello world",11\]/, 'click into selected text to edit it'],
     [/text now: Hello world!/, 'edits are kept'],

@@ -28,6 +28,36 @@ export function General({ snap, set }: SectionProps) {
         <Row label="Background on by default" desc='Automatically adds the background when you copy or save. Use the "Background" button to turn it on or off.'>
           <Toggle label="Background on by default" value={s.beautify.applyOnCopy} onChange={(v) => set({ beautify: { applyOnCopy: v } })} />
         </Row>
+        <Row label="Compress images" desc='Smaller PNGs with fewer colors; text stays sharp. Use the "Compress" switch in the editor to turn it on or off.'>
+          <Toggle label="Compress images" value={s.compress.enabled} onChange={(enabled) => set({ compress: { enabled } })} />
+        </Row>
+        {s.compress.enabled && (
+          <>
+            <Row label="Compression" desc={s.compress.preset === 'standard' ? 'Fewer colors, same size.' : 'Fewer colors, and 1× size on Retina / HiDPI screens.'}>
+              <Segmented
+                label="Compression"
+                value={s.compress.preset}
+                options={[
+                  { value: 'standard', label: 'Standard' },
+                  { value: 'smallest', label: 'Smallest' }
+                ]}
+                onChange={(preset) => set({ compress: { preset } })}
+              />
+            </Row>
+            <Row label="Compress when">
+              <Segmented
+                label="Compress when"
+                value={s.compress.applyTo}
+                options={[
+                  { value: 'both', label: 'Copy and save' },
+                  { value: 'copy', label: 'Copy' },
+                  { value: 'save', label: 'Save' }
+                ]}
+                onChange={(applyTo) => set({ compress: { applyTo } })}
+              />
+            </Row>
+          </>
+        )}
       </Group>
 
       <Group title="Saving">

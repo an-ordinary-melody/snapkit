@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyPatch, DEFAULT_SETTINGS, defaultsFor, mergeSettings } from './settings'
+import { applyPatch, compressesFor, DEFAULT_SETTINGS, defaultsFor, mergeSettings } from './settings'
 
 describe('settings', () => {
   it('patches nested values without dropping their siblings', () => {
@@ -31,5 +31,18 @@ describe('defaultsFor', () => {
     expect(defaultsFor('win32').annotate.text.fontSize).toBe(26)
     expect(defaultsFor('darwin').annotate.text.fontSize).toBe(20)
     expect(defaultsFor('win32').annotate.text.strokeWidth).toBe(DEFAULT_SETTINGS.annotate.text.strokeWidth)
+  })
+})
+
+describe('compressesFor', () => {
+  it('compresses only the outputs the setting names, and only when the switch is on', () => {
+    expect(compressesFor('both', true, 'copy')).toBe(true)
+    expect(compressesFor('both', true, 'save')).toBe(true)
+    expect(compressesFor('copy', true, 'save')).toBe(false)
+    expect(compressesFor('save', true, 'save')).toBe(true)
+    expect(compressesFor('both', false, 'copy')).toBe(false)
+  })
+  it('is off by default', () => {
+    expect(DEFAULT_SETTINGS.compress).toEqual({ enabled: false, preset: 'standard', applyTo: 'both' })
   })
 })
