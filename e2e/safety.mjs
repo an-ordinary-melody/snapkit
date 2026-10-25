@@ -22,6 +22,7 @@ try {
   await hotkey()
   let open1 = false
   for (let i = 0; i < 30 && !open1; i++) { await wait(100); open1 = await capturing() }
+  await wait(500) // let it finish drawing the frozen screenshot, as a person would
   await hotkey(); await wait(400)
   console.log('hotkey toggles:', open1, '->', await capturing(), '|', lastLog(1))
 
