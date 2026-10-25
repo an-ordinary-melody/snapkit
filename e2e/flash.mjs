@@ -1,9 +1,8 @@
 // Windows: capture mode must open straight to the dim, with no white flash first.
-// Films the screen (e2e/film.cjs, with Snapkit's capture engine) while capture mode opens and reports
+// Films the screen (Electron's screen capturer, ~5–10 frames a second) while capture mode opens and reports
 // how much brighter than before the brightest frame got. The dim only ever makes it darker.
 // Usage: npm run build && node e2e/flash.mjs <out-dir>   (macOS: skipped)
 import { _electron as electron } from 'playwright-core'
-import { spawn } from 'child_process'
 import { mkdirSync, writeFileSync } from 'fs'
 import { join, resolve } from 'path'
 
@@ -23,16 +22,24 @@ try {
   await wait(3000)
   const results = []
   for (let round = 1; round <= 3; round++) {
-    const film = spawn(process.execPath, [join('e2e', 'film.cjs'), '2200'], { stdio: ['ignore', 'pipe', 'pipe'] })
-    let text = ''
-    film.stdout.on('data', (d) => (text += d))
-    film.stderr.on('data', (d) => process.stderr.write(d))
-    const killer = setTimeout(() => film.kill(), 20000)
-    const done = new Promise((r) => film.on('close', () => (clearTimeout(killer), r())))
+    // Film with Electron's own screen capturer (it sees see-through windows like the dim; GDI-based grabs don't).
+    await app.evaluate(({ desktopCapturer }, ms) => {
+      globalThis.__film = []
+      const t0 = Date.now()
+      void (async () => {
+        while (Date.now() - t0 < ms) {
+          const [src] = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 160, height: 120 } })
+          const bmp = src.thumbnail.toBitmap()
+          let sum = 0
+          for (let i = 0; i < bmp.length; i += 4) sum += (bmp[i] + bmp[i + 1] + bmp[i + 2]) / 3
+          globalThis.__film.push(`${Date.now() - t0} ${(sum / (bmp.length / 4)).toFixed(1)}`)
+        }
+      })()
+    }, 2200)
     await wait(700) // a few frames of the normal screen first
-    const t = Date.now()
     await app.evaluate(({ app }) => app.emit('second-instance', {}, []))
-    await done
+    await wait(1700)
+    const text = (await app.evaluate(() => globalThis.__film)).join('\n')
     const frames = text.trim().split(/\r?\n/).map((l) => l.split(' ').map(Number)).filter((f) => f.length === 2 && !isNaN(f[1]))
     const before = frames.filter(([ms]) => ms < 600).map(([, v]) => v)
     const baseline = before.reduce((a, b) => a + b, 0) / Math.max(1, before.length)
