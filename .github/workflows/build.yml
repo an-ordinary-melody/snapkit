@@ -71,7 +71,23 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
       # The website (site/) reads the newest release when it builds: rebuild it so the
-      # download buttons and changelog show this one. Skipped until the secret is set.
+      # download buttons and changelog show this one, then check the live site really offers
+      # this version, and try once more if not. Skipped until the secret is set.
       - name: Redeploy the website
         if: env.VERCEL_DEPLOY_HOOK != ''
-        run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK" > /dev/null
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          for attempt in 1 2; do
+            [ "$attempt" = 2 ] && sleep 30
+            curl -fsS -X POST "$VERCEL_DEPLOY_HOOK" > /dev/null
+            for i in $(seq 1 30); do
+              sleep 10
+              if curl -fsS https://snapkit-app.vercel.app/ | grep -q "Snapkit-${VERSION#v}-mac-arm64.dmg"; then
+                echo "The website now offers ${VERSION}."
+                exit 0
+              fi
+            done
+            echo "The website doesn't show ${VERSION} yet (attempt ${attempt})."
+          done
+          echo "::warning::The website still doesn't offer ${VERSION}. Run Actions → Redeploy website."
