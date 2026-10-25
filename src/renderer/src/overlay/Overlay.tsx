@@ -238,7 +238,8 @@ export function Overlay() {
       flushSync(() => {
         setScreen({ w: window.innerWidth, h: window.innerHeight })
         // Editing: the stored crop becomes the whole "screen", selected. "Capture last area": that area.
-        setSel(doc ? { x: 0, y: 0, w: doc.width / scale, h: doc.height / scale } : (p.area ?? null))
+        const a = p.area
+        setSel(doc ? { x: 0, y: 0, w: doc.width / scale, h: doc.height / scale } : a ? { ...a, w: Math.min(a.w, window.innerWidth - a.x), h: Math.min(a.h, window.innerHeight - a.y) } : null)
         setDrag(null)
         setCap({ session: p.session, width: p.width, height: p.height, scale, settings: p.settings, edit: !!doc, historyId: doc?.historyId })
         setHistory(doc ? { past: [], present: doc.shapes as Shape[], future: [] } : emptyHistory())

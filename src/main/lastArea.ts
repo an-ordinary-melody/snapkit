@@ -46,9 +46,9 @@ export function lastArea(): { display: Display; rect: Rectangle } | null {
   const displays = screen.getAllDisplays()
   const display = displays.find((d) => d.id === a.displayId) ?? displays.find((d) => same(d.bounds, a.displayBounds))
   if (!display) return null
-  // Keep it on the display (its resolution may have changed since).
-  const { width: dw, height: dh } = display.bounds
-  const x = Math.min(Math.max(0, a.rect.x), dw - 1)
-  const y = Math.min(Math.max(0, a.rect.y), dh - 1)
-  return { display, rect: { x, y, width: Math.min(a.rect.width, dw - x), height: Math.min(a.rect.height, dh - y) } }
+  // Keep its corner on the display (its resolution may have changed since). Capture mode trims the
+  // size to its window: the display's size here is rounded and can be a point short.
+  const x = Math.min(Math.max(0, a.rect.x), display.bounds.width - 1)
+  const y = Math.min(Math.max(0, a.rect.y), display.bounds.height - 1)
+  return { display, rect: { ...a.rect, x, y } }
 }

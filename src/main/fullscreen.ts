@@ -38,7 +38,9 @@ export function captureRect(display: Display, rect: Rectangle | null, t0 = Date.
       let { width, height } = grab
       if (rect) {
         const k = grab.width / display.bounds.width // image px per screen point
-        const crop = { x: Math.round(rect.x * k), y: Math.round(rect.y * k), width: Math.round(rect.width * k), height: Math.round(rect.height * k) }
+        const x = Math.round(rect.x * k)
+        const y = Math.round(rect.y * k)
+        const crop = { x, y, width: Math.min(Math.round(rect.width * k), grab.width - x), height: Math.min(Math.round(rect.height * k), grab.height - y) }
         const img = nativeImage.createFromBuffer(png).crop(crop)
         png = img.toPNG()
         ;({ width, height } = img.getSize())
