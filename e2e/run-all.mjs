@@ -64,6 +64,13 @@ const SUITES = {
     [/remembered after a restart: true/, 'the last area survives a restart'],
     [/renderer errors: none/, 'no page errors']
   ],
+  ruler: [
+    [/off by default: true/, 'Ruler tool is off by default'],
+    [/right after Blur: true/, 'Ruler sits right after Blur'],
+    [/measures in image pixels: true/, 'Ruler shows its length in image pixels'],
+    [/dragging an end updates the length: true/, 'dragging a ruler end updates the length'],
+    [/renderer errors: none/, 'no page errors']
+  ],
   textedit: [
     [/selected text, click -> \["Hello world",11\]/, 'click into selected text to edit it'],
     [/text now: Hello world!/, 'edits are kept'],

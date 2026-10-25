@@ -4,7 +4,7 @@ import { flushSync } from 'react-dom'
 import { Arrow, Circle, Ellipse, Group, Image as KImage, Label, Layer, Line, Rect as KRect, Stage, Tag, Text, Transformer } from 'react-konva'
 import type { Rect } from '../layout'
 import {
-  boxFromDrag, isMeaningful, moveShape, newId, openArrowHead, remove, snap45, snapBox, stepNumbers, upsert,
+  boxFromDrag, isMeaningful, moveShape, newId, openArrowHead, remove, rulerLabel, rulerTicks, snap45, snapBox, stepNumbers, upsert,
   type BlurShape, type Guide, type LineShape, type Shape, type Style, type TextShape, type ToolId
 } from './model'
 import { readableOn } from './color'
@@ -204,7 +204,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           return d && d.type === kind ? { ...d, points: [...d.points, x, y] } : base
         }
         case 'line':
-        case 'arrow': {
+        case 'arrow':
+        case 'ruler': {
           const [dx, dy] = shift ? snap45(x - x0, y - y0) : [x - x0, y - y0]
           // New arrows have an open head (filled heads only appear in older captures); the two-way style has one at each end.
           const arrow = kind === 'arrow' ? { head: 'open' as const, ...(props.variant === 'arrow-both' ? { bothEnds: true } : {}) } : {}
@@ -363,6 +364,8 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
           )
         case 'line':
           return <Line points={s.points} stroke={s.color} strokeWidth={s.width} lineCap="round" hitStrokeWidth={Math.max(12, s.width)} />
+        case 'ruler':
+          return <RulerNode shape={s} scale={scale} />
         case 'arrow': {
           const head = s.width * 2.5 + 8
           if (s.head === 'open') {
@@ -445,7 +448,7 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
     )
   }
 
-  const lineSel = selected && (selected.type === 'line' || selected.type === 'arrow') && !editing ? selected : null
+  const lineSel = selected && (selected.type === 'line' || selected.type === 'arrow' || selected.type === 'ruler') && !editing ? selected : null
   const containerCursor = cursor ?? (tool === 'text' ? 'text' : tool === 'step' ? STEP_CURSOR : tool ? 'crosshair' : 'move')
 
   return (
@@ -569,6 +572,29 @@ function TextNode({ shape: s }: { shape: TextShape }) {
         shadowOpacity={Number(s.shadow)}
       />
     </Label>
+  )
+}
+
+/** A ruler: the line, a tick across each end, and its length in image pixels on a pill in the middle. */
+function RulerNode({ shape: s, scale }: { shape: LineShape; scale: number }) {
+  const line = { stroke: s.color, strokeWidth: s.width, lineCap: 'round' as const, hitStrokeWidth: Math.max(12, s.width) }
+  const [a, b] = rulerTicks(s.points, s.width * 2 + 10)
+  const label = rulerLabel(s.points, scale)
+  const fontSize = Math.round(11 + s.width * 0.8)
+  const w = label.length * fontSize * 0.6 + fontSize
+  const h = fontSize + 8
+  const cx = (s.points[0] + s.points[2]) / 2
+  const cy = (s.points[1] + s.points[3]) / 2
+  return (
+    <>
+      <Line points={s.points} {...line} />
+      <Line points={a} {...line} />
+      <Line points={b} {...line} />
+      <Group x={cx - w / 2} y={cy - h / 2} name="ruler-label">
+        <KRect width={w} height={h} cornerRadius={h / 2} fill={s.color} />
+        <Text text={label} width={w} height={h} align="center" verticalAlign="middle" fontSize={fontSize} fontStyle="600" fill={readableOn(s.color)} />
+      </Group>
+    </>
   )
 }
 

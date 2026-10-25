@@ -6,7 +6,7 @@
  * selection rect. Export scales them up to image pixels.
  */
 
-export type ToolId = 'pen' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'highlighter' | 'text' | 'step' | 'blur'
+export type ToolId = 'pen' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'highlighter' | 'text' | 'step' | 'blur' | 'ruler'
 
 interface Base {
   id: string
@@ -21,7 +21,8 @@ export interface StrokeShape extends Base {
 }
 
 export interface LineShape extends Base {
-  type: 'line' | 'arrow'
+  /** 'ruler': a line with end ticks and its length in pixels. */
+  type: 'line' | 'arrow' | 'ruler'
   points: [number, number, number, number]
   color: string
   width: number
@@ -40,6 +41,23 @@ export function openArrowHead(points: LineShape['points'], length: number): numb
     x2 - length * Math.cos(a - spread), y2 - length * Math.sin(a - spread),
     x2, y2,
     x2 - length * Math.cos(a + spread), y2 - length * Math.sin(a + spread)
+  ]
+}
+
+/** A ruler's length in image pixels (`scale`: image px per overlay px), e.g. "240 px". */
+export function rulerLabel(points: LineShape['points'], scale: number): string {
+  return `${Math.round(Math.hypot(points[2] - points[0], points[3] - points[1]) * scale)} px`
+}
+
+/** A ruler's end ticks: two short strokes across the line, as [x1, y1, x2, y2] each. */
+export function rulerTicks(points: LineShape['points'], length: number): [number[], number[]] {
+  const [x1, y1, x2, y2] = points
+  const d = Math.hypot(x2 - x1, y2 - y1) || 1
+  const nx = (-(y2 - y1) / d) * (length / 2)
+  const ny = ((x2 - x1) / d) * (length / 2)
+  return [
+    [x1 - nx, y1 - ny, x1 + nx, y1 + ny],
+    [x2 - nx, y2 - ny, x2 + nx, y2 + ny]
   ]
 }
 
@@ -160,6 +178,7 @@ export function isMeaningful(s: Shape): boolean {
       return s.points.length >= 4
     case 'line':
     case 'arrow':
+    case 'ruler':
       return Math.hypot(s.points[2] - s.points[0], s.points[3] - s.points[1]) >= 4
     case 'rect':
     case 'ellipse':
@@ -179,6 +198,7 @@ export function moveShape(s: Shape, dx: number, dy: number): Shape {
       return { ...s, points: s.points.map((v, i) => v + (i % 2 ? dy : dx)) }
     case 'line':
     case 'arrow':
+    case 'ruler':
       return { ...s, points: [s.points[0] + dx, s.points[1] + dy, s.points[2] + dx, s.points[3] + dy] }
     default:
       return { ...s, x: s.x + dx, y: s.y + dy }

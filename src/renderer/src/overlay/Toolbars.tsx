@@ -1,5 +1,5 @@
 import {
-  Check, Circle, Copy, Droplets, Hash, Highlighter, Pencil, Pin, Redo2, Save, Slash, Square, Type, Undo2, WandSparkles, X,
+  Check, Circle, Copy, Droplets, Hash, Highlighter, Pencil, Pin, Redo2, Ruler, Save, Slash, Square, Type, Undo2, WandSparkles, X,
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
@@ -9,7 +9,7 @@ import { placeStyleBar, placeToolbars, type Rect, type Size } from './layout'
 
 const ICONS: Record<string, LucideIcon> = {
   pen: Pencil, line: Slash, rect: Square, ellipse: Circle, highlighter: Highlighter, text: Type,
-  step: Hash, blur: Droplets, undo: Undo2, redo: Redo2, beautifyEdit: WandSparkles, pin: Pin, save: Save, copy: Copy, close: X
+  step: Hash, blur: Droplets, ruler: Ruler, undo: Undo2, redo: Redo2, beautifyEdit: WandSparkles, pin: Pin, save: Save, copy: Copy, close: X
 }
 
 /** Icon for a tool variant: the base shape, outlined or filled. */

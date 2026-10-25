@@ -96,7 +96,7 @@ npm run build:mac  # or build:win (run on that OS)
 
 | Code you changed | Suites to run (or put on the backlog) |
 |---|---|
-| Drawing tools, text, snapping (`overlay/annotate/`) | annotate, textedit, snap, regressions |
+| Drawing tools, text, snapping, ruler (`overlay/annotate/`) | annotate, textedit, snap, ruler, regressions |
 | Background editor, zoom (`overlay/beautify/`) | regressions, annotate, snap, compress |
 | Capture mode UI (`Overlay.tsx`, `Toolbars.tsx`, `layout.ts`) | annotate, regressions, pin, safety |
 | Capture flow, engines (`main/overlay.ts`, `main/capture/`) | safety, pin, fullscreen, regressions |

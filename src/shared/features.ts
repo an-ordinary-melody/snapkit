@@ -82,6 +82,7 @@ export const FEATURES: FeatureDef[] = [
   { id: 'text', drawing: true, label: 'Text', kind: 'tool', hint: 'T', implemented: true, defaultEnabled: true },
   { id: 'step', drawing: true, label: 'Numbered step', kind: 'tool', hint: 'N', implemented: true, defaultEnabled: true },
   { id: 'blur', drawing: true, label: 'Blur', kind: 'tool', hint: 'B', implemented: true, defaultEnabled: true },
+  { id: 'ruler', drawing: true, label: 'Ruler', kind: 'tool', hint: 'M', implemented: true, defaultEnabled: false, tipNote: 'Measures in pixels. Hold Shift for 45°' },
   { id: 'color', label: 'Color', kind: 'tool', implemented: true, defaultEnabled: true },
   { id: 'undo', label: 'Undo', kind: 'tool', hint: '⌘Z', implemented: true, defaultEnabled: true },
   { id: 'redo', label: 'Redo', kind: 'tool', hint: '⇧⌘Z', implemented: true, defaultEnabled: false },

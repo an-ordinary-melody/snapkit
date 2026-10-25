@@ -1,13 +1,13 @@
 import { ChevronDown, ChevronUp, GripVertical, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { FEATURES, type FeatureDef } from '@shared/features'
-import { visibleFeatures, type Settings } from '@shared/settings'
+import { toolbarOrder, visibleFeatures, type Settings } from '@shared/settings'
 import { FeatureIcon } from '../overlay/Toolbars'
 import { ColorField, Group, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
 import type { SectionProps } from './Settings'
 
 /** The user's full order: saved ids first, then any new features. */
-const fullOrder = (s: Settings) => [...s.toolbarOrder, ...FEATURES.map((f) => f.id).filter((id) => !s.toolbarOrder.includes(id))]
+const fullOrder = (s: Settings) => toolbarOrder(s)
 
 export function ToolbarSection({ snap, set }: SectionProps) {
   const s = snap.settings

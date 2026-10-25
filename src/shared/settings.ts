@@ -320,9 +320,24 @@ export function mergeSettings(defaults: Settings, saved: unknown): Settings {
   return merge(defaults, saved) as Settings
 }
 
+/**
+ * Every feature id in the user's toolbar order. Ids missing from a saved order
+ * (features added in an update) go right after the feature they follow in
+ * FEATURES, e.g. a new tool after Blur, not at the end.
+ */
+export function toolbarOrder(settings: Settings): string[] {
+  const order = settings.toolbarOrder.filter((id) => FEATURES.some((f) => f.id === id))
+  FEATURES.forEach((f, i) => {
+    if (order.includes(f.id)) return
+    const after = i > 0 ? order.indexOf(FEATURES[i - 1].id) : -1
+    order.splice(after + 1, 0, f.id)
+  })
+  return order
+}
+
 /** Enabled features of one kind, in the user's chosen order. */
 export function visibleFeatures(settings: Settings, kind: 'tool' | 'action') {
-  const order = [...settings.toolbarOrder, ...FEATURES.map((f) => f.id).filter((id) => !settings.toolbarOrder.includes(id))]
+  const order = toolbarOrder(settings)
   return order
     .map((id) => FEATURES.find((f) => f.id === id))
     .filter((f): f is (typeof FEATURES)[number] => !!f && f.kind === kind)

@@ -117,6 +117,7 @@ function styleOf(s: Shape, base: Style, widths: number[]): Style {
     case 'pen':
     case 'line':
     case 'arrow':
+    case 'ruler':
     case 'rect':
     case 'ellipse':
       return { ...base, color: s.color, widthIndex: widthIndex(s.width) }
@@ -137,6 +138,7 @@ function restyle(s: Shape, patch: Partial<Style>, widths: number[]): Shape {
     case 'pen':
     case 'line':
     case 'arrow':
+    case 'ruler':
     case 'rect':
     case 'ellipse':
       return { ...s, color: patch.color ?? s.color, width: patch.widthIndex !== undefined ? widths[patch.widthIndex] : s.width }

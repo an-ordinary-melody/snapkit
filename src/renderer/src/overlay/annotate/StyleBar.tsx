@@ -8,8 +8,8 @@ import type { Shape, Style, ToolId } from './model'
 /** What the style bar is editing: the active tool, or the selected shape's type. */
 export type StyleTarget = ToolId | Shape['type']
 
-const STROKED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse'])
-const COLORED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'rect', 'ellipse', 'text', 'step', 'highlighter'])
+const STROKED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'ruler', 'rect', 'ellipse'])
+const COLORED = new Set<StyleTarget>(['pen', 'line', 'arrow', 'ruler', 'rect', 'ellipse', 'text', 'step', 'highlighter'])
 
 /** Nothing to show for this target. */
 export const hasStyleOptions = (t: StyleTarget) => COLORED.has(t) || t === 'blur'

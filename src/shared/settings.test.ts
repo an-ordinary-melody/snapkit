@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyPatch, compressesFor, DEFAULT_SETTINGS, defaultsFor, mergeSettings } from './settings'
+import { applyPatch, compressesFor, DEFAULT_SETTINGS, defaultsFor, mergeSettings, toolbarOrder } from './settings'
 
 describe('settings', () => {
   it('patches nested values without dropping their siblings', () => {
@@ -44,5 +44,16 @@ describe('compressesFor', () => {
   })
   it('is off by default', () => {
     expect(DEFAULT_SETTINGS.compress).toEqual({ enabled: false, preset: 'standard', applyTo: 'both' })
+  })
+})
+
+describe('toolbarOrder', () => {
+  it('puts a tool added in an update right after the one it follows, keeping the saved order', () => {
+    const saved = DEFAULT_SETTINGS.toolbarOrder.filter((id) => id !== 'ruler')
+    const custom = ['blur', ...saved.filter((id) => id !== 'blur')] // the user moved Blur first
+    const order = toolbarOrder({ ...DEFAULT_SETTINGS, toolbarOrder: custom })
+    expect(order.indexOf('ruler')).toBe(order.indexOf('blur') + 1)
+    expect(order.slice(0, 2)).toEqual(['blur', 'ruler'])
+    expect(order).toHaveLength(DEFAULT_SETTINGS.toolbarOrder.length)
   })
 })

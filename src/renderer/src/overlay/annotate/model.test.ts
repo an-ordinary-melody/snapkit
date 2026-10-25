@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxFromDrag, commit, emptyHistory, isMeaningful, moveShape, openArrowHead, redo, remove, snap45, snapBox, stepNumbers, undo, upsert, type Shape } from './model'
+import { boxFromDrag, commit, emptyHistory, isMeaningful, moveShape, openArrowHead, redo, remove, rulerLabel, rulerTicks, snap45, snapBox, stepNumbers, undo, upsert, type Shape } from './model'
 
 const step = (id: string): Shape => ({ id, type: 'step', x: 0, y: 0, size: 20, color: 'red' })
 const rect = (id: string, x = 0): Shape => ({ id, type: 'rect', x, y: 0, w: 10, h: 10, color: 'red', width: 2 })
@@ -108,5 +108,17 @@ describe('snapBox', () => {
 
   it('leaves the box alone when nothing is close', () => {
     expect(snapBox({ x: 400, y: 400, w: 10, h: 10 }, [target], 6)).toEqual({ dx: 0, dy: 0, guides: [] })
+  })
+})
+
+describe('ruler', () => {
+  it('labels its length in image pixels', () => {
+    expect(rulerLabel([0, 0, 300, 400], 1)).toBe('500 px')
+    expect(rulerLabel([10, 10, 110, 10], 2)).toBe('200 px')
+  })
+  it('puts a tick across each end', () => {
+    const [a, b] = rulerTicks([0, 0, 100, 0], 10)
+    expect(a).toEqual([0, -5, 0, 5])
+    expect(b).toEqual([100, -5, 100, 5])
   })
 })
