@@ -27,15 +27,15 @@ const capture = async (setup) => {
 }
 try {
   await wait(2500)
-  const scale = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().scaleFactor)
   const win0 = await capture()
-  console.log('screen (info):', JSON.stringify(await app.evaluate(({ screen }) => ({ ...screen.getPrimaryDisplay().bounds, scale: screen.getPrimaryDisplay().scaleFactor }))), '| overlay css width:', await win0.evaluate(() => [window.innerWidth, window.devicePixelRatio]))
+  // The drag (150 → 750) is clipped on a small screen (the 150% CI run has a 456 px wide screen).
+  const selWidth = Math.min(750, await win0.evaluate(() => window.innerWidth)) - 150
   await win0.keyboard.press('Escape'); await wait(500)
 
   let win = await capture()
   await win.click('.toolbar button[data-tip="Copy"]'); await wait(1500)
   const std = await clip()
-  console.log('standard copy: exact PNG on the clipboard:', std.bytes > 0, '| smaller than a plain PNG:', std.bytes < std.plain, '| full size:', std.width === Math.round(600 * scale), JSON.stringify(std))
+  console.log('standard copy: exact PNG on the clipboard:', std.bytes > 0, '| smaller than a plain PNG:', std.bytes < std.plain, '| full size:', std.width >= selWidth, JSON.stringify(std))
 
   // The editor starts with Compress on (the setting) and shows the size; switching it off copies the original.
   win = await capture(async (w) => { await w.click('.toolbar button[data-tip="Edit background"]'); await wait(1500) })
@@ -52,6 +52,6 @@ try {
   win = await capture()
   await win.click('.toolbar button[data-tip="Copy"]'); await wait(1500)
   const small = await clip()
-  console.log('smallest copy is 1× size:', small.width === 600, JSON.stringify(small))
+  console.log('smallest copy is 1× size:', small.width === selWidth, JSON.stringify(small))
   console.log('renderer errors:', errors.length ? errors.join(' | ') : 'none')
 } finally { await app.close() }
