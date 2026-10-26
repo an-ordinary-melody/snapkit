@@ -3,6 +3,7 @@ import { join } from 'path'
 import { type Settings, type SettingsPatch } from '@shared/settings'
 import { IPC, type SettingsSnapshot } from '@shared/ipc'
 import { engineInfo } from './capture'
+import { ocrEngineInfo } from './ocr'
 import { defaultSaveFolder } from './output'
 import { ipcHandle, ipcOn } from './security'
 import { DEFAULTS, getSettings, onSettingsChange, resetSettings, settingsFile, updateSettings } from './settings'
@@ -17,7 +18,8 @@ const snapshot = (): SettingsSnapshot => ({
   hotkeysTaken: takenHotkeys(),
   version: app.getVersion(),
   defaultSaveFolder: defaultSaveFolder(),
-  engines: engineInfo()
+  engines: engineInfo(),
+  ocrEngines: ocrEngineInfo()
 })
 
 /**

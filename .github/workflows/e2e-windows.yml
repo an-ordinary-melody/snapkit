@@ -23,6 +23,11 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build
+      - name: OCR languages (installed, and the packs Windows offers)
+        shell: pwsh
+        run: |
+          if (Test-Path build/ocr/snapkit-ocr.exe) { "Can read now: $(./build/ocr/snapkit-ocr.exe --languages)" }
+          Get-WindowsCapability -Online -Name 'Language.OCR*' | Select-Object Name, State | Format-Table -AutoSize | Out-String -Width 200
       - name: Run suites
         shell: bash
         env:

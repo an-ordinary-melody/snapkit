@@ -3,7 +3,8 @@ import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { IPC, type CaptureDoc, type PinState } from '@shared/ipc'
 import { log } from './log'
-import { ipcOn } from './security'
+import { copyTextFrom } from './ocr'
+import { ipcHandle, ipcOn } from './security'
 import { copyPng, savePng, timestampName } from './output'
 import { getSettings } from './settings'
 import { startEdit } from './overlay'
@@ -271,7 +272,7 @@ function showMenu(p: Pin) {
 }
 
 export function registerPinIpc() {
-  const of = (e: Electron.IpcMainEvent) => pins.get(e.sender.id)
+  const of = (e: { sender: Electron.WebContents }) => pins.get(e.sender.id)
 
   ipcOn(IPC.pinReady, (e) => {
     const p = of(e)
@@ -304,6 +305,10 @@ export function registerPinIpc() {
   ipcOn(IPC.pinCopy, (e) => {
     const p = of(e)
     if (p) void copyPng(p.png, { scale: p.doc?.scale })
+  })
+  ipcHandle(IPC.pinCopyText, async (e) => {
+    const p = of(e)
+    return p ? copyTextFrom(p.png, getSettings().ocr.engine) : 0
   })
   ipcOn(IPC.pinSave, (e) => {
     const p = of(e)

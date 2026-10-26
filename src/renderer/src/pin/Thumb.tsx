@@ -1,4 +1,4 @@
-import { Copy, Move, PencilLine, Pin, X } from 'lucide-react'
+import { Copy, Move, PencilLine, Pin, ScanText, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { applyTheme } from '../theme'
 
@@ -47,6 +47,15 @@ export function Thumb() {
     el.addEventListener('pointerup', onUp)
   }
 
+  /** Copy text: shows "Reading…", then how many lines were copied (or that there's none). */
+  const [textState, setTextState] = useState<string | null>(null)
+  const copyText = async () => {
+    setTextState('Reading…')
+    const n = await api.pinCopyText()
+    setTextState(n > 0 ? `Copied ${n} line${n === 1 ? '' : 's'}` : n === 0 ? 'No text' : "Couldn't read")
+    setTimeout(() => setTextState(null), 1500)
+  }
+
   const copy = () => {
     api.pinCopy()
     setCopied(true)
@@ -72,6 +81,9 @@ export function Thumb() {
         </button>
         <button className="thumb-btn" onClick={() => api.thumbEdit()}>
           <PencilLine size={14} /> Edit
+        </button>
+        <button className="thumb-btn" title="Copy text" onClick={() => void copyText()}>
+          <ScanText size={14} /> {textState ?? 'Text'}
         </button>
       </div>
       <button className="thumb-icon thumb-pin" aria-label="Pin to screen" title="Pin to screen" onClick={() => api.thumbPin()}>

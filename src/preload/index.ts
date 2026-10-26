@@ -22,6 +22,8 @@ const api: SnapkitApi = {
   editDone: (s, png, doc) => ipcRenderer.send(IPC.editDone, s, png, doc),
   readImage: (path) => ipcRenderer.invoke(IPC.readImage, path),
   compressedSize: (png, scale, preset) => ipcRenderer.invoke(IPC.compressedSize, png, scale, preset),
+  ocr: (png) => ipcRenderer.invoke(IPC.ocr, png),
+  copyText: (s, text, closeAfterMs) => ipcRenderer.send(IPC.copyText, s, text, closeAfterMs),
 
   onPinImage: (cb) => ipcRenderer.on(IPC.pinImage, (_e, p) => cb(p)),
   onPinState: (cb) => ipcRenderer.on(IPC.pinState, (_e, p) => cb(p)),
@@ -30,6 +32,8 @@ const api: SnapkitApi = {
   pinZoom: (z, ax, ay) => ipcRenderer.send(IPC.pinZoom, z, ax, ay),
   pinOpacity: (o) => ipcRenderer.send(IPC.pinOpacity, o),
   pinCopy: () => ipcRenderer.send(IPC.pinCopy),
+  pinCopyText: () => ipcRenderer.invoke(IPC.pinCopyText),
+  historyCopyText: (id) => ipcRenderer.invoke(IPC.historyCopyText, id),
   pinSave: () => ipcRenderer.send(IPC.pinSave),
   pinClose: () => ipcRenderer.send(IPC.pinClose),
   pinDragOut: () => ipcRenderer.send(IPC.pinDragOut),

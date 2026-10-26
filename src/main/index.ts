@@ -28,7 +28,9 @@ if (!app.requestSingleInstanceLock()) {
         ? fullscreen()
         : argv.includes('--last-area')
           ? captureLastArea()
-          : capture()
+          : argv.includes('--text')
+            ? captureText()
+            : capture()
   )
   app.whenReady().then(init)
 }
@@ -66,7 +68,23 @@ function captureLastArea() {
   void ensureScreenPermission().then((ok) => ok && go())
 }
 
-const HOTKEY_ACTIONS = { capture, history: () => toggleHistoryPanel(), fullscreen: () => fullscreen(), settings: () => openSettings(), lastArea: captureLastArea }
+/** "Capture text": drag an area and its text is copied. Synchronous until the screen grab has started, like capture(). */
+function captureText() {
+  const t0 = Date.now()
+  if (hasScreenPermission()) return void startCapture(t0, undefined, true)
+  void ensureScreenPermission().then((ok) => {
+    if (ok) void startCapture(t0, undefined, true)
+  })
+}
+
+const HOTKEY_ACTIONS = {
+  capture,
+  history: () => toggleHistoryPanel(),
+  fullscreen: () => fullscreen(),
+  settings: () => openSettings(),
+  lastArea: captureLastArea,
+  ocr: captureText
+}
 
 /** From anywhere, capture mode included (it closes, so the window isn't hidden behind it). */
 function openSettings() {
@@ -98,7 +116,7 @@ function init() {
   setInterval(() => void prune(), 6 * 60 * 60 * 1000).unref()
   registerHistoryIpc()
   preloadHistoryPanel()
-  createTray(capture, openSettings, toggleHistoryPanel, fullscreen, captureLastArea)
+  createTray(capture, openSettings, toggleHistoryPanel, fullscreen, captureLastArea, captureText)
   registerHotkeys(HOTKEY_ACTIONS, true)
   onCaptureMode(captureModeChanged)
   registerSettingsIpc(setHotkey)

@@ -6,15 +6,15 @@ import { lastUpdateCheck } from './system'
 import { getSettings, updateSettings } from './settings'
 
 let tray: Tray | null = null
-let actions: { capture(): void; settings(): void; history(): void; fullscreen(): void; lastArea(): void } | null = null
+let actions: { capture(): void; settings(): void; history(): void; fullscreen(): void; lastArea(): void; text(): void } | null = null
 
 function iconPath() {
   const dir = app.isPackaged ? process.resourcesPath : join(__dirname, '../../resources')
   return process.platform === 'darwin' ? join(dir, 'trayTemplate.png') : join(dir, 'tray.png')
 }
 
-export function createTray(onCapture: () => void, onSettings: () => void, onHistory: () => void, onFullscreen: () => void, onLastArea: () => void) {
-  actions = { capture: onCapture, settings: onSettings, history: onHistory, fullscreen: onFullscreen, lastArea: onLastArea }
+export function createTray(onCapture: () => void, onSettings: () => void, onHistory: () => void, onFullscreen: () => void, onLastArea: () => void, onText: () => void) {
+  actions = { capture: onCapture, settings: onSettings, history: onHistory, fullscreen: onFullscreen, lastArea: onLastArea, text: onText }
   const icon = nativeImage.createFromPath(iconPath())
   if (process.platform === 'darwin') icon.setTemplateImage(true)
   tray = new Tray(icon)
@@ -25,8 +25,8 @@ export function createTray(onCapture: () => void, onSettings: () => void, onHist
 
 export function refreshTrayMenu() {
   if (!tray || !actions) return
-  const { capture: onCapture, settings: onSettings, history: onHistory, fullscreen: onFullscreen, lastArea: onLastArea } = actions
-  const { history: historyKey, fullscreen: fullscreenKey, settings: settingsKey, lastArea: lastAreaKey } = getSettings().hotkeys
+  const { capture: onCapture, settings: onSettings, history: onHistory, fullscreen: onFullscreen, lastArea: onLastArea, text: onText } = actions
+  const { history: historyKey, fullscreen: fullscreenKey, settings: settingsKey, lastArea: lastAreaKey, ocr: textKey } = getSettings().hotkeys
   const paused = getSettings().history.paused
   const update = lastUpdateCheck()
   const hotkey = getSettings().hotkeys.capture
@@ -35,6 +35,7 @@ export function refreshTrayMenu() {
       { label: 'Capture Area', accelerator: hotkey, click: onCapture },
       { label: 'Capture Last Area', accelerator: lastAreaKey || undefined, click: onLastArea },
       { label: 'Capture Full Screen', accelerator: fullscreenKey || undefined, click: onFullscreen },
+      { label: 'Capture Text', accelerator: textKey || undefined, click: onText },
       { type: 'separator' },
       { label: 'History…', accelerator: historyKey || undefined, click: onHistory },
       // Same as the History window's switch: checked = recording.

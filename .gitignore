@@ -10,3 +10,6 @@ e2e/.backlog.json
 branding/
 .vercel
 .env*
+
+# Text-recognition helpers, built by scripts/build-ocr.mjs
+build/ocr/

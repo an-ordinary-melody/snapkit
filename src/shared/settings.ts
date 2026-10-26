@@ -39,6 +39,8 @@ export interface Settings {
     settings: string
     /** Captures the last area copied or saved again. '' = none. */
     lastArea: string
+    /** Capture text: drag an area and its text is copied. '' = none. */
+    ocr: string
   }
   /** Update checks: notify and download; nothing installs by itself. */
   updates: {
@@ -95,6 +97,13 @@ export interface Settings {
     name: NameRule
     /** The number used in the next name (when the rule has a number). */
     nextNumber: number
+  }
+  /** Text recognition (OCR). */
+  ocr: {
+    /** 'auto' (this OS's own) or an engine id: vision (macOS), windows. */
+    engine: string
+    /** The Copy text button: open the text panel to check it first, or copy right away. */
+    textButton: 'panel' | 'copy'
   }
   /** Smaller PNGs on the way out (copy / save); history and the floating preview keep the original. */
   compress: {
@@ -187,7 +196,8 @@ export const DEFAULT_SETTINGS: Settings = {
     history: 'CommandOrControl+Shift+1',
     fullscreen: 'CommandOrControl+Shift+9',
     settings: 'CommandOrControl+Shift+2',
-    lastArea: 'Alt+Shift+X'
+    lastArea: 'Alt+Shift+X',
+    ocr: 'Alt+Shift+T'
   },
   updates: {
     autoCheck: true,
@@ -220,6 +230,10 @@ export const DEFAULT_SETTINGS: Settings = {
     lastFolder: '',
     name: DEFAULT_NAME_RULE,
     nextNumber: 1
+  },
+  ocr: {
+    engine: 'auto',
+    textButton: 'panel'
   },
   compress: {
     enabled: false,

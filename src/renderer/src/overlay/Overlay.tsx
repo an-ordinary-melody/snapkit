@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { FEATURES } from '@shared/features'
-import type { CaptureDoc } from '@shared/ipc'
+import type { CaptureDoc, OcrResult } from '@shared/ipc'
 import { visibleFeatures, type CompressPreset, type Settings } from '@shared/settings'
 import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
 import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
@@ -12,6 +12,7 @@ import { backgroundOf, stateFromPreset, type BeautifyState } from './beautify/la
 import { renderBeautified } from './beautify/render'
 import { moveRect, rectFromPoints, resizeRect, type Handle, type Point, type Rect } from './layout'
 import { applyTheme } from '../theme'
+import { OcrHighlights, OcrPanel } from './OcrPanel'
 import { Toolbars } from './Toolbars'
 
 const api = window.snapkit
@@ -32,6 +33,8 @@ interface Capture {
   edit: boolean
   /** Editing a history entry: outputs update it. */
   historyId?: string
+  /** "Capture text": the area drawn is read and its text copied. */
+  textOnly: boolean
 }
 
 const HANDLES: { id: Handle; x: number; y: number; cursor: string }[] = [
@@ -207,6 +210,10 @@ export function Overlay() {
   const [editorOpen, setEditorOpen] = useState(false)
   /** Floating preview after copy, for this capture (the pin button). */
   const [floating, setFloating] = useState(false)
+  /** Text recognition: reading, or the lines found (shown over the selection, with the text panel). */
+  const [ocr, setOcr] = useState<null | { reading: true } | { reading: false; result: OcrResult }>(null)
+  /** A short message over the screen (e.g. "Copied 3 lines of text"). */
+  const [note, setNote] = useState<string | null>(null)
   /** Compress for this capture (starts from the setting; the editor's Compress switch changes it). */
   const [compress, setCompress] = useState<CompressState>({ on: false, preset: 'standard' })
   const capRef = useRef(cap)
@@ -243,7 +250,9 @@ export function Overlay() {
         const a = p.area
         setSel(doc ? { x: 0, y: 0, w: doc.width / scale, h: doc.height / scale } : a ? { ...a, w: Math.min(a.w, window.innerWidth - a.x), h: Math.min(a.h, window.innerHeight - a.y) } : null)
         setDrag(null)
-        setCap({ session: p.session, width: p.width, height: p.height, scale, settings: p.settings, edit: !!doc, historyId: doc?.historyId })
+        setCap({ session: p.session, width: p.width, height: p.height, scale, settings: p.settings, edit: !!doc, historyId: doc?.historyId, textOnly: !!p.textOnly })
+        setOcr(null)
+        setNote(null)
         setHistory(doc ? { past: [], present: doc.shapes as Shape[], future: [] } : emptyHistory())
         setTool(null)
         setSelectedId(null)
@@ -366,6 +375,40 @@ export function Overlay() {
     [composeSelection, cap]
   )
 
+  /**
+   * Copy text: read the text in the selection (the screenshot only, not the drawings). It opens the
+   * text panel, or with "Capture text" (or the copy-right-away setting) copies it and closes.
+   */
+  const readText = useCallback(
+    async (r: Rect) => {
+      if (!cap || busy.current) return
+      annRef.current?.finishEditing()
+      setSelectedId(null)
+      setTool(null)
+      setOcr({ reading: true })
+      await painted.current.promise
+      const png = await (await toBlob(composeSelection(r, cap.scale, false), 'image/png')).arrayBuffer()
+      const res = await api.ocr(png)
+      if ('error' in res) {
+        setOcr(null)
+        setNote(`Couldn't read the text: ${res.error}`)
+        return
+      }
+      const text = res.lines.map((l) => l.text).join('\n')
+      if (!text.trim()) {
+        setOcr(null)
+        setNote('No text found')
+        return
+      }
+      if (!cap.textOnly && cap.settings.ocr.textButton === 'panel') return setOcr({ reading: false, result: res })
+      setOcr({ reading: false, result: res })
+      setNote(`Copied ${res.lines.length} line${res.lines.length === 1 ? '' : 's'} of text`)
+      busy.current = true
+      api.copyText(cap.session, text, 600) // copied now; capture mode closes after the message
+    },
+    [cap, composeSelection]
+  )
+
   const runAction = useCallback(
     async (id: string) => {
       if (!cap || busy.current) return
@@ -392,6 +435,7 @@ export function Overlay() {
       }
       if (id === 'pin') return setFloating((f) => !f)
       if (!sel) return
+      if (id === 'ocr') return void readText(sel)
       if (id === 'copy' || id === 'save' || id === 'editDone') {
         busy.current = true
         try {
@@ -419,8 +463,18 @@ export function Overlay() {
         }
       }
     },
-    [cap, sel, renderOutput, floating, snapshotDoc, compress]
+    [cap, sel, renderOutput, floating, snapshotDoc, compress, readText]
   )
+
+  /** Actions switched on in the toolbar (e.g. Copy text, for its X key). */
+  const actionIds = useMemo(() => new Set(cap ? visibleFeatures(cap.settings, 'action').map((f) => f.id) : []), [cap])
+
+  // Messages fade after a moment.
+  useEffect(() => {
+    if (!note) return
+    const t = setTimeout(() => setNote(null), 1800)
+    return () => clearTimeout(t)
+  }, [note])
 
   /** Letter -> drawing tool, for the tools that are switched on. */
   const toolKeys = useMemo(() => {
@@ -468,7 +522,8 @@ export function Overlay() {
       const selectedShape = shapes.find((x) => x.id === selectedId)
       if (e.key === 'Escape') {
         e.preventDefault()
-        if (selectedShape) setSelectedId(null)
+        if (ocr && !ocr.reading && !cap.textOnly) setOcr(null)
+        else if (selectedShape) setSelectedId(null)
         else api.cancel(cap.session)
       } else if (mod && key === 'z') {
         e.preventDefault()
@@ -486,6 +541,9 @@ export function Overlay() {
         const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0
         const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0
         onCommit(upsert(shapes, moveShape(selectedShape, dx, dy)))
+      } else if (!mod && !e.altKey && sel && key === 'x' && actionIds.has('ocr')) {
+        e.preventDefault()
+        void runAction('ocr')
       } else if (!mod && !e.altKey && sel && toolKeys.has(key)) {
         e.preventDefault()
         void runAction(toolKeys.get(key)!)
@@ -513,7 +571,7 @@ export function Overlay() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [cap, sel, screen, runAction, shapes, selectedId, toolKeys, onCommit, editorOpen])
+  }, [cap, sel, screen, runAction, shapes, selectedId, toolKeys, onCommit, editorOpen, ocr, actionIds])
 
   // ---- mouse ----------------------------------------------------------------
   const point = (e: React.PointerEvent): Point => ({ x: e.clientX, y: e.clientY })
@@ -532,6 +590,7 @@ export function Overlay() {
     else {
       setDrag({ kind: 'create', origin: p })
       setSel({ x: p.x, y: p.y, w: 0, h: 0 })
+      setOcr(null)
       api.selectionStarted(cap.session)
     }
   }
@@ -551,6 +610,7 @@ export function Overlay() {
   const onPointerUp = () => {
     if (drag?.kind === 'create' && sel) {
       if (sel.w < MIN_SIZE || sel.h < MIN_SIZE) setSel(null)
+      else if (cap?.textOnly) void readText(sel)
       else if (cap?.settings.capture.quickCopy) setQuickCopyDue(true)
     }
     setDrag(null)
@@ -593,7 +653,8 @@ export function Overlay() {
   const accent = s?.capture.accentColor ?? '#3b82f6'
   const scale = cap?.scale ?? 1
   const hasSel = !!(cap && sel && sel.w >= MIN_SIZE && sel.h >= MIN_SIZE)
-  const showToolbars = hasSel && !drag
+  // The text panel takes the toolbars' place while it's open.
+  const showToolbars = hasSel && !drag && !cap?.textOnly && !(ocr && !ocr.reading && cap?.settings.ocr.textButton === 'panel')
 
   const selectedShape = shapes.find((x) => x.id === selectedId)
   const styleTarget: StyleTarget | null = selectedShape?.type ?? tool
@@ -779,6 +840,13 @@ export function Overlay() {
       )}
 
       {showToolbars && !editorOpen && toolbars(false)}
+
+      {cap?.textOnly && !sel && <div className="ocr-hint">Drag over text to copy it</div>}
+      {ocr && sel && (ocr.reading ? <div className="size-label ocr-reading" style={{ left: sel.x, top: sel.y + sel.h + 6 }}>Reading text…</div> : <OcrHighlights lines={ocr.result.lines} sel={sel} />)}
+      {ocr && !ocr.reading && sel && cap && !cap.textOnly && cap.settings.ocr.textButton === 'panel' && (
+        <OcrPanel lines={ocr.result.lines} ms={ocr.result.ms} sel={sel} screen={screen} onClose={() => setOcr(null)} onCopy={(text) => text.trim() && api.copyText(cap.session, text)} />
+      )}
+      {note && <div className="ocr-note">{note}</div>}
     </div>
   )
 }

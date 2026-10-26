@@ -19,6 +19,17 @@ export function General({ snap, set }: SectionProps) {
         <Row label="Quick area capture" desc="Copies the area the moment you let go. No editing step.">
           <Toggle label="Quick area capture" value={s.capture.quickCopy} onChange={(quickCopy) => set({ capture: { quickCopy } })} />
         </Row>
+        <Row label="Copy text" desc={s.ocr.textButton === 'panel' ? 'Shows the text so you can check it before copying.' : 'Copies the text right away.'}>
+          <Segmented
+            label="Copy text"
+            value={s.ocr.textButton}
+            options={[
+              { value: 'panel', label: 'Show text first' },
+              { value: 'copy', label: 'Copy right away' }
+            ]}
+            onChange={(textButton) => set({ ocr: { textButton } })}
+          />
+        </Row>
         <Row label="Copy last area right away" desc="For Capture last area. Off: opens capture mode with the area selected.">
           <Toggle label="Copy last area right away" value={s.capture.lastAreaInstant} onChange={(lastAreaInstant) => set({ capture: { lastAreaInstant } })} />
         </Row>
@@ -207,6 +218,14 @@ export function Shortcuts({ snap, set }: SectionProps) {
             </button>
           )}
         </Row>
+        <Row label="Capture text" desc={held('ocr', '')}>
+          <HotkeyField value={s.hotkeys.ocr} onChange={(acc) => api.settingsSetHotkey(acc, 'ocr')} />
+          {s.hotkeys.ocr && (
+            <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'ocr')} title="No shortcut; use the menu bar">
+              Off
+            </button>
+          )}
+        </Row>
         <Row label="Capture full screen" desc={held('fullscreen', '')}>
           <HotkeyField value={s.hotkeys.fullscreen} onChange={(acc) => api.settingsSetHotkey(acc, 'fullscreen')} />
           {s.hotkeys.fullscreen && (
@@ -339,6 +358,17 @@ export function About({ snap, set }: SectionProps) {
           <select className="st-select" aria-label="Capture engine" value={snap.settings.capture.engine} onChange={(e) => set({ capture: { engine: e.target.value } })}>
             <option value="auto">Auto</option>
             {snap.engines.map((e) => (
+              <option key={e.id} value={e.id} disabled={!e.available}>
+                {e.label}
+                {e.available ? '' : ' (not available)'}
+              </option>
+            ))}
+          </select>
+        </Row>
+        <Row label="Text recognition" desc="Auto uses the one built into your system.">
+          <select className="st-select" aria-label="Text recognition engine" value={snap.settings.ocr.engine} onChange={(e) => set({ ocr: { engine: e.target.value } })}>
+            <option value="auto">Auto</option>
+            {snap.ocrEngines.map((e) => (
               <option key={e.id} value={e.id} disabled={!e.available}>
                 {e.label}
                 {e.available ? '' : ' (not available)'}

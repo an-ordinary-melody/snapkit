@@ -141,6 +141,29 @@ body { font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, 
   background: rgba(20,20,22,.85); color: #fff; font-variant-numeric: tabular-nums; font-size: 11px;
 }
 
+/* Copy text (OCR): the lines found, the text panel, and short messages. */
+.ocr-hit { position: absolute; pointer-events: none; border-radius: 3px; background: color-mix(in srgb, var(--ui-sel, #3b82f6) 22%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ui-sel, #3b82f6) 70%, transparent); }
+.ocr-panel {
+  position: absolute; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--ui-radius); cursor: default; z-index: 5;
+  background: var(--ui-bg); backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur); box-shadow: var(--ui-shadow), var(--ui-rim); color: var(--ui-fg);
+}
+.ocr-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ui-fg-dim); }
+.ocr-head button { border: 0; background: none; color: inherit; cursor: pointer; padding: 2px; border-radius: 4px; display: flex; }
+.ocr-head button:hover { background: var(--ui-hover); }
+.ocr-panel textarea {
+  flex: 1; resize: none; font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: var(--ui-fg);
+  background: var(--ui-hover); border: 0; border-radius: 6px; padding: 8px; outline: none;
+}
+.ocr-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.ocr-actions button { border: 0; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; background: var(--ui-hover); color: var(--ui-fg); }
+.ocr-actions button.primary { background: var(--ui-accent); color: var(--ui-on-accent, #fff); }
+.ocr-hint, .ocr-note {
+  position: absolute; left: 50%; transform: translateX(-50%); padding: 7px 12px; border-radius: 8px; pointer-events: none; white-space: nowrap;
+  background: rgba(20,20,22,.85); color: #fff; font-size: 13px;
+}
+.ocr-hint { top: 24px; }
+.ocr-note { bottom: 48px; }
+
 .toolbar {
   position: absolute; display: flex; gap: 2px; padding: 4px; border-radius: var(--ui-radius); cursor: default;
   background: var(--ui-bg); backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur);

@@ -1,4 +1,4 @@
-import { Copy, FolderOpen, X, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
+import { Copy, FolderOpen, X, PencilLine, Pin, Save, ScanText, Settings2, Star, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HistoryItem } from '@shared/ipc'
 import { applyTheme } from '../theme'
@@ -60,6 +60,16 @@ export function History() {
   }, [])
 
   const act = useCallback((a: Action, id = itemsRef.current[selRef.current]?.id) => id && api.historyAction(id, a), [])
+  /** Copy text: the panel closes when text is copied; otherwise the footer says why. */
+  const [note, setNote] = useState<string | null>(null)
+  const copyText = useCallback((id = itemsRef.current[selRef.current]?.id) => {
+    if (!id) return
+    setNote('Reading text…')
+    void api.historyCopyText(id).then((n) => {
+      setNote(n > 0 ? null : n === 0 ? 'No text found' : "Couldn't read the text")
+      if (n <= 0) setTimeout(() => setNote(null), 1800)
+    })
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -77,6 +87,7 @@ export function History() {
       else if (k === 'ArrowUp') setSel(Math.max(0, s - cols))
       else if (k === 'Enter' || ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'c')) act('copy')
       else if (k.toLowerCase() === 'e') act('edit')
+      else if (k.toLowerCase() === 't') copyText()
       else if (k.toLowerCase() === 'p') act('pin')
       else if (k.toLowerCase() === 's') act('save')
       else if (k.toLowerCase() === 'f') act(itemsRef.current[s].starred ? 'unstar' : 'star')
@@ -86,7 +97,7 @@ export function History() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [act])
+  }, [act, copyText])
 
   const total = items.reduce((n, i) => n + i.bytes, 0)
   return (
@@ -155,18 +166,22 @@ export function History() {
       ) : (
         <div className="hist-grid" role="listbox" aria-label="Past captures">
           {items.map((it, i) => (
-            <Card key={it.id} item={it} selected={i === sel} onSelect={() => setSel(i)} act={(a) => act(a, it.id)} />
+            <Card key={it.id} item={it} selected={i === sel} onSelect={() => setSel(i)} act={(a) => act(a, it.id)} copyText={() => copyText(it.id)} />
           ))}
         </div>
       )}
       <footer className="hist-foot">
-        <kbd>↵</kbd> copy <kbd>E</kbd> edit <kbd>P</kbd> pin <kbd>S</kbd> save <kbd>F</kbd> star <kbd>⌫</kbd> delete <kbd>Esc</kbd> close
+        {note ?? (
+          <>
+            <kbd>↵</kbd> copy <kbd>T</kbd> text <kbd>E</kbd> edit <kbd>P</kbd> pin <kbd>S</kbd> save <kbd>F</kbd> star <kbd>⌫</kbd> delete <kbd>Esc</kbd> close
+          </>
+        )}
       </footer>
     </div>
   )
 }
 
-function Card({ item, selected, onSelect, act }: { item: HistoryItem; selected: boolean; onSelect(): void; act(a: Action): void }) {
+function Card({ item, selected, onSelect, act, copyText }: { item: HistoryItem; selected: boolean; onSelect(): void; act(a: Action): void; copyText(): void }) {
   const ref = useRef<HTMLDivElement>(null)
   const [src, setSrc] = useState<string | null>(null)
   useEffect(() => {
@@ -230,6 +245,13 @@ function Card({ item, selected, onSelect, act }: { item: HistoryItem; selected: 
       <div className="hist-actions" onClick={(e) => e.stopPropagation()}>
         <button aria-label="Copy" title="Copy (↵)" onClick={() => act('copy')}>
           <Copy size={14} />
+        </button>
+        <button
+          aria-label="Copy text"
+          title="Copy text (T)"
+          onClick={copyText}
+        >
+          <ScanText size={14} />
         </button>
         <button aria-label="Edit" title="Edit (E)" onClick={() => act('edit')}>
           <PencilLine size={14} />

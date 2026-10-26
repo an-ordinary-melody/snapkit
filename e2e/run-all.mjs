@@ -71,6 +71,15 @@ const SUITES = {
     [/dragging an end updates the length: true/, 'dragging a ruler end updates the length'],
     [/renderer errors: none/, 'no page errors']
   ],
+  ocr: [
+    [/panel text matches: true/, 'Copy text reads English and Vietnamese into the text panel'],
+    [/lines outlined: [1-9]/, 'the lines found are outlined'],
+    [/copied as one line: true \| capture closed: true/, 'One line + Copy text copies and closes'],
+    [/capture text copies: true \| hint: Drag over text to copy it \| note: Copied \d lines? of text \| closed: true/, 'Capture text copies the text right away'],
+    [/empty area: No text found \| still capturing: true/, 'an area without text says so'],
+    [/preview Text button:\s*Copied 3 lines \| copied: true/, 'the floating preview copies its text'],
+    [/renderer errors: none/, 'no page errors']
+  ],
   textedit: [
     [/selected text, click -> \["Hello world",11\]/, 'click into selected text to edit it'],
     [/text now: Hello world!/, 'edits are kept'],
@@ -159,7 +168,7 @@ const SUITES = {
     [/dim default: 0.75 \/ mode dark/, 'defaults: 75% dim, Dark'],
     [/history keep slider: 10 of 30/, 'history keeps 10, up to 30'],
     [/history recording switch: true/, '"Recording" switch in History settings, on by default (matches the History window)'],
-    [/shortcut rows without descriptions: Capture area, Capture last area, Capture full screen, History, Settings$/m, 'short shortcut names, no descriptions'],
+    [/shortcut rows without descriptions: Capture area, Capture last area, Capture text, Capture full screen, History, Settings$/m, 'short shortcut names, no descriptions'],
     [/Dock icon with Settings open: true \| after closing: false \| capture still opens: true|^(?![\s\S]*Dock icon)/, 'macOS: Dock icon only while Settings is open'],
     [/settings hotkey row: (⌘⇧2|Ctrl\+Shift\+2) \| registered: true/, 'Open Settings shortcut'],
     [/switch on color: rgb\((9|10|11), 13[1-3], 25[4-5]\)/, 'blue switches'],

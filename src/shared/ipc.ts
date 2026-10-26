@@ -76,6 +76,22 @@ export interface OutputOptions {
   area?: { x: number; y: number; w: number; h: number }
 }
 
+/** One line of recognized text; its box is in fractions of the image (top-left origin). */
+export interface OcrLine {
+  text: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface OcrResult {
+  lines: OcrLine[]
+  /** The engine that read it (e.g. vision, windows). */
+  engine: string
+  ms: number
+}
+
 export interface CopyExtra {
   doc: CaptureDoc
   /** The selection, in overlay CSS px. */
@@ -94,6 +110,8 @@ export interface ArmPayload {
   edit?: CaptureDoc
   /** "Capture last area": start with this area selected (CSS px on this display). */
   area?: { x: number; y: number; w: number; h: number }
+  /** "Capture text": the area drawn is read and its text copied (no editing step). */
+  textOnly?: boolean
 }
 
 export interface PixelsPayload {
@@ -140,6 +158,8 @@ export const IPC = {
   editDone: 'capture:edit-done',
   readImage: 'beautify:read-image',
   compressedSize: 'capture:compressed-size',
+  ocr: 'capture:ocr',
+  copyText: 'capture:copy-text',
   // main -> pin
   pinImage: 'pin:image',
   pinState: 'pin:state',
@@ -149,6 +169,8 @@ export const IPC = {
   pinZoom: 'pin:zoom',
   pinOpacity: 'pin:opacity',
   pinCopy: 'pin:copy',
+  pinCopyText: 'pin:copy-text',
+  historyCopyText: 'history:copy-text',
   pinSave: 'pin:save',
   pinClose: 'pin:close',
   pinDragOut: 'pin:drag-out',
@@ -193,8 +215,10 @@ export interface SettingsSnapshot {
   defaultSaveFolder: string
   /** Screen capture engines for this OS, in the order Auto tries them. */
   engines: { id: string; label: string; available: boolean }[]
+  /** Text recognition engines for this OS. */
+  ocrEngines: { id: string; label: string; available: boolean }[]
   /** Hotkeys another app holds right now (Snapkit takes them once they're free). */
-  hotkeysTaken: ('capture' | 'history' | 'fullscreen' | 'settings' | 'lastArea')[]
+  hotkeysTaken: ('capture' | 'history' | 'fullscreen' | 'settings' | 'lastArea' | 'ocr')[]
 }
 
 /** A full-screen capture to put on the default background (see captureFullScreen). */
@@ -241,6 +265,10 @@ export interface SnapkitApi {
   readImage(path: string): Promise<Uint8Array | null>
   /** Byte size of `png` after compressing it with `preset` (for the editor's size estimate). */
   compressedSize(png: ArrayBuffer, scale: number, preset: CompressPreset): Promise<number>
+  /** The text in a PNG, or an error message when it can't be read. */
+  ocr(png: ArrayBuffer): Promise<OcrResult | { error: string }>
+  /** Copy text and close capture mode (after `closeAfterMs`, so a message can show first). */
+  copyText(session: number, text: string, closeAfterMs?: number): void
 
   // Pin windows
   onPinImage(cb: (p: PinImagePayload) => void): void
@@ -252,6 +280,10 @@ export interface SnapkitApi {
   pinZoom(zoom: number, ax: number, ay: number): void
   pinOpacity(opacity: number): void
   pinCopy(): void
+  /** Copy the text in the image: lines copied (0 = none found, -1 = couldn't read it). */
+  pinCopyText(): Promise<number>
+  /** Copy the text in a history entry: lines copied (0 = none found, -1 = couldn't read it). */
+  historyCopyText(id: string): Promise<number>
   pinSave(): void
   pinClose(): void
   /** Start dragging the image out as a file (call from a dragstart handler). */
@@ -294,7 +326,7 @@ export interface SnapkitApi {
   settingsReset(sections?: (keyof Settings)[]): Promise<SettingsSnapshot>
   onSettingsChanged(cb: (s: SettingsSnapshot) => void): void
   /** Change a hotkey; resolves to an error message if it can't be used. '' turns the history hotkey off. */
-  settingsSetHotkey(accelerator: string, name?: 'capture' | 'history' | 'fullscreen' | 'settings' | 'lastArea'): Promise<string | null>
+  settingsSetHotkey(accelerator: string, name?: 'capture' | 'history' | 'fullscreen' | 'settings' | 'lastArea' | 'ocr'): Promise<string | null>
   /** Pick a folder; null if cancelled. */
   settingsChooseFolder(): Promise<string | null>
   /** Show the log folder or the settings file in Finder / Explorer. */

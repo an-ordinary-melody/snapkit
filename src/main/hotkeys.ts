@@ -3,7 +3,7 @@ import { log } from './log'
 import { isCapturing } from './overlay'
 import { getSettings, updateSettings } from './settings'
 
-export const HOTKEY_NAMES = ['capture', 'history', 'fullscreen', 'settings', 'lastArea'] as const
+export const HOTKEY_NAMES = ['capture', 'history', 'fullscreen', 'settings', 'lastArea', 'ocr'] as const
 export type HotkeyName = (typeof HOTKEY_NAMES)[number]
 
 let actions: Record<HotkeyName, () => void> | null = null

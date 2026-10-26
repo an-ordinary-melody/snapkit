@@ -8,6 +8,7 @@ import { returnFocus, startEdit } from './overlay'
 import { copyPng, savePng } from './output'
 import { createPin } from './pin'
 import { getSettings, onSettingsChange, updateSettings } from './settings'
+import { copyTextFrom } from './ocr'
 import { ipcHandle, ipcOn } from './security'
 
 const isMac = process.platform === 'darwin'
@@ -127,6 +128,13 @@ export function registerHistoryIpc() {
     } catch {
       // the entry was just deleted
     }
+  })
+  ipcHandle(IPC.historyCopyText, async (_e, id: string) => {
+    const png = await historyFile(String(id), 'final.png')
+    if (!png) return -1
+    const n = await copyTextFrom(png, getSettings().ocr.engine)
+    if (n > 0) hidePanel(true)
+    return n
   })
   ipcOn(IPC.historyAction, async (_e, id: string, action: string) => {
     id = String(id)

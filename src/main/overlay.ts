@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen, type Display, type Rectangle } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, screen, type Display, type Rectangle } from 'electron'
 import { readFile, stat } from 'fs/promises'
 import { extname, join } from 'path'
 import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type DecorateResult, type OutputOptions, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
@@ -6,6 +6,7 @@ import { grabAllScreens } from './capture'
 import { getSettings } from './settings'
 import type { CompressPreset } from '@shared/settings'
 import { compressPng } from './compress'
+import { recognizeText } from './ocr'
 import { rememberArea } from './lastArea'
 import { copyPng, savePng } from './output'
 import { log } from './log'
@@ -204,8 +205,8 @@ export function returnFocus() {
   if (hasPins()) app.show()
 }
 
-/** `preset`: "Capture last area" opens with that area selected on its display. */
-export async function startCapture(t0 = Date.now(), preset?: { display: Display; rect: Rectangle }) {
+/** `preset`: "Capture last area" opens with that area selected on its display. `textOnly`: "Capture text". */
+export async function startCapture(t0 = Date.now(), preset?: { display: Display; rect: Rectangle }, textOnly = false) {
   // The hotkey again closes capture mode, whatever state it's in: a way out
   // that doesn't depend on the overlay page responding.
   if (active) return forceEndCapture('hotkey pressed again')
@@ -240,6 +241,7 @@ export async function startCapture(t0 = Date.now(), preset?: { display: Display;
 
       // Step 1: show the dim right away over the live screen (it still looks identical).
       const arm: ArmPayload = { session: id, displayId: g.display.id, width: g.width, height: g.height, settings }
+      if (textOnly) arm.textOnly = true
       if (preset && preset.display.id === g.display.id) arm.area = { x: preset.rect.x, y: preset.rect.y, w: preset.rect.width, h: preset.rect.height }
       const armed = waitFor(IPC.armed, win, id, 1000)
       win.webContents.send(IPC.arm, arm)
@@ -377,6 +379,27 @@ function rememberSelection(sender: Electron.WebContents, out?: OutputOptions) {
 
 export function registerOverlayIpc() {
   const valid = (s: number) => active && s === session
+
+  ipcHandle(IPC.ocr, async (_e, png: ArrayBuffer) => {
+    if (!(png instanceof ArrayBuffer)) return { error: 'No image' }
+    try {
+      return await recognizeText(Buffer.from(png), getSettings().ocr.engine)
+    } catch (err) {
+      log('[ocr] failed:', String(err))
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+  ipcOn(IPC.copyText, (_e, s: number, text: string, closeAfterMs?: number) => {
+    if (!valid(s) || typeof text !== 'string') return
+    clipboard.writeText(text)
+    const close = () => {
+      if (!valid(s)) return
+      endCapture()
+      releaseFocus()
+    }
+    if (closeAfterMs) setTimeout(close, Math.min(Number(closeAfterMs) || 0, 2000))
+    else close()
+  })
 
   ipcHandle(IPC.compressedSize, async (_e, png: ArrayBuffer, scale: number, preset: CompressPreset) => {
     if (!(png instanceof ArrayBuffer) || (preset !== 'standard' && preset !== 'smallest')) return 0

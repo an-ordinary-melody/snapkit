@@ -37,6 +37,9 @@ mac:
   extraResources:
     - from: build/Assets.car
       to: Assets.car
+    # Text recognition helper (Apple Vision), built by scripts/build-ocr.mjs.
+    - from: build/ocr/snapkit-ocr
+      to: ocr/snapkit-ocr
   target:
     - target: dmg
       arch: [arm64]
@@ -53,6 +56,11 @@ dmg:
 
 win:
   icon: build/icon-win.png # full-size tile (build/icon.png is inset for macOS); made by scripts/make-icons.cjs
+  # Text recognition helper (Windows OCR), built by scripts/build-ocr.mjs.
+  extraResources:
+    - from: build/ocr
+      to: ocr
+      filter: ["*.exe"]
   target:
     - target: nsis
       arch: [x64]
