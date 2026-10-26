@@ -24,7 +24,7 @@ if (process.platform === 'darwin') {
   const vswhere = join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
   const vs = execFileSync(vswhere, ['-latest', '-products', '*', '-property', 'installationPath'], { encoding: 'utf8' }).trim()
   const vcvars = join(vs, 'VC', 'Auxiliary', 'Build', 'vcvars64.bat')
-  const cmd = `"${vcvars}" >nul && cl /nologo /O2 /EHsc /std:c++17 /await "${src}" /Fe:"${out}" /Fo:"${outDir}\\\\" /link windowsapp.lib`
+  const cmd = `"${vcvars}" >nul && cl /nologo /O2 /EHsc /std:c++20 "${src}" /Fe:"${out}" /Fo:"${outDir}\\\\" /link windowsapp.lib`
   execFileSync('cmd.exe', ['/d', '/s', '/c', `"${cmd}"`], { stdio: 'inherit', windowsVerbatimArguments: true })
   console.log('built build/ocr/snapkit-ocr.exe')
 }
