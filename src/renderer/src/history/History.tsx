@@ -248,8 +248,8 @@ function Card({ item, selected, onSelect, act, copyText }: { item: HistoryItem; 
           <Copy size={14} />
         </button>
         <button
-          aria-label="Copy text"
-          title="Copy text (T)"
+          aria-label="Capture Text (OCR)"
+          title="Capture Text (OCR) (T)"
           onClick={copyText}
         >
           <OcrIcon size={14} />

@@ -83,7 +83,7 @@ export function Thumb() {
         <button className="thumb-btn" onClick={() => api.thumbEdit()}>
           <PencilLine size={14} /> Edit
         </button>
-        <button className="thumb-btn" title="Copy text" onClick={() => void copyText()}>
+        <button className="thumb-btn" title="Capture Text (OCR)" onClick={() => void copyText()}>
           <OcrIcon size={14} /> {textState ?? 'Text'}
         </button>
       </div>
