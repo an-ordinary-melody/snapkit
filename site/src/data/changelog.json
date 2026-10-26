@@ -1,5 +1,15 @@
 [
   {
+    "title": "Capture Text (OCR)",
+    "from": "0.2.0-beta.13",
+    "upTo": "0.2.0-beta.13",
+    "items": [
+      "Read the text in any area: check it in a panel, or copy it right away",
+      "English and Vietnamese, offline: Apple Vision on Mac, Windows OCR (plus Tesseract for Vietnamese)",
+      "Copy text from the floating preview and History too"
+    ]
+  },
+  {
     "title": "Compress, last area and a ruler",
     "from": "0.2.0-beta.12",
     "upTo": "0.2.0-beta.12",

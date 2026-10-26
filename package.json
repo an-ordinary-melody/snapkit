@@ -1,7 +1,7 @@
 {
   "name": "snapkit",
   "productName": "Snapkit",
-  "version": "0.2.0-beta.12",
+  "version": "0.2.0-beta.13",
   "description": "Minimal, fully customizable screenshot tool for macOS and Windows",
   "main": "./out/main/index.js",
   "author": "Son <son@charios.com>",
