@@ -90,7 +90,7 @@ export const FEATURES: FeatureDef[] = [
   // Actions (horizontal bar)
   { id: 'beautify', label: 'Background', kind: 'action', implemented: true, defaultEnabled: true },
   { id: 'beautifyEdit', label: 'Edit background', kind: 'action', implemented: true, defaultEnabled: true },
-  { id: 'ocr', label: 'Copy text', kind: 'action', hint: 'X', implemented: true, defaultEnabled: true },
+  { id: 'ocr', label: 'Capture Text (OCR)', kind: 'action', hint: 'X', implemented: true, defaultEnabled: true },
   { id: 'pin', label: 'Floating preview', kind: 'action', implemented: true, defaultEnabled: true },
   { id: 'save', label: 'Save', kind: 'action', hint: '⌘S', implemented: true, defaultEnabled: true },
   { id: 'copy', label: 'Copy', kind: 'action', hint: '⌘C', implemented: true, defaultEnabled: true },
