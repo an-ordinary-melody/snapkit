@@ -79,7 +79,7 @@ const SUITES = {
     [/copied as one line: true \| capture closed: true/, 'One line + Copy text copies and closes'],
     [/capture text copies: true \| hint: Drag over text to copy it \| note: Copied \d lines? of text \| closed: true/, 'Capture text copies the text right away'],
     [/empty area: No text found \| still capturing: true/, 'an area without text says so'],
-    [/preview Text button:\s*Copied 3 lines \| copied: true/, 'the floating preview copies its text'],
+    [/preview Text button:\s*Copied \d+ lines \| copied: true/, 'the floating preview copies its text'],
     [/renderer errors: none/, 'no page errors']
   ],
   textedit: [

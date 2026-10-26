@@ -101,6 +101,7 @@ npm run build:mac  # or build:win (run on that OS)
 | Capture mode UI (`Overlay.tsx`, `Toolbars.tsx`, `layout.ts`) | annotate, regressions, pin, safety |
 | Capture flow, engines (`main/overlay.ts`, `main/capture/`) | safety, pin, fullscreen, regressions |
 | Floating preview and pins (`main/pin.ts`, `renderer/pin/`) | pin, fullscreen |
+| Text recognition (`main/ocr/`, `native/`, `overlay/OcrPanel.tsx`) | ocr, pin, history |
 | Capture last area (`main/lastArea.ts`, `main/fullscreen.ts`) | lastarea, fullscreen |
 | Copy, save, compression (`main/output.ts`, `main/compress*.ts`, `main/clipboardPng.ts`) | compress, pin, history, fullscreen |
 | History (`main/history*.ts`, `renderer/history/`) | history, fullscreen |
