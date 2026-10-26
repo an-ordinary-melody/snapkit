@@ -1,4 +1,5 @@
-import { Copy, FolderOpen, X, PencilLine, Pin, Save, ScanText, Settings2, Star, Trash2 } from 'lucide-react'
+import { Copy, FolderOpen, X, PencilLine, Pin, Save, Settings2, Star, Trash2 } from 'lucide-react'
+import { OcrIcon } from '../icons'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HistoryItem } from '@shared/ipc'
 import { applyTheme } from '../theme'
@@ -251,7 +252,7 @@ function Card({ item, selected, onSelect, act, copyText }: { item: HistoryItem; 
           title="Copy text (T)"
           onClick={copyText}
         >
-          <ScanText size={14} />
+          <OcrIcon size={14} />
         </button>
         <button aria-label="Edit" title="Edit (E)" onClick={() => act('edit')}>
           <PencilLine size={14} />

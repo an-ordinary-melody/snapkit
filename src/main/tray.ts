@@ -35,7 +35,7 @@ export function refreshTrayMenu() {
       { label: 'Capture Area', accelerator: hotkey, click: onCapture },
       { label: 'Capture Last Area', accelerator: lastAreaKey || undefined, click: onLastArea },
       { label: 'Capture Full Screen', accelerator: fullscreenKey || undefined, click: onFullscreen },
-      { label: 'Capture Text', accelerator: textKey || undefined, click: onText },
+      { label: 'Capture Text (OCR)', accelerator: textKey || undefined, click: onText },
       { type: 'separator' },
       { label: 'History…', accelerator: historyKey || undefined, click: onHistory },
       // Same as the History window's switch: checked = recording.

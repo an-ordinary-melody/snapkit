@@ -110,7 +110,7 @@ export interface ArmPayload {
   edit?: CaptureDoc
   /** "Capture last area": start with this area selected (CSS px on this display). */
   area?: { x: number; y: number; w: number; h: number }
-  /** "Capture text": the area drawn is read and its text copied (no editing step). */
+  /** "Capture text": the area drawn is read right away (no editing step), then shown or copied per ocr.textButton. */
   textOnly?: boolean
 }
 

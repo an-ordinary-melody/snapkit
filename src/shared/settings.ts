@@ -39,7 +39,7 @@ export interface Settings {
     settings: string
     /** Captures the last area copied or saved again. '' = none. */
     lastArea: string
-    /** Capture text: drag an area and its text is copied. '' = none. */
+    /** Capture text: drag an area and its text is read (shown or copied, per ocr.textButton). '' = none. */
     ocr: string
   }
   /** Update checks: notify and download; nothing installs by itself. */

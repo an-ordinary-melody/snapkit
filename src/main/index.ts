@@ -68,7 +68,7 @@ function captureLastArea() {
   void ensureScreenPermission().then((ok) => ok && go())
 }
 
-/** "Capture text": drag an area and its text is copied. Synchronous until the screen grab has started, like capture(). */
+/** "Capture text": drag an area and its text is read. Synchronous until the screen grab has started, like capture(). */
 function captureText() {
   const t0 = Date.now()
   if (hasScreenPermission()) return void startCapture(t0, undefined, true)

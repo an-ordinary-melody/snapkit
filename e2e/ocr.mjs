@@ -61,18 +61,30 @@ try {
   const clip = norm(await app.evaluate(({ clipboard }) => clipboard.readText()))
   console.log('copied as one line:', clip === LINES.map(norm).join(' '), '| capture closed:', !(await capturing()))
 
-  // Capture text: drag and it's copied, with a message, then capture mode closes.
-  await app.evaluate(({ clipboard }) => clipboard.writeText('old'))
+  // Capture text, "Show text first" (the default): drag, and the text panel opens (no toolbars); Copy text copies and closes.
   await start(['--text'])
   const hint = await overlay().$eval('.ocr-hint', (e) => e.textContent).catch(() => null)
+  await drag(45, 45, 755, 275)
+  await overlay().waitForSelector('.ocr-panel textarea', { timeout: 30000 }).catch(() => {})
+  const textPanel = await overlay().$eval('.ocr-panel textarea', (t) => t.value).catch(() => '')
+  const toolbarsHidden = !(await overlay().$('.toolbar button[data-tip="Copy"]'))
+  await overlay().click('.ocr-actions button:has-text("Copy text")').catch(() => {}); await wait(800)
+  const clip2 = (await app.evaluate(({ clipboard }) => clipboard.readText())).split('\n').map(norm)
+  console.log('capture text shows the panel:', LINES.every((l) => textPanel.split('\n').map(norm).includes(norm(l))), '| hint:', hint, '| toolbars hidden:', toolbarsHidden, '| copied:', LINES.every((l) => clip2.includes(norm(l))), '| closed:', !(await capturing()))
+
+  // Capture text, "Copy right away": drag and it's copied, with a message, then capture mode closes.
+  await overlay().evaluate(() => window.snapkit.settingsUpdate({ ocr: { textButton: 'copy' } })); await wait(300)
+  await app.evaluate(({ clipboard }) => clipboard.writeText('old'))
+  await start(['--text'])
   const t1 = Date.now()
   await drag(45, 45, 755, 275)
   await overlay().waitForSelector('.ocr-note', { timeout: 30000 })
   const readMs = Date.now() - t1
   const note = await overlay().$eval('.ocr-note', (e) => e.textContent)
   await wait(1200)
-  const clip2 = (await app.evaluate(({ clipboard }) => clipboard.readText())).split('\n').map(norm)
-  console.log('capture text copies:', LINES.every((l) => clip2.includes(norm(l))), '| hint:', hint, '| note:', note, '| closed:', !(await capturing()), `| read ${readMs} ms`)
+  const clip3a = (await app.evaluate(({ clipboard }) => clipboard.readText())).split('\n').map(norm)
+  console.log('copy right away:', LINES.every((l) => clip3a.includes(norm(l))), '| note:', note, '| closed:', !(await capturing()), `| read ${readMs} ms`)
+  await overlay().evaluate(() => window.snapkit.settingsUpdate({ ocr: { textButton: 'panel' } })); await wait(300)
 
   // An area with no text (the blank lower part of the window).
   await start([])

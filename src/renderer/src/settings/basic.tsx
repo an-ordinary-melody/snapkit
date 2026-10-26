@@ -223,7 +223,7 @@ export function Shortcuts({ snap, set }: SectionProps) {
             </button>
           )}
         </Row>
-        <Row label="Capture text" desc={held('ocr', '')}>
+        <Row label="Capture text (OCR)" desc={held('ocr', '')}>
           <HotkeyField value={s.hotkeys.ocr} onChange={(acc) => api.settingsSetHotkey(acc, 'ocr')} />
           {s.hotkeys.ocr && (
             <button className="st-btn subtle" onClick={() => void api.settingsSetHotkey('', 'ocr')} title="No shortcut; use the menu bar">

@@ -33,7 +33,7 @@ interface Capture {
   edit: boolean
   /** Editing a history entry: outputs update it. */
   historyId?: string
-  /** "Capture text": the area drawn is read and its text copied. */
+  /** "Capture text": the area drawn is read right away (no editing step). */
   textOnly: boolean
 }
 
@@ -377,7 +377,7 @@ export function Overlay() {
 
   /**
    * Copy text: read the text in the selection (the screenshot only, not the drawings). It opens the
-   * text panel, or with "Capture text" (or the copy-right-away setting) copies it and closes.
+   * text panel ("Show text first"), or copies it and closes ("Copy right away"); "Capture text" too.
    */
   const readText = useCallback(
     async (r: Rect) => {
@@ -400,7 +400,7 @@ export function Overlay() {
         setNote('No text found')
         return
       }
-      if (!cap.textOnly && cap.settings.ocr.textButton === 'panel') return setOcr({ reading: false, result: res })
+      if (cap.settings.ocr.textButton === 'panel') return setOcr({ reading: false, result: res })
       setOcr({ reading: false, result: res })
       setNote(`Copied ${res.lines.length} line${res.lines.length === 1 ? '' : 's'} of text`)
       busy.current = true
@@ -522,7 +522,7 @@ export function Overlay() {
       const selectedShape = shapes.find((x) => x.id === selectedId)
       if (e.key === 'Escape') {
         e.preventDefault()
-        if (ocr && !ocr.reading && !cap.textOnly) setOcr(null)
+        if (ocr && !ocr.reading) setOcr(null)
         else if (selectedShape) setSelectedId(null)
         else api.cancel(cap.session)
       } else if (mod && key === 'z') {
@@ -585,8 +585,9 @@ export function Overlay() {
     if (sel && !handle && !inside(p, sel) && shapes.length) return
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     setSelectedId(null)
-    if (sel && handle) setDrag({ kind: 'resize', origin: p, start: sel, handle })
-    else if (sel && inside(p, sel)) setDrag({ kind: 'move', origin: p, start: sel })
+    // "Capture text" has no adjusting step: every drag reads a new area.
+    if (sel && handle && !cap.textOnly) setDrag({ kind: 'resize', origin: p, start: sel, handle })
+    else if (sel && inside(p, sel) && !cap.textOnly) setDrag({ kind: 'move', origin: p, start: sel })
     else {
       setDrag({ kind: 'create', origin: p })
       setSel({ x: p.x, y: p.y, w: 0, h: 0 })
@@ -843,7 +844,7 @@ export function Overlay() {
 
       {cap?.textOnly && !sel && <div className="ocr-hint">Drag over text to copy it</div>}
       {ocr && sel && (ocr.reading ? <div className="size-label ocr-reading" style={{ left: sel.x, top: sel.y + sel.h + 6 }}>Reading text…</div> : <OcrHighlights lines={ocr.result.lines} sel={sel} />)}
-      {ocr && !ocr.reading && sel && cap && !cap.textOnly && cap.settings.ocr.textButton === 'panel' && (
+      {ocr && !ocr.reading && sel && cap && cap.settings.ocr.textButton === 'panel' && (
         <OcrPanel lines={ocr.result.lines} ms={ocr.result.ms} sel={sel} screen={screen} onClose={() => setOcr(null)} onCopy={(text) => text.trim() && api.copyText(cap.session, text)} />
       )}
       {note && <div className="ocr-note">{note}</div>}

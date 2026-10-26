@@ -1,4 +1,5 @@
-import { Copy, Move, PencilLine, Pin, ScanText, X } from 'lucide-react'
+import { Copy, Move, PencilLine, Pin, X } from 'lucide-react'
+import { OcrIcon } from '../icons'
 import { useEffect, useState } from 'react'
 import { applyTheme } from '../theme'
 
@@ -83,7 +84,7 @@ export function Thumb() {
           <PencilLine size={14} /> Edit
         </button>
         <button className="thumb-btn" title="Copy text" onClick={() => void copyText()}>
-          <ScanText size={14} /> {textState ?? 'Text'}
+          <OcrIcon size={14} /> {textState ?? 'Text'}
         </button>
       </div>
       <button className="thumb-icon thumb-pin" aria-label="Pin to screen" title="Pin to screen" onClick={() => api.thumbPin()}>

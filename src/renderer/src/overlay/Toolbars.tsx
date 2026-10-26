@@ -1,15 +1,16 @@
 import {
-  Check, Circle, Copy, Droplets, Hash, Highlighter, Pencil, Pin, Redo2, Ruler, Save, ScanText, Slash, Square, Type, Undo2, WandSparkles, X,
+  Check, Circle, Copy, Droplets, Hash, Highlighter, Pencil, Pin, Redo2, Ruler, Save, Slash, Square, Type, Undo2, WandSparkles, X,
   type LucideIcon
 } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { FeatureDef, FeatureVariant } from '@shared/features'
 import { visibleFeatures, type Settings } from '@shared/settings'
+import { OcrIcon } from '../icons'
 import { placeStyleBar, placeToolbars, type Rect, type Size } from './layout'
 
 const ICONS: Record<string, LucideIcon> = {
   pen: Pencil, line: Slash, rect: Square, ellipse: Circle, highlighter: Highlighter, text: Type,
-  step: Hash, blur: Droplets, ruler: Ruler, ocr: ScanText, undo: Undo2, redo: Redo2, beautifyEdit: WandSparkles, pin: Pin, save: Save, copy: Copy, close: X
+  step: Hash, blur: Droplets, ruler: Ruler, ocr: OcrIcon, undo: Undo2, redo: Redo2, beautifyEdit: WandSparkles, pin: Pin, save: Save, copy: Copy, close: X
 }
 
 /** Icon for a tool variant: the base shape, outlined or filled. */
