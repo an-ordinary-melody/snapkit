@@ -1,7 +1,9 @@
-import { clipboard } from 'electron'
+import { app, clipboard } from 'electron'
 import type { OcrResult } from '@shared/ipc'
 import { log } from '../log'
+import { getSettings } from '../settings'
 import { helperEngine } from './helper'
+import { tesseract } from './tesseract'
 import type { OcrEngine } from './types'
 
 /** macOS: Apple's Vision (native/ocr-mac). Language codes are Vision's (Vietnamese is vi-VT). */
@@ -23,7 +25,7 @@ const windows = helperEngine({
 })
 
 /** Every engine Snapkit knows. Add new ones here. */
-export const OCR_ENGINES: OcrEngine[] = [vision, windows]
+export const OCR_ENGINES: OcrEngine[] = [vision, windows, tesseract]
 
 /** For the settings window: this OS's engines and whether each can run here. */
 export function ocrEngineInfo() {
@@ -33,16 +35,27 @@ export function ocrEngineInfo() {
 /** Languages to read, most likely first. */
 const LANGUAGES = ['vi', 'en']
 
-/** 'auto' picks the first engine for this OS; an engine id forces that one. */
-export function ocrEngineFor(choice = 'auto'): OcrEngine | null {
+/**
+ * 'auto' picks this OS's own engine, except on Windows when Vietnamese is
+ * wanted: Windows' OCR has no Vietnamese, so Tesseract reads it instead.
+ * An engine id forces that one.
+ */
+export function ocrEngineFor(choice = 'auto', vietnamese = false): OcrEngine | null {
   const usable = OCR_ENGINES.filter((e) => e.platforms.includes(process.platform) && e.available())
-  return usable.find((e) => e.id === choice) ?? usable[0] ?? null
+  const auto = process.platform === 'win32' && vietnamese ? 'tesseract' : null
+  return usable.find((e) => e.id === choice) ?? usable.find((e) => e.id === auto) ?? usable[0] ?? null
+}
+
+/** Read Vietnamese? 'auto': when the system's languages include it. */
+export function wantsVietnamese(setting: 'auto' | 'on' | 'off') {
+  if (setting !== 'auto') return setting === 'on'
+  return app.getPreferredSystemLanguages().some((l) => l.toLowerCase().startsWith('vi'))
 }
 
 /** Read `png` and copy its text. Returns the number of lines copied (0: no text), or -1 if it couldn't be read. */
-export async function copyTextFrom(png: Buffer, choice = 'auto'): Promise<number> {
+export async function copyTextFrom(png: Buffer): Promise<number> {
   try {
-    const { lines } = await recognizeText(png, choice)
+    const { lines } = await recognizeText(png)
     if (lines.length) clipboard.writeText(lines.map((l) => l.text).join('\n'))
     return lines.length
   } catch (err) {
@@ -52,8 +65,9 @@ export async function copyTextFrom(png: Buffer, choice = 'auto'): Promise<number
 }
 
 /** The text in `png` (top to bottom), with the engine that read it and how long it took. */
-export async function recognizeText(png: Buffer, choice = 'auto'): Promise<OcrResult> {
-  const engine = ocrEngineFor(choice)
+export async function recognizeText(png: Buffer): Promise<OcrResult> {
+  const { engine: choice, vietnamese } = getSettings().ocr
+  const engine = ocrEngineFor(choice, wantsVietnamese(vietnamese))
   if (!engine) throw new Error('No text recognition on this computer')
   const t0 = Date.now()
   const lines = await engine.recognize(png, LANGUAGES)

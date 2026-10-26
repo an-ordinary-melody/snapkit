@@ -31,6 +31,9 @@ mac:
   files:
     - "!node_modules/koffi/**"
     - "!node_modules/@koromix/**"
+    # Tesseract only reads Vietnamese on Windows (macOS's own text recognition has it).
+    - "!node_modules/tesseract.js/**"
+    - "!node_modules/tesseract.js-core/**"
   # Liquid Glass icon (macOS 26+): build/Assets.car, compiled from build/AppIcon.icon by the
   # "Mac icon" workflow, plus the flattened AppIcon.icns it makes for older macOS.
   icon: build/AppIcon.icns
@@ -55,6 +58,12 @@ dmg:
   format: UDBZ # bzip2: the smallest of the formats tried (76 MB vs 83 MB zlib, 82 MB LZFSE)
 
 win:
+  # Tesseract (Vietnamese text): only the WebAssembly builds Node loads (SIMD, and plain for old CPUs).
+  files:
+    - "!node_modules/tesseract.js/{dist,docs,examples,scripts}/**"
+    - "!node_modules/tesseract.js-core/*.wasm.js"
+    - "!node_modules/tesseract.js-core/tesseract-core.{js,wasm}"
+    - "!node_modules/tesseract.js-core/tesseract-core-simd.{js,wasm}"
   icon: build/icon-win.png # full-size tile (build/icon.png is inset for macOS); made by scripts/make-icons.cjs
   # Text recognition helper (Windows OCR), built by scripts/build-ocr.mjs.
   extraResources:

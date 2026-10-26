@@ -217,6 +217,8 @@ export interface SettingsSnapshot {
   engines: { id: string; label: string; available: boolean }[]
   /** Text recognition engines for this OS. */
   ocrEngines: { id: string; label: string; available: boolean }[]
+  /** Windows: whether Vietnamese is read now (the ocr.vietnamese setting, with 'auto' resolved). Null elsewhere. */
+  ocrVietnamese: boolean | null
   /** Hotkeys another app holds right now (Snapkit takes them once they're free). */
   hotkeysTaken: ('capture' | 'history' | 'fullscreen' | 'settings' | 'lastArea' | 'ocr')[]
 }

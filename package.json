@@ -23,6 +23,7 @@
   "dependencies": {
     "koffi": "3.3.2",
     "node-screenshots": "^0.2.1",
+    "tesseract.js": "6.0.1",
     "upng-js": "2.1.0"
   },
   "devDependencies": {

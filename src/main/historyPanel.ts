@@ -132,7 +132,7 @@ export function registerHistoryIpc() {
   ipcHandle(IPC.historyCopyText, async (_e, id: string) => {
     const png = await historyFile(String(id), 'final.png')
     if (!png) return -1
-    const n = await copyTextFrom(png, getSettings().ocr.engine)
+    const n = await copyTextFrom(png)
     if (n > 0) hidePanel(true)
     return n
   })

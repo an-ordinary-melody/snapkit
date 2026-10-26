@@ -104,6 +104,8 @@ export interface Settings {
     engine: string
     /** The Copy text button: open the text panel to check it first, or copy right away. */
     textButton: 'panel' | 'copy'
+    /** Windows: read Vietnamese (with Tesseract; Windows' own OCR has none). 'auto': when Windows' languages include it. */
+    vietnamese: 'auto' | 'on' | 'off'
   }
   /** Smaller PNGs on the way out (copy / save); history and the floating preview keep the original. */
   compress: {
@@ -233,7 +235,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   ocr: {
     engine: 'auto',
-    textButton: 'panel'
+    textButton: 'panel',
+    vietnamese: 'auto'
   },
   compress: {
     enabled: false,

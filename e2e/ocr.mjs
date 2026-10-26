@@ -4,7 +4,7 @@ import { _electron as electron } from 'playwright-core'
 import { mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 const out = process.argv[2] ?? 'e2e-out'; const profile = join(out, 'profile'); mkdirSync(profile, { recursive: true })
-writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12', ocr: '' }, notifications: { onCopy: false } }))
+writeFileSync(join(profile, 'settings.json'), JSON.stringify({ hotkeys: { capture: 'CommandOrControl+Alt+Shift+F12', ocr: '' }, notifications: { onCopy: false }, ocr: { vietnamese: 'on' } }))
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const app = await electron.launch({ args: ['.', '--no-sandbox', `--user-data-dir=${profile}`, ...(process.env.SNAPKIT_E2E_ARGS?.split(' ').filter(Boolean) ?? [])] })
 const errors = []
@@ -19,6 +19,12 @@ const drag = async (x1, y1, x2, y2) => {
 try {
   await wait(2500)
   for (let i = 0; i < 40 && !overlay(); i++) await wait(250)
+  // The text window needs a real screen (the 150% CI run's screen is 456 × 342 points).
+  const [sw, sh] = await overlay().evaluate(() => [window.innerWidth, window.innerHeight])
+  if (sw < 800 || sh < 480) {
+    console.log(`ocr test: skipped (screen ${sw} × ${sh} is too small)`)
+    process.exit(0)
+  }
   overlay().on('pageerror', (e) => errors.push(e.message))
   // A window with known text at the top-left of the screen (overlay coordinates 40,40 to 760,440), blank below the text.
   await app.evaluate(({ BrowserWindow, screen }, lines) => {

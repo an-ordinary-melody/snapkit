@@ -71,7 +71,9 @@ const SUITES = {
     [/dragging an end updates the length: true/, 'dragging a ruler end updates the length'],
     [/renderer errors: none/, 'no page errors']
   ],
-  ocr: [
+  ocr: process.env.SNAPKIT_E2E_ARGS?.includes('device-scale-factor')
+    ? [[/ocr test: skipped/, 'needs a full-size screen (skipped on the scaled CI run)']]
+    : [
     [/panel text matches: true/, 'Copy text reads English and Vietnamese into the text panel'],
     [/lines outlined: [1-9]/, 'the lines found are outlined'],
     [/copied as one line: true \| capture closed: true/, 'One line + Copy text copies and closes'],

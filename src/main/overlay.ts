@@ -383,7 +383,7 @@ export function registerOverlayIpc() {
   ipcHandle(IPC.ocr, async (_e, png: ArrayBuffer) => {
     if (!(png instanceof ArrayBuffer)) return { error: 'No image' }
     try {
-      return await recognizeText(Buffer.from(png), getSettings().ocr.engine)
+      return await recognizeText(Buffer.from(png))
     } catch (err) {
       log('[ocr] failed:', String(err))
       return { error: err instanceof Error ? err.message : String(err) }

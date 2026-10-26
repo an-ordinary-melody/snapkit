@@ -308,7 +308,7 @@ export function registerPinIpc() {
   })
   ipcHandle(IPC.pinCopyText, async (e) => {
     const p = of(e)
-    return p ? copyTextFrom(p.png, getSettings().ocr.engine) : 0
+    return p ? copyTextFrom(p.png) : 0
   })
   ipcOn(IPC.pinSave, (e) => {
     const p = of(e)

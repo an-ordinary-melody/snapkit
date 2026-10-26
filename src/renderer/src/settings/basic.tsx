@@ -30,6 +30,11 @@ export function General({ snap, set }: SectionProps) {
             onChange={(textButton) => set({ ocr: { textButton } })}
           />
         </Row>
+        {snap.ocrVietnamese !== null && (
+          <Row label="Read Vietnamese" desc="Windows' own text recognition has no Vietnamese, so Snapkit uses Tesseract for it. Downloads about 7 MB the first time.">
+            <Toggle label="Read Vietnamese" value={snap.ocrVietnamese} onChange={(v) => set({ ocr: { vietnamese: v ? 'on' : 'off' } })} />
+          </Row>
+        )}
         <Row label="Copy last area right away" desc="For Capture last area. Off: opens capture mode with the area selected.">
           <Toggle label="Copy last area right away" value={s.capture.lastAreaInstant} onChange={(lastAreaInstant) => set({ capture: { lastAreaInstant } })} />
         </Row>

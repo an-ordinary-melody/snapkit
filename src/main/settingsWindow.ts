@@ -3,7 +3,7 @@ import { join } from 'path'
 import { type Settings, type SettingsPatch } from '@shared/settings'
 import { IPC, type SettingsSnapshot } from '@shared/ipc'
 import { engineInfo } from './capture'
-import { ocrEngineInfo } from './ocr'
+import { ocrEngineInfo, wantsVietnamese } from './ocr'
 import { defaultSaveFolder } from './output'
 import { ipcHandle, ipcOn } from './security'
 import { DEFAULTS, getSettings, onSettingsChange, resetSettings, settingsFile, updateSettings } from './settings'
@@ -19,7 +19,8 @@ const snapshot = (): SettingsSnapshot => ({
   version: app.getVersion(),
   defaultSaveFolder: defaultSaveFolder(),
   engines: engineInfo(),
-  ocrEngines: ocrEngineInfo()
+  ocrEngines: ocrEngineInfo(),
+  ocrVietnamese: process.platform === 'win32' ? wantsVietnamese(getSettings().ocr.vietnamese) : null
 })
 
 /**
