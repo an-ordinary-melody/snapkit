@@ -19,14 +19,6 @@ const QA: { q: string; a: string }[] = [
     a: `The code is public on <a href="${GITHUB}">GitHub</a>, and every installer is built from it by GitHub Actions. Inside the app, windows are sandboxed, only accept messages from Snapkit's own pages, and can't open web pages; the packaged app has Electron's run-as-Node and debugging switches turned off.`
   },
   {
-    q: 'How do I install it on a Mac?',
-    a: 'Open the .dmg and drag Snapkit to Applications. Snapkit isn\'t signed with a paid Apple Developer ID yet, so macOS blocks the first launch: open it once, then go to <b>System Settings → Privacy & Security</b> and click <b>Open Anyway</b>. (Or run <code>xattr -cr /Applications/Snapkit.app</code> in Terminal.) Allow <b>Screen Recording</b> when asked, then quit and reopen Snapkit.'
-  },
-  {
-    q: 'How do I install it on Windows?',
-    a: 'Run the setup .exe. SmartScreen warns about an unknown publisher because the installer isn\'t signed yet: click <b>More info → Run anyway</b>.'
-  },
-  {
     q: 'Why does it need Screen Recording permission?',
     a: 'That\'s how macOS lets any app read what\'s on screen, which a screenshot tool has to do. Snapkit only reads the screen when you start a capture. After an update macOS may ask again; if captures only show the wallpaper, remove Snapkit from the list with – and add it back.'
   },

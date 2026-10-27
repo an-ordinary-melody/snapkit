@@ -1,0 +1,92 @@
+---
+// Install, one card per OS: the download and the few steps an unsigned app needs on first launch.
+import type { Latest } from '../lib/release'
+import OsIcon from './OsIcons.astro'
+
+interface Props { latest: Latest }
+const { latest } = Astro.props
+
+const CARDS = [
+  {
+    os: 'mac' as const,
+    name: 'macOS',
+    note: 'Apple Silicon',
+    href: latest.mac,
+    steps: [
+      'Open the <b>.dmg</b> and drag Snapkit to <b>Applications</b>.',
+      "Open Snapkit. It isn't signed with a paid Apple Developer ID yet, so macOS blocks the first launch: go to <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>.",
+      'Allow <b>Screen Recording</b> when asked, then quit and reopen Snapkit.'
+    ],
+    alt: 'Or skip step 2 with Terminal: <code>xattr -cr /Applications/Snapkit.app</code>',
+    keys: ['⌥', '⇧', 'Z']
+  },
+  {
+    os: 'win' as const,
+    name: 'Windows',
+    note: '64-bit',
+    href: latest.win,
+    steps: [
+      'Run the <b>setup .exe</b>.',
+      "SmartScreen warns about an unknown publisher, because the installer isn't signed yet: click <b>More info → Run anyway</b>."
+    ],
+    alt: 'Snapkit starts in the tray, near the clock.',
+    keys: ['Alt', 'Shift', 'Z']
+  }
+]
+---
+<section id="install" class="install">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow"><i class="dot"></i> Install</span>
+      <h2>Up and running <span class="serif">in a minute.</span></h2>
+      <p class="lead">Snapkit isn't signed with a paid developer certificate yet, so your system asks once before the first launch.</p>
+    </div>
+    <div class="cards">
+      {CARDS.map((c) => (
+        <div class="card-os">
+          <div class="head">
+            <span class="logo"><OsIcon os={c.os} /></span>
+            <div>
+              <h3>{c.name}</h3>
+              <span class="note">{c.note}{latest.version && <> · <span class="ver">v{latest.version}</span></>}</span>
+            </div>
+            <a class="btn btn-primary btn-sm" data-os={c.os} href={c.href} rel="nofollow">Download</a>
+          </div>
+          <ol class="steps">
+            {c.steps.map((s) => <li set:html={s} />)}
+            <li class="done">
+              Press <span class="keys">{c.keys.map((k) => <kbd class="kbd">{k}</kbd>)}</span> to capture.
+            </li>
+          </ol>
+          <p class="alt" set:html={c.alt} />
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .install { background: var(--bg-soft); border-block: 1px solid var(--line); }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 980px; margin: 0 auto; align-items: start; }
+  @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+  .card-os { display: grid; gap: 18px; padding: clamp(18px, 3vw, 28px); border-radius: 24px; background: var(--card); box-shadow: var(--shadow-s), inset 0 0 0 1px var(--line); }
+  .head { display: flex; align-items: center; gap: 14px; }
+  .logo { width: 44px; height: 44px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--pill); color: var(--pill-fg); }
+  .logo :global(svg) { width: 22px; height: 22px; }
+  .head h3 { font-size: 20px; }
+  .note { font-size: 13px; color: var(--muted); }
+  .ver { white-space: nowrap; }
+  .head .btn { margin-left: auto; }
+  .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .steps li { counter-increment: step; position: relative; padding-left: 38px; font-size: 15px; color: var(--fg-2); line-height: 1.55; }
+  .steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 13px; font-weight: 650; color: var(--fg); background: var(--bg-soft); box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  .steps li.done::before { content: '✓'; color: #fff; background: var(--ok); box-shadow: none; }
+  .steps :global(b) { color: var(--fg); font-weight: 600; }
+  .keys { display: inline-flex; gap: 3px; vertical-align: -3px; margin: 0 2px; }
+  .keys .kbd { min-width: 22px; height: 22px; font-size: 12px; padding: 0 6px; border-radius: 6px; }
+  .alt { font-size: 13px; color: var(--muted); padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+  .alt :global(code) { font: 12.5px var(--mono); padding: 2px 6px; border-radius: 6px; background: var(--bg-soft); box-shadow: inset 0 0 0 1px var(--line); display: inline-block; white-space: nowrap; max-width: 100%; overflow-x: auto; vertical-align: middle; }
+</style>

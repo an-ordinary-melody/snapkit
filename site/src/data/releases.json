@@ -1,5 +1,55 @@
 [
   {
+    "version": "0.2.0-beta.13",
+    "date": "2026-10-26",
+    "intro": "Thirteenth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**Capture Text (OCR).** Select an area and press `X` (or the scan-eye button) to read its text. The text panel shows it so you can check, edit or join it into one line before copying. **Capture Text** (`⌥⇧T`, Windows: `Alt+Shift+T`, also in the menu bar) goes straight to reading. Set \"Copy text\" to \"Copy right away\" in Settings to skip the panel.",
+        "sub": []
+      },
+      {
+        "text": "**Reads English and Vietnamese**, offline and private: Apple's Vision on macOS (Vietnamese needs macOS 14 or newer), Windows' own OCR on Windows. Windows has no Vietnamese OCR, so with \"Read Vietnamese\" on, Snapkit uses Tesseract for it; it downloads about 7 MB of language data the first time.",
+        "sub": []
+      },
+      {
+        "text": "**Text from older captures:** the floating preview and History can read text too.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.2.0-beta.12",
+    "date": "2026-10-25",
+    "intro": "Twelfth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**Compress images.** Smaller PNGs when you copy or save: Standard keeps the size and reduces colors (text stays sharp, often 60–80% smaller); Smallest also brings Retina / HiDPI captures back to 1×. Pasting keeps the savings in browsers, Slack, Discord, Notion and Office. Turn it on in Settings → General → After a capture; the editor has a Compress switch with the file size.",
+        "sub": []
+      },
+      {
+        "text": "**Capture last area** (`⌥⇧X`, Windows: `Alt+Shift+X`). Reopens the area you last copied or saved, or the whole screen after a full-screen capture. Turn on \"Copy last area right away\" to skip capture mode.",
+        "sub": []
+      },
+      {
+        "text": "**Ruler tool** (`M`). Measures in image pixels; part of the image when you copy or save. Off by default: turn it on in Settings → Toolbar.",
+        "sub": []
+      },
+      {
+        "text": "**macOS: Snapkit shows in the Dock while Settings is open**, and goes back to the menu bar when you close it.",
+        "sub": []
+      },
+      {
+        "text": "**macOS: frosted glass app icon.**",
+        "sub": []
+      },
+      {
+        "text": "**Windows: the floating preview stays on top** even when Windows drops its on-top flag.",
+        "sub": []
+      }
+    ]
+  },
+  {
     "version": "0.2.0-beta.11",
     "date": "2026-10-25",
     "intro": "Eleventh beta of Snapkit, a fast screenshot tool for macOS and Windows.",

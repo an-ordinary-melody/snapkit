@@ -2,6 +2,7 @@
 import '../styles/demo.css'
 import Base from '../layouts/Base.astro'
 import Hero from '../components/Hero.astro'
+import Install from '../components/Install.astro'
 import Changelog from '../components/Changelog.astro'
 import Faq from '../components/Faq.astro'
 import FeaturesSection from '../components/FeaturesSection.astro'
@@ -23,6 +24,7 @@ const latest = latestRelease()
     <Signatures />
     <Story />
     <FeaturesSection />
+    <Install latest={latest} />
     <Faq />
     <Changelog />
   </main>

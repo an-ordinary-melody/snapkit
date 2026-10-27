@@ -73,7 +73,7 @@ try {
     )
     check(`${name}: top bar and blur boxes are blurred`, blurs.length === 0, blurs.join(', '))
 
-    const links = await page.$$eval('[data-dl] a', (as) => as.map((a) => [a.dataset.os, a.href]))
+    const links = await page.$$eval('a[data-os]', (as) => as.map((a) => [a.dataset.os, a.href]))
     check(`${name}: macOS buttons link to a .dmg`, links.filter(([os]) => os === 'mac').every(([, h]) => h.endsWith('.dmg')))
     check(`${name}: Windows buttons link to a -setup.exe`, links.filter(([os]) => os === 'win').every(([, h]) => h.endsWith('-setup.exe')))
 
