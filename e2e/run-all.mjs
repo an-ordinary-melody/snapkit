@@ -19,6 +19,7 @@ const SUITES = {
     [/dark background sets white text: #ffffff/, 'readable text on a dark background'],
     [/highlighter swatches: 5 \| custom: false/, 'highlighter has its own five colors'],
     [/blur strength: 36/, 'a blur area can be clicked and adjusted (hit-testing)'],
+    [/blur strength 0: 0 \| unblurred: true/, 'blur strength goes down to 0 (no blur)'],
     [/style bar shown for selected arrow: true/, 'style bar follows the selected shape'],
     [/custom swatch added: true/, 'custom colors from the picker'],
     [/background on, dot shown: true/, 'background toggle and its dot'],

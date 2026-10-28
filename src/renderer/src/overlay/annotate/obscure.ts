@@ -3,7 +3,7 @@ import type { Rect } from '../layout'
 /**
  * Pixelated or blurred copy of part of the frozen screenshot, at full image
  * resolution. `scale` converts overlay px to image px; `strength` is the pixel
- * block size / blur radius in overlay px.
+ * block size / blur radius in overlay px (0: the area as it is, unblurred).
  */
 export function obscure(src: HTMLCanvasElement, r: Rect, scale: number, mode: 'pixelate' | 'blur', strength: number): HTMLCanvasElement {
   const sx = Math.round(r.x * scale)
@@ -15,9 +15,12 @@ export function obscure(src: HTMLCanvasElement, r: Rect, scale: number, mode: 'p
   out.height = sh
   const ctx = out.getContext('2d')!
 
-  if (mode === 'pixelate') {
+  const amount = Math.round(strength * scale)
+  if (amount <= 0) {
+    ctx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh)
+  } else if (mode === 'pixelate') {
     // Shrink, then scale back up without smoothing.
-    const block = Math.max(2, Math.round(strength * scale))
+    const block = Math.max(2, amount)
     const tw = Math.max(1, Math.ceil(sw / block))
     const th = Math.max(1, Math.ceil(sh / block))
     const tiny = shrink(src, sx, sy, sw, sh, tw, th)

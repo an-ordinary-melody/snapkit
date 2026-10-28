@@ -133,7 +133,7 @@ export interface Settings {
     highlighterWidth: number
     /** 'pixelate' or 'blur'. */
     blurMode: 'pixelate' | 'blur'
-    /** Pixel block size / blur radius in px (4–40). */
+    /** Pixel block size / blur radius in px (0–40; 0 = no blur). */
     blurStrength: number
     /** Step badge diameter in px. */
     stepSize: number

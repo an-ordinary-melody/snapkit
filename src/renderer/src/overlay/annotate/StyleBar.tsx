@@ -48,7 +48,7 @@ function lookPatch(id: TextLook, s: Style): Partial<Style> {
   }
 }
 
-export const BLUR_RANGE = { min: 4, max: 40 }
+export const BLUR_RANGE = { min: 0, max: 40 }
 
 /** Custom colors picked this session, newest first. */
 let recentCustom: string[] = []

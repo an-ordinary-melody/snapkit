@@ -293,7 +293,7 @@ export function ToolsSection({ snap, set }: SectionProps) {
           />
         </Row>
         <Row label="Strength">
-          <SliderField label="Blur strength" min={4} max={40} value={a.blurStrength} onChange={(blurStrength) => setA({ blurStrength })} />
+          <SliderField label="Blur strength" min={0} max={40} value={a.blurStrength} onChange={(blurStrength) => setA({ blurStrength })} />
         </Row>
       </Group>
 

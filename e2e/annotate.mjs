@@ -125,6 +125,24 @@ try {
   await wait(150)
   console.log('blur strength:', await win.$eval('.style-bar .value', (e) => e.textContent))
   writeFileSync(join(out, '1b-blur-strength.png'), await win.screenshot())
+  // Strength 0: the area shows unblurred (the same pixels as the screenshot under it).
+  const setStrength = (v) => win.$eval('.style-bar input.slider', (el, v) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    set.call(el, String(v)); el.dispatchEvent(new Event('input', { bubbles: true }))
+  }, v)
+  await setStrength(0); await wait(250)
+  const unblurred = await win.evaluate(() => {
+    const node = window.Konva.stages[0].find('Image').find((n) => n.image()?.width > 1)
+    const img = node.image(), frozen = document.querySelector('canvas.frozen')
+    const k = frozen.width / window.innerWidth
+    const a = img.getContext('2d').getImageData(0, 0, img.width, img.height).data
+    const b = frozen.getContext('2d').getImageData(Math.round(node.x() * k), Math.round(node.y() * k), img.width, img.height).data
+    let diff = 0
+    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 6) diff++
+    return diff / (a.length / 4) < 0.01
+  })
+  console.log('blur strength 0:', await win.$eval('.style-bar .value', (e) => e.textContent), '| unblurred:', unblurred)
+  await setStrength(36); await wait(150)
   // Live preview: mid-drag, the blur shows what's under its new position.
   await m.move(770, 590); await m.down(); await m.move(700, 560, { steps: 3 }); await m.move(620, 520, { steps: 3 }); await wait(100)
   writeFileSync(join(out, '1c-blur-mid-drag.png'), await win.screenshot())
