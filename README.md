@@ -4,6 +4,8 @@ A minimal screenshot tool for macOS and Windows. Lightshot-style capture with
 annotation, beautify, pin and history. Every feature can be turned on or off
 in settings.
 
+**Website and downloads:** [snapkit-app.vercel.app](https://snapkit-app.vercel.app)
+
 ## Status
 
 | Phase | What | State |
