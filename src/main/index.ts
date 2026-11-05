@@ -10,7 +10,7 @@ import { log } from './log'
 import { lockDownWebContents } from './security'
 import { onUpdateCheck, registerSystemIpc, scheduleUpdateChecks } from './system'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
-import { forceEndCapture, isCapturing, onCaptureMode, rebuildOverlays, registerOverlayIpc, startCapture } from './overlay'
+import { forceEndCapture, isCapturing, onCaptureMode, rebuildOverlays, registerOverlayIpc, startCapture, watchSpaces } from './overlay'
 import { registerPinIpc } from './pin'
 import { loadHistory, prune, saveIndex } from './history'
 import { preloadHistoryPanel, registerHistoryIpc, toggleHistoryPanel } from './historyPanel'
@@ -135,14 +135,19 @@ function init() {
     refreshTrayMenu()
   })
 
+  // Displays changed: new capture windows, once capture mode (if open) has closed.
   let rebuildTimer: NodeJS.Timeout | undefined
-  const scheduleRebuild = () => {
+  const scheduleRebuild = (ms = 300) => {
     clearTimeout(rebuildTimer)
-    rebuildTimer = setTimeout(rebuildOverlays, 300)
+    rebuildTimer = setTimeout(() => (isCapturing() ? scheduleRebuild(1000) : rebuildOverlays()), ms)
   }
-  screen.on('display-added', scheduleRebuild)
-  screen.on('display-removed', scheduleRebuild)
-  screen.on('display-metrics-changed', scheduleRebuild)
+  screen.on('display-added', () => scheduleRebuild())
+  screen.on('display-removed', () => scheduleRebuild())
+  screen.on('display-metrics-changed', () => scheduleRebuild())
+  watchSpaces()
+  // macOS: capture windows can go wrong after hours of use (off-screen, or on one Space only).
+  // Fresh ones every hour while idle keep that from building up.
+  if (process.platform === 'darwin') setInterval(() => !isCapturing() && rebuildOverlays(), 60 * 60 * 1000).unref()
 }
 
 // Keep running in the tray when windows close.

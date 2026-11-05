@@ -63,7 +63,21 @@ try {
     console.log('after input, windows kept:', (await ids()) === kept)
   }
 
-  // 6. History panel: record switch, and the folder button leaves no dim behind.
+  // 6. A display change while capture mode is open: the capture windows are rebuilt after it closes, not under it.
+  {
+    const ids = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w) => w.webContents.getURL().endsWith('#overlay')).map((w) => w.id).join())
+    await wait(1500)
+    await hotkey(); await wait(1200)
+    const before = await ids()
+    await app.evaluate(({ screen }) => screen.emit('display-metrics-changed'))
+    await wait(900)
+    const during = (await ids()) === before && (await capturing())
+    const ov = app.windows().find((w) => w.url().endsWith('#overlay') && !w.isClosed())
+    await ov.keyboard.press('Escape'); await wait(1800)
+    console.log('display change during capture: kept open:', during, '| rebuilt after:', (await ids()) !== before)
+  }
+
+  // 7. History panel: record switch, and the folder button leaves no dim behind.
   await app.evaluate(({ app }) => app.emit('second-instance', {}, ['--history'])); await wait(900)
   const panel = app.windows().find((w) => w.url().endsWith('#history'))
   await panel.click('button[aria-label="Record history"]'); await wait(300)

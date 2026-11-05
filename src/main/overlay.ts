@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain, screen, type Display, type Rectangle } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, screen, systemPreferences, type Display, type Rectangle } from 'electron'
 import { readFile, stat } from 'fs/promises'
 import { extname, join } from 'path'
 import { IPC, type ArmPayload, type CaptureDoc, type CopyExtra, type DecorateResult, type OutputOptions, type HistoryRecord, type PixelsPayload } from '@shared/ipc'
@@ -25,6 +25,9 @@ let active = false
 /** When this capture's overlay went on screen, and whether any input has reached it since. */
 let shownAt = 0
 let touched = false
+/** When capture mode last opened, and how (to open it again the same way). */
+let openedAt = 0
+let lastOpen: { preset?: { display: Display; rect: Rectangle }; textOnly: boolean } = { textOnly: false }
 const modeListeners: ((on: boolean) => void)[] = []
 /** Called when capture mode (or an edit session) opens or closes. */
 export const onCaptureMode = (cb: (on: boolean) => void) => void modeListeners.push(cb)
@@ -184,9 +187,32 @@ function logOverlayState() {
     log(
       `[overlay ${id}] visible ${w.isVisible()}, opacity ${w.getOpacity()}, focused ${w.isFocused()}, on top ${w.isAlwaysOnTop()}, ` +
         `bounds ${b.x},${b.y} ${b.width}x${b.height} (display ${d ? `${d.x},${d.y} ${d.width}x${d.height}` : 'gone'}), ` +
-        `page ${w.webContents.isCrashed() ? 'crashed' : 'alive'}; replacing the capture windows`
+        `page ${w.webContents.isCrashed() ? 'crashed' : 'alive'}`
     )
   }
+}
+
+/**
+ * macOS: a capture window can also stop counting as on every Space. Capture mode opened from a
+ * full-screen app then makes macOS slide over to the desktop the window is on. The active Space
+ * changing right as capture mode opens is taken as that: the windows are replaced and capture
+ * mode opens again (once; macOS slides back when it closes).
+ */
+let lastSpaceFix = 0
+export function watchSpaces() {
+  if (!isMac) return
+  systemPreferences.subscribeWorkspaceNotification('NSWorkspaceActiveSpaceDidChangeNotification', () => {
+    if (!active || editTarget || touched || Date.now() - openedAt > 1500) return
+    const retry = Date.now() - lastSpaceFix > 30_000
+    log(`[overlay] macOS moved to another Space to show capture mode${retry ? ': replacing the capture windows and opening it again' : ' again'}`)
+    logOverlayState()
+    forceEndCapture('capture window was on another Space')
+    rebuildOverlays()
+    if (!retry) return
+    lastSpaceFix = Date.now()
+    const { preset, textOnly } = lastOpen
+    setTimeout(() => void startCapture(Date.now(), preset, textOnly), 700) // after macOS slides back
+  })
 }
 
 function replaceOverlay(display: Display) {
@@ -247,6 +273,8 @@ export async function startCapture(t0 = Date.now(), preset?: { display: Display;
   const id = ++session
   shownAt = 0
   touched = false
+  openedAt = Date.now()
+  lastOpen = { preset, textOnly }
   const settings = getSettings()
   const ms = () => `${Date.now() - t0}ms`
 
@@ -356,13 +384,15 @@ export async function startEdit(doc: CaptureDoc, onDone: (png: Buffer, doc: Capt
  * here) so the listener can be removed again.
  */
 function waitFor(channel: string, win: BrowserWindow, session: number | null, timeout: number) {
+  // Kept from the start: the window may be destroyed (replaced) before the answer comes.
+  const contents = win.webContents
   return new Promise<boolean>((resolve) => {
     const timer = setTimeout(() => {
       log(`timeout waiting for ${channel}`)
       done(false)
     }, timeout)
     function onMsg(e: Electron.IpcMainEvent, s?: number) {
-      if (e.sender === win.webContents && (session === null || s === session)) done(true)
+      if (e.sender === contents && (session === null || s === session)) done(true)
     }
     function done(ok: boolean) {
       clearTimeout(timer)
@@ -384,13 +414,14 @@ export function decorateCapture(png: Buffer, scale: number): Promise<{ png: Buff
   const win = [...overlays.values()].find((w) => !w.isDestroyed())
   if (!win || !getSettings().beautify.applyOnCopy) return Promise.resolve(null)
   const id = ++decorateId
+  const contents = win.webContents // the window may be replaced before it answers
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       log('[fullscreen] background took too long; copying without it')
       done(null)
     }, 3000)
     function onMsg(e: Electron.IpcMainEvent, gotId: number, result: DecorateResult | null) {
-      if (e.sender === win!.webContents && gotId === id) done(result ? { png: Buffer.from(result.png), beautify: result.beautify } : null)
+      if (e.sender === contents && gotId === id) done(result ? { png: Buffer.from(result.png), beautify: result.beautify } : null)
     }
     function done(r: { png: Buffer; beautify: unknown } | null) {
       clearTimeout(timer)
@@ -398,7 +429,7 @@ export function decorateCapture(png: Buffer, scale: number): Promise<{ png: Buff
       resolve(r)
     }
     ipcMain.on(IPC.decorated, onMsg)
-    win.webContents.send(IPC.decorate, { id, png: new Uint8Array(png), scale, settings: getSettings() })
+    contents.send(IPC.decorate, { id, png: new Uint8Array(png), scale, settings: getSettings() })
   })
 }
 
