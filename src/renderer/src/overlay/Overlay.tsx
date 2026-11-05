@@ -487,11 +487,14 @@ export function Overlay() {
     return m
   }, [cap])
 
-  // Any input tells main we're still here (capture mode closes itself after a long idle time).
+  // Any input tells main we're still here (capture mode closes itself after a long idle time,
+  // and main uses it to tell a capture you saw from one that never reached the screen).
   useEffect(() => {
     if (!cap) return
     let last = 0
-    const ping = () => {
+    const ping = (e: Event) => {
+      // macOS sends a move with no movement when the window appears under the pointer: not input.
+      if (e instanceof PointerEvent && e.type === 'pointermove' && !e.movementX && !e.movementY) return
       const now = Date.now()
       if (now - last < 5000) return
       last = now

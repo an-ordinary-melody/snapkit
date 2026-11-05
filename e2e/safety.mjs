@@ -45,7 +45,25 @@ try {
   for (let i = 0; i < 6; i++) { await hotkey(); await wait(700); await hotkey(); await wait(300) }
   console.log('leftover wait listeners:', await app.evaluate(({ ipcMain }) => ['overlay:armed', 'overlay:painted', 'overlay:cleared'].map((c) => ipcMain.listenerCount(c))))
 
-  // 5. History panel: record switch, and the folder button leaves no dim behind.
+  // 5. macOS: the hotkey again right after opening, with no input, is taken as a capture window that
+  //    never reached the screen: the windows are replaced and the next capture works. After input they're kept.
+  if (process.platform === 'darwin') {
+    const ids = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter((w) => w.webContents.getURL().endsWith('#overlay')).map((w) => w.id).join())
+    const before = await ids()
+    await hotkey(); await wait(1200); await hotkey(); await wait(400)
+    const replaced = (await ids()) !== before
+    console.log('unseen overlay replaced:', replaced, '|', lastLog(2))
+    await wait(1500)
+    await hotkey(); await wait(1200)
+    console.log('capture after replacing works:', await capturing())
+    const ov2 = app.windows().find((w) => w.url().endsWith('#overlay') && !w.isClosed())
+    const kept = await ids()
+    await ov2.mouse.move(200, 200); await ov2.mouse.move(260, 240); await wait(300)
+    await hotkey(); await wait(400)
+    console.log('after input, windows kept:', (await ids()) === kept)
+  }
+
+  // 6. History panel: record switch, and the folder button leaves no dim behind.
   await app.evaluate(({ app }) => app.emit('second-instance', {}, ['--history'])); await wait(900)
   const panel = app.windows().find((w) => w.url().endsWith('#history'))
   await panel.click('button[aria-label="Record history"]'); await wait(300)

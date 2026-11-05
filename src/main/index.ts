@@ -1,10 +1,12 @@
 import { app, globalShortcut, screen } from 'electron'
 import { rmSync } from 'fs'
+import { release } from 'os'
 import { join } from 'path'
 import { setPreferredEngine, warmUpCapture } from './capture'
 import { captureFullScreen, captureRect } from './fullscreen'
 import { lastArea } from './lastArea'
 import { captureModeChanged, registerHotkeys, setHotkey } from './hotkeys'
+import { log } from './log'
 import { lockDownWebContents } from './security'
 import { onUpdateCheck, registerSystemIpc, scheduleUpdateChecks } from './system'
 import { ensureScreenPermission, hasScreenPermission } from './permissions'
@@ -99,6 +101,7 @@ function fullscreen() {
   void ensureScreenPermission().then((ok) => ok && captureFullScreen(t0))
 }
 function init() {
+  log(`Snapkit ${app.getVersion()} started (${process.platform} ${release()}, Electron ${process.versions.electron})`)
   if (process.platform === 'darwin') {
     app.dock?.hide() // menu-bar app: a Dock icon only while Settings is open
     app.on('activate', () => isSettingsOpen() && openSettingsWindow())

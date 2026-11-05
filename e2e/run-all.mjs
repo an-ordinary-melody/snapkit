@@ -162,6 +162,13 @@ const SUITES = {
     [/stuck page -> no dim left: true/, 'a stuck overlay never leaves the screen dimmed'],
     [/next capture works: true/, 'capture works after a stuck one'],
     [/leftover wait listeners: \[ 0, 0, 0 \]/, 'no listener leak over many captures'],
+    ...(process.platform === 'darwin'
+      ? [
+          [/unseen overlay replaced: true .*no input since it opened/, 'a capture window that never showed is replaced'],
+          [/capture after replacing works: true/, 'capture works after replacing it'],
+          [/after input, windows kept: true/, 'a seen capture closed by the hotkey keeps its windows']
+        ]
+      : []),
     [/record switch pauses history: true/, 'history record switch'],
     [/after folder button: capture dim showing: false/, 'history folder button left a stuck dim']
   ],

@@ -22,6 +22,9 @@ const overlays = new Map<number, BrowserWindow>()
 
 let session = 0
 let active = false
+/** When this capture's overlay went on screen, and whether any input has reached it since. */
+let shownAt = 0
+let touched = false
 const modeListeners: ((on: boolean) => void)[] = []
 /** Called when capture mode (or an edit session) opens or closes. */
 export const onCaptureMode = (cb: (on: boolean) => void) => void modeListeners.push(cb)
@@ -162,6 +165,30 @@ function reveal(win: BrowserWindow) {
   win.moveTop()
 }
 
+/**
+ * macOS: after days of running, a capture window can stop reaching the screen. Capture
+ * mode opens and takes the keyboard, but nothing shows, so the hotkey seems to do nothing
+ * and pressing it again closes what you never saw. A press soon after opening, with no
+ * input in between, is taken as that: the windows are replaced, as a restart would.
+ * (If you did see it and just changed your mind, rebuilding costs nothing you'd notice.)
+ */
+const UNSEEN_MS = 15_000
+const unseenOverlay = () => isMac && !editTarget && !touched && shownAt > 0 && Date.now() - shownAt < UNSEEN_MS
+
+/** For main.log: what the capture windows look like to Electron. */
+function logOverlayState() {
+  for (const [id, w] of overlays) {
+    if (w.isDestroyed()) continue
+    const b = w.getBounds()
+    const d = screen.getAllDisplays().find((x) => x.id === id)?.bounds
+    log(
+      `[overlay ${id}] visible ${w.isVisible()}, opacity ${w.getOpacity()}, focused ${w.isFocused()}, on top ${w.isAlwaysOnTop()}, ` +
+        `bounds ${b.x},${b.y} ${b.width}x${b.height} (display ${d ? `${d.x},${d.y} ${d.width}x${d.height}` : 'gone'}), ` +
+        `page ${w.webContents.isCrashed() ? 'crashed' : 'alive'}; replacing the capture windows`
+    )
+  }
+}
+
 function replaceOverlay(display: Display) {
   const old = overlays.get(display.id)
   if (old && !old.isDestroyed()) old.destroy()
@@ -209,9 +236,17 @@ export function returnFocus() {
 export async function startCapture(t0 = Date.now(), preset?: { display: Display; rect: Rectangle }, textOnly = false) {
   // The hotkey again closes capture mode, whatever state it's in: a way out
   // that doesn't depend on the overlay page responding.
-  if (active) return forceEndCapture('hotkey pressed again')
+  if (active) {
+    const unseen = unseenOverlay()
+    if (unseen) logOverlayState() // before closing hides them
+    forceEndCapture(unseen ? 'hotkey pressed again, no input since it opened' : 'hotkey pressed again')
+    if (unseen) rebuildOverlays()
+    return
+  }
   setActive(true)
   const id = ++session
+  shownAt = 0
+  touched = false
   const settings = getSettings()
   const ms = () => `${Date.now() - t0}ms`
 
@@ -269,6 +304,7 @@ export async function startCapture(t0 = Date.now(), preset?: { display: Display;
         win.focus()
       }
       log(`display ${g.display.id} shown at ${ms()}`)
+      shownAt ||= Date.now()
       touchIdleTimer()
 
       // Step 2: transfer the frozen image and paint it under the dim.
@@ -447,7 +483,11 @@ export function registerOverlayIpc() {
     releaseFocus()
   })
   // Any input in capture mode pushes the idle timeout back.
-  ipcOn(IPC.activity, (_e, s: number) => s === session && active && touchIdleTimer())
+  ipcOn(IPC.activity, (_e, s: number) => {
+    if (s !== session || !active) return
+    touched = true
+    touchIdleTimer()
+  })
   // Sent right after an output; the session has usually ended by then.
   ipcOn(IPC.historyAdd, (_e, r: HistoryRecord) => {
     void addToHistory(r).then((id) => id && linkThumbToHistory(r.session, id))
