@@ -1,5 +1,16 @@
 [
   {
+    "title": "New background defaults and a steadier capture mode",
+    "from": "0.2.0-beta.14",
+    "upTo": "0.2.0-beta.14",
+    "items": [
+      "New default background: pink gradient, 20 px padding, 17 px corners, light shadow; remember last background on by default",
+      "Blur strength goes down to 0",
+      "macOS: capture mode recovers when it doesn't show or when macOS switches Spaces",
+      "Display changes no longer close an open capture"
+    ]
+  },
+  {
     "title": "Capture Text (OCR)",
     "from": "0.2.0-beta.13",
     "upTo": "0.2.0-beta.13",
