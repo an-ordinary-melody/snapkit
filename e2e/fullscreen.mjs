@@ -75,14 +75,14 @@ try {
   writeFileSync(join(out, 'history-cleared.png'), await h.screenshot())
 
   // "Background on by default" applies to full-screen captures too: the copy, the preview and history get it.
-  // (Its padding is 48 screen px on each side by default.)
+  // (Its padding is 20 screen px on each side by default.)
   await h.evaluate(() => window.snapkit.settingsUpdate({ beautify: { applyOnCopy: true } }))
   await app.evaluate(({ clipboard }) => clipboard.clear())
   await app.evaluate(({ app }) => app.emit('second-instance', {}, ['--fullscreen']))
   await wait(2500)
   const bg = await app.evaluate(({ clipboard, screen }, plain) => {
     const d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
-    return { clip: clipboard.readImage().getSize(), plain, pad: Math.round(48 * d.scaleFactor) }
+    return { clip: clipboard.readImage().getSize(), plain, pad: Math.round(20 * d.scaleFactor) }
   }, plainClip)
   const items = await h.evaluate(() => window.snapkit.historyList())
   console.log('full screen with background:', bg.clip.width === bg.plain.width + 2 * bg.pad && bg.clip.height === bg.plain.height + 2 * bg.pad,
