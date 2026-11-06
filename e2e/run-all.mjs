@@ -197,7 +197,7 @@ const SUITES = {
     [/group rows: \[ 'Arrows \(2\)', 'Shapes \(5\)' \]/, 'no separate Line / Ellipse rows'],
     [/palette saved: #00aa55/, 'quick colors'],
     [/step color saved: #3b82f6/, 'step color'],
-    [/remember last: true/, 'remember last background'],
+    [/remember last: false/, 'remember last background toggles off'],
     [/step outline\/shadow: defaults 2 0.3 \| saved \{"color":"#00ff00","width":4\} 0/, 'step badge outline and shadow settings (defaults 2 px, 30%)'],
     [/step badge drawn with: 4px #00ff00 shadow off/, 'step badges use the outline and shadow settings'],
     [/gradients reset: 32/, 'gradient library reset'],

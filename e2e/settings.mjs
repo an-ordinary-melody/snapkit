@@ -145,7 +145,7 @@ try {
   await wait(200)
   console.log('step outline/shadow: defaults', outlineDefault, shadowDefault, '| saved', JSON.stringify(saved().annotate?.stepStroke), saved().annotate?.stepShadow)
 
-  // Background: pick a library gradient as the default; turn on remember-last.
+  // Background: pick a library gradient as the default; turn off remember-last (on by default).
   await section('Background')
   await st.click('.st-group:has-text("Gradient library") .st-lib-swatch >> nth=4')
   await st.click('.st-group:has-text("Gradient library") .st-btn:has-text("Make default")')

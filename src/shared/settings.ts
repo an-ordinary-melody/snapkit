@@ -283,7 +283,7 @@ export const DEFAULT_SETTINGS: Settings = {
     applyOnCopy: false,
     preset: 'ocean',
     presets: [
-      { id: 'ocean', name: 'Ember', background: { type: 'gradient', from: '#f83600', to: '#f9d423', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
+      { id: 'ocean', name: 'Blossom', background: { type: 'gradient', from: '#f093fb', to: '#f5576c', angle: 171 }, padding: 20, radius: 17, shadow: 0.05 },
       { id: 'sunset', name: 'Sunset', background: { type: 'gradient', from: '#fb923c', to: '#ec4899', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
       { id: 'mint', name: 'Mint', background: { type: 'gradient', from: '#34d399', to: '#06b6d4', angle: 135 }, padding: 48, radius: 12, shadow: 0.35 },
       { id: 'light', name: 'Light', background: { type: 'solid', color: '#eef0f3' }, padding: 40, radius: 10, shadow: 0.2 },
@@ -299,7 +299,7 @@ export const DEFAULT_SETTINGS: Settings = {
       ['#232526', '#414345'], ['#0f2027', '#2c5364'], ['#141e30', '#243b55'], ['#42275a', '#734b6d'],
       ['#870000', '#190a05'], ['#000428', '#004e92'], ['#3a1c71', '#d76d77'], ['#434343', '#000000']
     ],
-    rememberLast: false,
+    rememberLast: true,
     solids: ['#ffffff', '#e5e7eb', '#18181b', '#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7']
   },
   features: Object.fromEntries(FEATURES.map((f) => [f.id, f.defaultEnabled])),
