@@ -391,7 +391,14 @@ Latest run (2026-11-08, MacBook Air display, dark theme):
 
 **Approving differences:** a difference stays a failure until the user approves it.
 Approved ones are listed here with the date; anything new in a later run is
-unapproved. None approved yet; the table above is what's waiting for review.
+unapproved.
+
+Approved 2026-11-08 (by the user, as listed in the table above):
+- Text and edge anti-aliasing everywhere (Core Text vs Chromium).
+- Settings: rows 1–2 pt off Electron's; macOS overlay scrollers instead of an always-visible scrollbar.
+- Editor: a thin divider before Copy in the dock.
+- History: the selected card's size label is white, not dimmed. Relative times ("1 h ago") are
+  only comparable when both renders run close together.
 
 ### Layout tokens
 
