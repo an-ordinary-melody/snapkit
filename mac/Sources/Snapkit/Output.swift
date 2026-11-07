@@ -103,7 +103,7 @@ enum Output {
 
   /** The general pasteboard; tests name a private one (`-SnapkitTestPasteboard`) so they never touch the user's clipboard. */
   static var pasteboard: NSPasteboard {
-    if let name = UserDefaults.standard.string(forKey: "SnapkitTestPasteboard") { return NSPasteboard(name: NSPasteboard.Name(name)) }
+    if let name = TestOption.string("SnapkitTestPasteboard") { return NSPasteboard(name: NSPasteboard.Name(name)) }
     return .general
   }
 

@@ -47,3 +47,22 @@ enum Paths {
     }
   }
 }
+
+/** Test-mode launch options (`-SnapkitTestScreen`, `-SnapkitTestPasteboard`, `-SnapkitIdleSeconds`): debug builds only. */
+enum TestOption {
+  static func string(_ key: String) -> String? {
+    #if DEBUG
+    return UserDefaults.standard.string(forKey: key)
+    #else
+    return nil
+    #endif
+  }
+
+  static func double(_ key: String) -> Double {
+    #if DEBUG
+    return UserDefaults.standard.double(forKey: key)
+    #else
+    return 0
+    #endif
+  }
+}

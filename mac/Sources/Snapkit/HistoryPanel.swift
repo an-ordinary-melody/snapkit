@@ -85,7 +85,7 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
 
   func windowDidResignKey(_ notification: Notification) {
     // Like a clipboard manager: clicking anywhere else closes it (not while a sheet or menu of ours is up).
-    if UserDefaults.standard.string(forKey: "SnapkitTestPasteboard") == nil { hide(giveFocusBack: false) }
+    if TestOption.string("SnapkitTestPasteboard") == nil { hide(giveFocusBack: false) }
   }
 
   func windowShouldClose(_ sender: NSWindow) -> Bool {

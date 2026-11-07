@@ -21,7 +21,7 @@ final class ScreenGrabber {
   let testImage: CGImage?
 
   init() {
-    if let path = UserDefaults.standard.string(forKey: "SnapkitTestScreen"),
+    if let path = TestOption.string("SnapkitTestScreen"),
        let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: (path as NSString).expandingTildeInPath) as CFURL, nil),
        let img = CGImageSourceCreateImageAtIndex(src, 0, nil) {
       testImage = img

@@ -38,7 +38,7 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
 
   /** Seconds without input before capture mode closes itself (`-SnapkitIdleSeconds` for tests). */
   private var idleLimit: TimeInterval {
-    let v = UserDefaults.standard.double(forKey: "SnapkitIdleSeconds")
+    let v = TestOption.double("SnapkitIdleSeconds")
     return v > 0 ? v : 180
   }
 
@@ -462,7 +462,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
   static func post(title: String, body: String, reveal: URL? = nil, open: URL? = nil) {
     posted.append((title, body))
-    if UserDefaults.standard.string(forKey: "SnapkitTestPasteboard") != nil { return }
+    if TestOption.string("SnapkitTestPasteboard") != nil { return }
     let center = UNUserNotificationCenter.current()
     center.delegate = shared
     center.requestAuthorization(options: [.alert]) { granted, _ in
