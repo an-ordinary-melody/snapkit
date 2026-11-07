@@ -126,8 +126,8 @@ BSD-3-Clause asks for three things, and the plan covers each:
    the top plus a line saying what we changed (`// Based on Snapzy's
    AreaSelectionWindow.swift, BSD-3-Clause, see THIRD_PARTY_NOTICES.md`).
 2. **Reproduce it with the binary:** `THIRD_PARTY_NOTICES.md` in the repo with
-   Snapzy's full licence text, bundled into the app and shown from Settings →
-   About → Acknowledgements.
+   Snapzy's full licence text, also copied into the app bundle's Resources (the
+   app itself shows no credits; credits live on GitHub, decided 2026-11-08).
 3. **No endorsement:** we don't use the Snapzy name to promote Snapkit; we only
    credit it.
 

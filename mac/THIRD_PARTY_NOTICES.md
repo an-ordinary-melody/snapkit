@@ -1,6 +1,7 @@
 # Third-party notices (Snapkit for Mac)
 
-Snapkit for Mac builds on this open-source work. Thank you to their authors.
+Snapkit for Mac builds on this open-source work. Thank you to their authors. This file is also
+copied into the app bundle (Contents/Resources).
 
 ## Sparkle — MIT
 

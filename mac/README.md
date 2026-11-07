@@ -58,7 +58,7 @@ The toolbar icons are Lucide's (ISC licence), drawn from the same SVG paths the 
 
 ## Credits
 
-Sparkle (MIT), UPNG.js (MIT), Lucide (ISC) and Snapzy (BSD-3-Clause, ideas): see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The app lists them under Settings → About → Acknowledgements.
+Sparkle (MIT), UPNG.js (MIT), Lucide (ISC) and Snapzy (BSD-3-Clause, ideas): see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Updates (Sparkle)
 

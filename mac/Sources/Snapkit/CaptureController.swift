@@ -95,8 +95,16 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
       updatePinButton(e.view)
       show(e.panel, on: screen)
     }
-    focus(screens.first { $0.displayID == preset?.0 } ?? screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? screens.first)
+    // The keyboard comes over only once that screen is grabbed: taking it closes another app's open
+    // menu, which would then be missing from the capture (Electron grabs before showing anything).
+    let keyScreen = screens.first { $0.displayID == preset?.0 } ?? screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? screens.first
     let session = self.session
+    var focused = false
+    let takeFocus = { [weak self] in
+      guard let self, !focused, self.active, self.session == session else { return }
+      focused = true
+      self.focus(keyScreen)
+    }
     grabber.grab(screens, engine: engineId(settings.capture.engine), exclude: captureWindowIds, belowWindow: { [weak self] id in
       self?.pool.entries[id].map { CGWindowID($0.panel.windowNumber) }
     }) { [weak self] id, image in
@@ -104,7 +112,9 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
       if image == nil { log("[capture] no image for display \(id)") }
       e.view.setImage(image)
       if screens.first?.displayID == id { log("[capture] opened in \(ms(t0)) ms") }
+      if id == keyScreen?.displayID { takeFocus() }
     }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: takeFocus) // a slow or failed grab
     touchIdle()
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.checkPresented(session: session) }
   }

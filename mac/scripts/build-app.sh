@@ -34,6 +34,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Snapkit"
 cp ../resources/trayTemplate.png ../resources/trayTemplate@2x.png "$APP/Contents/Resources/"
 cp ../build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# The licences of the open-source parts travel with every copy (MIT/ISC require it); not shown in the app.
+cp THIRD_PARTY_NOTICES.md "$APP/Contents/Resources/"
 # Sparkle.framework (updates), next to the binary it was linked against; ditto keeps its symlinks.
 mkdir -p "$APP/Contents/Frameworks"
 ditto "$(dirname "$BIN")/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"

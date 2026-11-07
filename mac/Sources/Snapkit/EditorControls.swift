@@ -278,9 +278,11 @@ extension Theme {
 
 /** A text field cell with its text vertically centred and 8 pt side padding. */
 final class CenteredTextFieldCell: NSTextFieldCell {
+  /** Left and right padding. */
+  var inset: CGFloat = 8
   private func centred(_ r: NSRect) -> NSRect {
     let h = cellSize(forBounds: r).height
-    return NSRect(x: r.minX + 8, y: r.minY + (r.height - h) / 2, width: r.width - 16, height: h)
+    return NSRect(x: r.minX + inset, y: r.minY + (r.height - h) / 2, width: r.width - inset * 2, height: h)
   }
   override func drawingRect(forBounds r: NSRect) -> NSRect { centred(r) }
   override func edit(withFrame r: NSRect, in v: NSView, editor: NSText, delegate: Any?, event: NSEvent?) {

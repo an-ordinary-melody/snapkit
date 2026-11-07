@@ -9,6 +9,7 @@ import SwiftUI
 final class SettingsWindowController: NSObject, NSWindowDelegate {
   let model: SettingsModel
   private var window: NSWindow?
+  private var frost: NSVisualEffectView?
   var onClose: () -> Void = {}
 
   init(model: SettingsModel) {
@@ -27,8 +28,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       w.minSize = CGSize(width: 720, height: 480)
       w.isReleasedWhenClosed = false
       w.delegate = self
-      // Liquid Glass: a frosted window (vibrancy "sidebar", as Electron's) under translucent colours;
-      // without it the SwiftUI backgrounds are solid and cover the material.
+      // Liquid Glass: a frosted sidebar like System Settings (the content area stays solid); without
+      // it the SwiftUI backgrounds are solid and cover the material.
       let frost = NSVisualEffectView(frame: w.contentRect(forFrameRect: w.frame))
       frost.material = .sidebar
       frost.blendingMode = .behindWindow
@@ -42,6 +43,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       w.backgroundColor = .clear
       w.center()
       window = w
+      self.frost = frost
     }
     if let section { model.section = section }
     model.refreshHistory()
@@ -55,7 +57,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   /** Light / dark / system for the window's own parts (title bar, menus, pop-ups); Gray is dark. */
   func applyAppearance() {
     let m = model.s.appearance.mode
-    window?.appearance = m == "light" ? NSAppearance(named: .aqua) : m == "system" ? nil : NSAppearance(named: .darkAqua)
+    let a = m == "light" ? NSAppearance(named: .aqua) : m == "system" ? nil : NSAppearance(named: .darkAqua)
+    window?.appearance = a
+    // The frosted material keeps the appearance it was drawn with unless told: set it directly.
+    frost?.appearance = a ?? NSApp.effectiveAppearance
+    frost?.needsDisplay = true
   }
 
   func windowWillClose(_ notification: Notification) {
@@ -880,25 +886,7 @@ struct AboutSection: View {
         }
       }
     }
-    SGroup(title: "Acknowledgements", note: "Full license texts are in THIRD_PARTY_NOTICES.md in Snapkit's repository.", th: th) {
-      ForEach(Array(Acknowledgements.all.enumerated()), id: \.offset) { i, a in
-        SRow(label: a.name, desc: a.what, first: i == 0, th: th) {
-          SButton(label: a.license, subtle: true, th: th) { if let url = URL(string: a.url) { NSWorkspace.shared.open(url) } }
-        }
-      }
-    }
   }
-}
-
-/** Open-source work Snapkit for Mac builds on (also in mac/THIRD_PARTY_NOTICES.md). */
-enum Acknowledgements {
-  struct Item { let name, what, license, url: String }
-  static let all = [
-    Item(name: "Sparkle", what: "Updates: checks, downloads and installs new versions.", license: "MIT", url: "https://github.com/sparkle-project/Sparkle"),
-    Item(name: "UPNG.js", what: "PNG colour quantizer, ported to Swift for Compress.", license: "MIT", url: "https://github.com/photopea/UPNG.js"),
-    Item(name: "Lucide", what: "Toolbar and settings icons.", license: "ISC", url: "https://github.com/lucide-icons/lucide"),
-    Item(name: "Snapzy", what: "How the capture windows stay on top across Spaces and full-screen apps.", license: "BSD-3-Clause", url: "https://github.com/duongductrong/Snapzy"),
-  ]
 }
 
 /** Children left to right, wrapping onto new rows (flex-wrap). */

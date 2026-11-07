@@ -98,6 +98,12 @@ final class SizeField: NSTextField, NSTextFieldDelegate {
   init(value: Double, theme: Theme) {
     self.theme = theme
     super.init(frame: CGRect(x: 0, y: 0, width: 38, height: 26))
+    // The number in the middle of the field, vertically too.
+    let c = CenteredTextFieldCell(textCell: "")
+    c.inset = 2
+    c.isEditable = true
+    c.isScrollable = true
+    cell = c
     isBordered = false
     focusRingType = .none
     alignment = .center

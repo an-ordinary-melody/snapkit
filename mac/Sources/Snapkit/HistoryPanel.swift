@@ -33,6 +33,16 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
   }
 
   var isVisible: Bool { window?.isVisible ?? false }
+  private var frost: NSVisualEffectView?
+
+  /** The window's light/dark (Gray is dark), its frosted material included, which keeps the old one unless told. */
+  func applyAppearance() {
+    let m = settings.current.appearance.mode
+    let a = m == "light" ? NSAppearance(named: .aqua) : m == "system" ? nil : NSAppearance(named: .darkAqua)
+    window?.appearance = a
+    frost?.appearance = a ?? NSApp.effectiveAppearance
+    frost?.needsDisplay = true
+  }
 
   private func create() {
     let s = settings.current.history.panel
@@ -65,6 +75,8 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
     w.contentView = frost
     w.isOpaque = false
     w.backgroundColor = .clear
+    self.frost = frost
+    applyAppearance()
     window = w
     view = v
   }

@@ -165,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
       if s.appearance != prev.appearance {
         self?.settingsWindow.applyAppearance()
         self?.historyPanel.testView?.theme = Theme.from(s.appearance)
+        self?.historyPanel.applyAppearance()
       }
     }
     if let sparkle { sparkle.start() } else { updater.schedule() }

@@ -331,7 +331,7 @@ builds no accessibility tree until an assistive app attaches.
 
 Native-only checks (no Electron equivalent): capture window keyboard focus without
 activating, arrow-key nudge/resize of the selection, undo/redo, the Electron-format
-`last-area.json`, pin zoom and opacity, acknowledgements in About.
+`last-area.json`, pin zoom and opacity.
 
 ## 3. Shared fixtures
 

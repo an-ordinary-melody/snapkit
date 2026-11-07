@@ -322,20 +322,28 @@ final class ToolbarView: NSView {
     switch look {
     case .plain: break
     case .stroke:
-      // White letter with a 3 pt outline (paint-order: stroke fill).
-      if let ctx = NSGraphicsContext.current?.cgContext {
-        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "A", attributes: [.font: font, .foregroundColor: theme.glyphLine]))
-        ctx.saveGState()
-        ctx.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
-        ctx.textPosition = CGPoint(x: at.x, y: at.y + font.ascender + (size.height - font.ascender + font.descender) / 2 - 1)
-        ctx.setTextDrawingMode(.stroke)
-        ctx.setLineWidth(3)
-        ctx.setLineJoin(.round)
-        ctx.setStrokeColor(theme.glyphLine.cgColor)
-        CTLineDraw(line, ctx)
-        ctx.restoreGState()
-      }
-      attrs[.foregroundColor] = theme.glyphFill
+      // White letter with a 3 pt outline (paint-order: stroke fill), both from the same glyph outline
+      // so they line up, centred on the letter's own shape.
+      guard let ctx = NSGraphicsContext.current?.cgContext else { break }
+      var ch: UniChar = 65 // "A"
+      var glyph: CGGlyph = 0
+      CTFontGetGlyphsForCharacters(font, &ch, &glyph, 1)
+      guard let outline = CTFontCreatePathForGlyph(font, glyph, nil) else { break }
+      let box = outline.boundingBoxOfPath
+      // Glyph outlines are y-up; this view is flipped.
+      var t = CGAffineTransform(translationX: r.midX - box.midX, y: r.midY + box.midY).scaledBy(x: 1, y: -1)
+      guard let path = outline.copy(using: &t) else { break }
+      ctx.saveGState()
+      ctx.addPath(path)
+      ctx.setLineWidth(3)
+      ctx.setLineJoin(.round)
+      ctx.setStrokeColor(theme.glyphLine.cgColor)
+      ctx.strokePath()
+      ctx.addPath(path)
+      ctx.setFillColor(theme.glyphFill.cgColor)
+      ctx.fillPath()
+      ctx.restoreGState()
+      return
     case .light, .dark:
       let bg = CGRect(x: r.midX - size.width / 2 - 4, y: r.midY - size.height / 2 - 1, width: size.width + 8, height: size.height + 2)
       NSColor(hex: look == .light ? "#ffffff" : "#111111").setFill()

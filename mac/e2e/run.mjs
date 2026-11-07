@@ -62,7 +62,8 @@ const send = (...args) => run(ctl, [...args.map(String), '--wait', '250'])
 async function state() {
   rmSync(stateFile, { force: true })
   send('state')
-  for (let i = 0; i < 20 && !existsSync(stateFile); i++) await wait(50)
+  // Up to 5 s: a compressed copy in a debug build can keep the app busy for over a second.
+  for (let i = 0; i < 100 && !existsSync(stateFile); i++) await wait(50)
   return JSON.parse(readFileSync(stateFile, 'utf8'))
 }
 async function waitFor(pred, ms = 8000) {
@@ -835,8 +836,6 @@ const SUITES = {
     send('settings-check')
     s = await waitFor((x) => !x.updateChecking && x.updateStatus, 15000)
     check(['available', 'latest', 'unavailable', 'error'].includes(s.updateStatus), 'update check answers', s.updateStatus)
-    t = await texts()
-    check(/Acknowledgements|UPNG/.test(t), 'About lists acknowledgements', t.slice(-300))
     send('settings-close')
   },
 
