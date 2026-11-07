@@ -51,17 +51,17 @@ public enum Features {
       groupLabel: "Shapes", variantsHint: "Right-click for more shapes", tipNote: "Hold Shift for a square", defaultEnabled: true, native: true
     ),
     // Also the last shape in the rectangle tool's menu, so off by default.
-    Feature(id: "line", label: "Line", kind: .tool, hint: "L", drawing: true, defaultEnabled: false, inGroup: true),
+    Feature(id: "line", label: "Line", kind: .tool, hint: "L", drawing: true, defaultEnabled: false, inGroup: true, native: true),
     Feature(
       id: "ellipse", label: "Ellipse", kind: .tool, hint: "E", drawing: true,
       variants: [FeatureVariant(id: "ellipse", label: "Ellipse"), FeatureVariant(id: "ellipse-filled", label: "Filled ellipse")],
       groupLabel: "Ellipses", variantsHint: "Right-click for more shapes", defaultEnabled: false, inGroup: true
     ),
-    Feature(id: "highlighter", label: "Highlighter", kind: .tool, hint: "H", drawing: true, tipNote: "Hold Shift for a straight line", defaultEnabled: true),
+    Feature(id: "highlighter", label: "Highlighter", kind: .tool, hint: "H", drawing: true, tipNote: "Hold Shift for a straight line", defaultEnabled: true, native: true),
     Feature(id: "text", label: "Text", kind: .tool, hint: "T", drawing: true, defaultEnabled: true, native: true),
-    Feature(id: "step", label: "Numbered step", kind: .tool, hint: "N", drawing: true, defaultEnabled: true),
-    Feature(id: "blur", label: "Blur", kind: .tool, hint: "B", drawing: true, defaultEnabled: true),
-    Feature(id: "ruler", label: "Ruler", kind: .tool, hint: "M", drawing: true, tipNote: "Measures in pixels. Hold Shift for 45°", defaultEnabled: false),
+    Feature(id: "step", label: "Numbered step", kind: .tool, hint: "N", drawing: true, defaultEnabled: true, native: true),
+    Feature(id: "blur", label: "Blur", kind: .tool, hint: "B", drawing: true, defaultEnabled: true, native: true),
+    Feature(id: "ruler", label: "Ruler", kind: .tool, hint: "M", drawing: true, tipNote: "Measures in pixels. Hold Shift for 45°", defaultEnabled: false, native: true),
     Feature(id: "color", label: "Color", kind: .tool, defaultEnabled: true, native: true),
     Feature(id: "undo", label: "Undo", kind: .tool, hint: "⌘Z", defaultEnabled: true, native: true),
     Feature(id: "redo", label: "Redo", kind: .tool, hint: "⇧⌘Z", defaultEnabled: false, native: true),

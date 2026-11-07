@@ -32,6 +32,16 @@ struct Theme {
   var activeBackground: NSColor
   var activeForeground: NSColor
   var swatchEdge: NSColor
+  /** Focus/selection ring (--ui-ring), fields, slider track, tooltips, menus (--ui-bg-strong), text-look glyphs. */
+  var ring: NSColor = .white
+  var field: NSColor = .clear
+  var track: NSColor = .gray
+  var trackFill: NSColor = .white
+  var tipBackground: NSColor = .black
+  var tipForeground: NSColor = .white
+  var strongBackground: NSColor = .black
+  var glyphFill: NSColor = .white
+  var glyphLine: NSColor = .black
 
   static func from(_ a: Settings.Appearance) -> Theme {
     let systemDark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
@@ -54,6 +64,15 @@ struct Theme {
         activeForeground: .white,
         swatchEdge: .rgba(255, 255, 255, 0.25)
       )
+      t.ring = .white
+      t.field = .rgba(255, 255, 255, gray ? 0.1 : 0.08)
+      t.track = NSColor(hex: "#71717a")
+      t.trackFill = NSColor(hex: "#f4f4f5")
+      t.tipBackground = gray ? .rgba(52, 52, 56, 0.96) : .rgba(20, 20, 22, 0.94)
+      t.tipForeground = NSColor(hex: "#f4f4f5")
+      t.strongBackground = NSColor(hex: gray ? "#3a3a3e" : "#1e1e21")
+      t.glyphFill = NSColor(hex: "#111111")
+      t.glyphLine = .white
     } else {
       t = Theme(
         dark: false,
@@ -70,6 +89,15 @@ struct Theme {
         activeForeground: NSColor(hex: "#1c1c1e"),
         swatchEdge: .rgba(0, 0, 0, 0.18)
       )
+      t.ring = NSColor(hex: "#1c1c1e")
+      t.field = .rgba(0, 0, 0, 0.06)
+      t.track = NSColor(hex: "#8e8e93")
+      t.trackFill = NSColor(hex: "#1c1c1e")
+      t.tipBackground = .rgba(30, 30, 32, 0.9)
+      t.tipForeground = NSColor(hex: "#f4f4f5")
+      t.strongBackground = NSColor(hex: "#fbfbfc")
+      t.glyphFill = .white
+      t.glyphLine = NSColor(hex: "#1c1c1e")
     }
     if a.glass {
       t.radius = 16

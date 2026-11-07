@@ -115,7 +115,14 @@ public struct Settings: Codable, Equatable {
     public var onSave: Bool
   }
   public struct Annotate: Codable, Equatable {
-    public struct StepStroke: Codable, Equatable { public var color: String; public var width: Double }
+    public struct StepStroke: Codable, Equatable {
+      public var color: String
+      public var width: Double
+      public init(color: String, width: Double) {
+        self.color = color
+        self.width = width
+      }
+    }
     public struct Text: Codable, Equatable {
       public var fontFamily: String
       public var fontSize: Double

@@ -5,51 +5,104 @@ import AppKit
  * from their SVG paths on a 24×24 grid with a 2 px round stroke, so both apps look alike.
  */
 enum Icons {
-  /** SVG path data per icon id (feature ids, plus a few extras). */
-  static let paths: [String: [String]] = [
-    "pen": [
-      "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
-      "m15 5 4 4"
-    ],
-    // Snapkit's own arrow icon (Toolbars.tsx ArrowIcon): a long diagonal with an open head.
-    "arrow": ["M5 19 L19 5", "M11 5 H19 V13"],
-    "arrow-both": ["M5 19 L19 5", "M11 5 H19 V13", "M13 19 H5 V11"],
-    "rect": ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"],
-    "text": ["M4 7 4 4 20 4 20 7", "M9 20h6", "M12 4v16"],
-    "undo": ["M9 14 4 9l5-5", "M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"],
-    "redo": ["m15 14 5-5-5-5", "M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"],
-    "save": [
-      "M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
-      "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7",
-      "M7 3v4a1 1 0 0 0 1 1h7"
-    ],
-    "copy": ["M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z", "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"],
-    "close": ["M18 6 6 18", "m6 6 12 12"]
-  ]
-
-  private static var cache: [String: CGPath] = [:]
-
-  static func path(_ id: String) -> CGPath? {
-    if let p = cache[id] { return p }
-    guard let list = paths[id] else { return nil }
-    let p = CGMutablePath()
-    for d in list { SVGPath.append(d, to: p) }
-    cache[id] = p
-    return p
+  /** One stroke (and optionally filled) path of an icon. */
+  struct Part {
+    var d: String
+    /** Fill opacity: 0 = outline only. */
+    var fill: CGFloat = 0
+    var stroke = true
   }
 
-  /** Draw icon `id` centred in `rect` (a flipped context) at `size` points, Lucide style. */
-  static func draw(_ id: String, in rect: CGRect, size: CGFloat, color: NSColor, ctx: CGContext) {
-    guard let p = path(id) else { return }
+  static func circle(_ cx: Double, _ cy: Double, _ r: Double) -> String {
+    "M\(cx - r) \(cy)a\(r) \(r) 0 1 0 \(2 * r) 0a\(r) \(r) 0 1 0 \(-2 * r) 0z"
+  }
+
+  static func rect(_ x: Double, _ y: Double, _ w: Double, _ h: Double, _ rx: Double) -> String {
+    "M\(x + rx) \(y)h\(w - 2 * rx)a\(rx) \(rx) 0 0 1 \(rx) \(rx)v\(h - 2 * rx)a\(rx) \(rx) 0 0 1 \(-rx) \(rx)h\(-(w - 2 * rx))a\(rx) \(rx) 0 0 1 \(-rx) \(-rx)v\(-(h - 2 * rx))a\(rx) \(rx) 0 0 1 \(rx) \(-rx)z"
+  }
+
+  /** Icons by feature or variant id (and a few extras), as in Toolbars.tsx FeatureIcon. */
+  static let parts: [String: [Part]] = {
+    func p(_ ds: String...) -> [Part] { ds.map { Part(d: $0) } }
+    var m: [String: [Part]] = [
+      "pen": p("M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z", "m15 5 4 4"),
+      // Snapkit's own arrow icon (ArrowIcon): a long diagonal with an open head.
+      "arrow": p("M5 19 L19 5", "M11 5 H19 V13"),
+      "arrow-both": p("M5 19 L19 5", "M11 5 H19 V13", "M13 19 H5 V11"),
+      "rect": p(rect(3, 3, 18, 18, 2)),
+      "rect-filled": [Part(d: rect(3, 3, 18, 18, 2), fill: 1)],
+      "ellipse": p(circle(12, 12, 10)),
+      "ellipse-filled": [Part(d: circle(12, 12, 10), fill: 1)],
+      "line": p("M22 2 2 22"),
+      "highlighter": p("m9 11-6 6v3h9l3-3", "m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"),
+      "text": p("M4 7 4 4 20 4 20 7", "M9 20h6", "M12 4v16"),
+      "step": p("M4 9h16", "M4 15h16", "M10 3 8 21", "M16 3 14 21"),
+      "blur": p("M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z",
+                "M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"),
+      "ruler": p("M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z",
+                 "m14.5 12.5 2-2", "m11.5 9.5 2-2", "m8.5 6.5 2-2", "m17.5 15.5 2-2"),
+      "undo": p("M9 14 4 9l5-5", "M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"),
+      "redo": p("m15 14 5-5-5-5", "M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"),
+      "save": p("M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
+                "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7", "M7 3v4a1 1 0 0 0 1 1h7"),
+      "copy": p(rect(8, 8, 14, 14, 2), "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"),
+      "close": p("M18 6 6 18", "m6 6 12 12"),
+      "check": p("M20 6 9 17l-5-5"),
+      "waves": p("M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1",
+                 "M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1",
+                 "M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"),
+      "grid": p(rect(3, 3, 18, 18, 2), "M3 9h18", "M3 15h18", "M9 3v18", "M15 3v18"),
+      "minus": p("M5 12h14"),
+      "plus": p("M5 12h14", "M12 5v14"),
+      "ocr": p("M3 7V5a2 2 0 0 1 2-2h2", "M17 3h2a2 2 0 0 1 2 2v2", "M21 17v2a2 2 0 0 1-2 2h-2", "M7 21H5a2 2 0 0 1-2-2v-2", circle(12, 12, 1),
+               "M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0"),
+      "beautifyEdit": p("m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72",
+                        "m14 7 3 3", "M5 6v4", "M19 14v4", "M10 2v2", "M7 8H3", "M21 16h-4", "M11 3H9"),
+      "pin": p("M12 17v5", "M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"),
+      // Background (BackgroundIcon): two stacked layers, the lower one faintly filled.
+      "beautify": [
+        Part(d: "M13 19.24a2 2 0 0 1-2 0L2.5 14.37a1 1 0 0 1 0-1.74L11 7.76a2 2 0 0 1 2 0l8.5 4.87a1 1 0 0 1 0 1.74Z", fill: 0.35, stroke: false),
+        Part(d: "m16.02 12 5.48 3.13a1 1 0 0 1 0 1.74L13 21.74a2 2 0 0 1-2 0l-8.5-4.87a1 1 0 0 1 0-1.74L7.98 12"),
+        Part(d: "M13 13.74a2 2 0 0 1-2 0L2.5 8.87a1 1 0 0 1 0-1.74L11 2.26a2 2 0 0 1 2 0l8.5 4.87a1 1 0 0 1 0 1.74Z")
+      ]
+    ]
+    m["ellipse-tool"] = m["ellipse"]
+    return m
+  }()
+
+  private static var cache: [String: [(CGPath, Part)]] = [:]
+
+  private static func paths(_ id: String) -> [(CGPath, Part)] {
+    if let p = cache[id] { return p }
+    let list = (parts[id] ?? parts["rect"]!).map { part -> (CGPath, Part) in
+      let p = CGMutablePath()
+      SVGPath.append(part.d, to: p)
+      return (p, part)
+    }
+    cache[id] = list
+    return list
+  }
+
+  /** Draw icon `id` centred in `rect` (a flipped context) at `size` points, Lucide style (2 px stroke on a 24 grid). */
+  static func draw(_ id: String, in rect: CGRect, size: CGFloat = 17, color: NSColor, ctx: CGContext) {
     ctx.saveGState()
     ctx.translateBy(x: rect.midX - size / 2, y: rect.midY - size / 2)
     ctx.scaleBy(x: size / 24, y: size / 24)
-    ctx.addPath(p)
-    ctx.setStrokeColor(color.cgColor)
     ctx.setLineWidth(2)
     ctx.setLineCap(.round)
     ctx.setLineJoin(.round)
-    ctx.strokePath()
+    for (path, part) in paths(id) {
+      if part.fill > 0 {
+        ctx.addPath(path)
+        ctx.setFillColor(color.withAlphaComponent(color.alphaComponent * part.fill).cgColor)
+        ctx.fillPath()
+      }
+      if part.stroke {
+        ctx.addPath(path)
+        ctx.setStrokeColor(color.cgColor)
+        ctx.strokePath()
+      }
+    }
     ctx.restoreGState()
   }
 }

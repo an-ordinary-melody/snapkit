@@ -253,6 +253,62 @@ describe("last area") {
   expect(parsed.rect.width, 688.75, "reads Electron's last-area.json")
 }
 
+describe("model (model.test.ts, the rest)") {
+  let rect = { (id: String, x: Double) in Shape.box(.init(id: id, type: "rect", x: x, y: 0, w: 10, h: 10, color: "#000", width: 2)) }
+  var h = ShapeHistory()
+  h.commit([rect("a", 0)])
+  h.commit([rect("a", 0), rect("b", 0)])
+  h.undo()
+  h.undo()
+  expect(h.present, [], "undo to empty")
+  var g = ShapeHistory()
+  g.commit([rect("a", 0)])
+  g.commit([rect("a", 1)], mergeKey: "slide")
+  g.commit([rect("a", 2)], mergeKey: "slide")
+  g.commit([rect("a", 3)], mergeKey: "slide")
+  expect(g.past.count, 2, "consecutive commits with the same key are one undo step")
+  let steps = [Shape.step(.init(id: "a", x: 0, y: 0, size: 30, color: "#f00")), .step(.init(id: "b", x: 0, y: 0, size: 30, color: "#f00")), .step(.init(id: "c", x: 0, y: 0, size: 30, color: "#f00"))]
+  expect(Annotations.stepNumbers(steps)["c"], 3, "steps numbered in drawing order")
+  expect(Annotations.stepNumbers(steps.filter { $0.id != "b" })["c"], 2, "renumbered after delete")
+  let (sx, sy) = Annotations.snap45(-2, -100)
+  expect([sx, sy], [0, -100], "snap45 up")
+  let b1 = Annotations.boxFromDrag(50, 50, 10, 20)
+  expect([b1.x, b1.y, b1.w, b1.h], [10, 20, 40, 30], "box from a drag up-left")
+  let b2 = Annotations.boxFromDrag(0, 0, 30, -10, square: true)
+  expect([b2.x, b2.y, b2.w, b2.h], [0, -30, 30, 30], "square box")
+  let head = Annotations.openArrowHead([0, 0, 100, 0], length: 20)
+  expect([head[2], head[3]], [100, 0], "open arrow head meets at the tip")
+  expectTrue(head[0] < 100 && abs(head[0] - head[4]) < 1e-9 && abs(head[1] + head[5]) < 1e-9, "head strokes behind the tip, symmetric")
+  if case let .line(l) = Shape.line(.init(id: "l", type: "line", points: [0, 0, 10, 10], color: "#000", width: 2)).moved(5, -5) {
+    expect(l.points, [5, -5, 15, 5], "moves point-based shapes")
+  }
+  let target = LRect(x: 100, y: 100, w: 100, h: 50)
+  let r = Annotations.snapBox(LRect(x: 104, y: 300, w: 40, h: 20), targets: [target], threshold: 6)
+  expect([r.dx, r.dy], [-4, 0], "snaps left edges")
+  expect(r.guides, [Annotations.Guide(vertical: true, at: 100, from: 100, to: 320)], "with a guide")
+  let c = Annotations.snapBox(LRect(x: 127, y: 117, w: 46, h: 20), targets: [target], threshold: 6)
+  expect([c.dx, c.dy], [0, -2], "snaps centres")
+  let far = Annotations.snapBox(LRect(x: 400, y: 400, w: 10, h: 10), targets: [target], threshold: 6)
+  expectTrue(far.dx == 0 && far.dy == 0 && far.guides.isEmpty, "leaves the box alone when nothing is close")
+
+  // Style helpers (Overlay.tsx styleOf / restyle, StyleBar.tsx lookPatch).
+  let base = Style.initial(SettingsRules.defaults)
+  let dark = TextLook.dark.patch(base)
+  expect(dark.textBackground, "#111111", "dark look: dark background")
+  expect(dark.textColor, "#ffffff", "with white text")
+  let after = base.applying(dark)
+  expect(TextLook.plain.patch(after).textColor, base.color, "leaving a background look restores the drawing colour")
+  let arrow = Shape.line(.init(id: "a", type: "arrow", points: [0, 0, 1, 1], color: "#000", width: 8))
+  expect(arrow.style(over: base, widths: [3, 5, 8]).widthIndex, 2, "a selected arrow shows its own width")
+  if case let .line(l) = arrow.restyled(StylePatch(color: "#fff", widthIndex: 0), widths: [3, 5, 8]) {
+    expect([l.color, String(l.width)], ["#fff", "3.0"], "restyle a shape")
+  }
+  if case let .text(t) = Shape.text(.init(id: "t", x: 10, y: 10, text: "a", color: "#000", fontSize: 20, fontFamily: "", shadow: 0, background: "", stroke: nil, strokeWidth: nil))
+    .transformed(gx: 0, gy: 0, sx: 2, sy: 2) {
+    expect([t.x, t.fontSize], [20, 40], "resizing text scales its size")
+  }
+}
+
 // MARK: - Shared fixtures (fixtures/*.json, written by the Electron side with `npm run fixtures`)
 
 describe("fixtures") {

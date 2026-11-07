@@ -162,6 +162,10 @@ final class CaptureController: OverlayViewDelegate {
     touchIdle()
   }
 
+  func overlayAction(_ view: OverlayView, _ id: String) {
+    log("[capture] action \(id) isn't built yet")
+  }
+
   func overlayCancel(_ view: OverlayView) {
     end(reason: "closed")
   }

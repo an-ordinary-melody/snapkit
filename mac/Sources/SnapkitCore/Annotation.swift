@@ -228,6 +228,9 @@ public struct ShapeHistory: Equatable {
 
   public init() {}
 
+  /** Start from these shapes with nothing to undo (a reopened capture). */
+  public init(present: [Shape]) { self.present = present }
+
   public mutating func commit(_ next: [Shape], mergeKey: String? = nil) {
     if next == present { return }
     if let mergeKey, mergeKey == self.mergeKey {

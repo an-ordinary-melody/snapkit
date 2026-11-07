@@ -12,7 +12,7 @@ import SnapkitCore
  *   select x y w h              select an area on the main display (points from its top-left)
  *   tool <id>                   pick a tool (pen, arrow, rect, text) or run an action (copy, save, close, undo, redo)
  *   drag x1 y1 x2 y2 [shift]    drag with the current tool / on the selection, on the main display
- *   type <text>                 click at the selection's centre with the Text tool and type, then Esc
+ *   type <text>                 type into the text box (with the Text tool, starts one first); \n = new line
  *   key <name> [cmd] [shift]    esc, return, left/right/up/down, or a letter
  *   snapshot <png>              save what the main display's capture window shows
  *   state                       write the capture state as JSON
@@ -61,7 +61,7 @@ enum TestHook {
   }
 
   private static func key(_ view: NSView, _ name: String, _ flags: NSEvent.ModifierFlags) {
-    let codes: [String: (UInt16, String)] = ["esc": (53, "\u{1b}"), "return": (36, "\r"), "left": (123, ""), "right": (124, ""), "down": (125, ""), "up": (126, "")]
+    let codes: [String: (UInt16, String)] = ["esc": (53, "\u{1b}"), "return": (36, "\r"), "delete": (51, "\u{7f}"), "left": (123, ""), "right": (124, ""), "down": (125, ""), "up": (126, "")]
     let (code, chars) = codes[name] ?? (UInt16(Accelerator.keyCodes[name.uppercased()] ?? 0), name)
     guard let window = view.window,
           let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
@@ -102,12 +102,38 @@ enum TestHook {
     case "drag":
       guard let v = mainView, nums.count >= 4 else { return }
       drag(v, from: CGPoint(x: nums[0], y: nums[1]), to: CGPoint(x: nums[2], y: nums[3]), flags: flags)
+    case "click", "dblclick":
+      guard let v = mainView, nums.count >= 2 else { return }
+      let p = CGPoint(x: nums[0], y: nums[1])
+      for n in 1...(cmd == "dblclick" ? 2 : 1) {
+        if let e = NSEvent.mouseEvent(with: .leftMouseDown, location: v.convert(p, to: nil), modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
+                                      windowNumber: v.window!.windowNumber, context: nil, eventNumber: 0, clickCount: n, pressure: 1) { v.mouseDown(with: e) }
+        if let e = event(.leftMouseUp, p, in: v, flags: flags) { v.mouseUp(with: e) }
+      }
+    case "rightclick":
+      guard let v = mainView, nums.count >= 2, let e = event(.rightMouseDown, CGPoint(x: nums[0], y: nums[1]), in: v) else { return }
+      v.rightMouseDown(with: e)
+    case "variants":
+      if let id = args.first { mainView?.openVariants(id) }
+    case "variant":
+      if args.count >= 2 { mainView?.pickVariant(args[0], args[1]) }
+    case "style":
+      if let id = args.first { mainView?.pressStyle(id) }
+    case "pick":
+      if let hex = args.first { mainView?.testPick(hex) }
+    case "blur":
+      if let n = nums.first { mainView?.testStyle(blur: n) }
+    case "fontsize":
+      if let n = nums.first { mainView?.testStyle(fontSize: n) }
     case "type":
+      // Types into the text being edited; with none, clicks near the selection's top-left first (Text tool).
       guard let v = mainView, let sel = v.sel else { return }
-      let p = CGPoint(x: sel.x + 20, y: sel.y + 20)
-      if let e = event(.leftMouseDown, p, in: v) { v.mouseDown(with: e) }
-      (v.window?.firstResponder as? NSTextView)?.insertText(args.joined(separator: " "), replacementRange: NSRange(location: NSNotFound, length: 0))
-      if let tv = v.window?.firstResponder as? NSTextView { tv.doCommand(by: #selector(NSResponder.cancelOperation(_:))) }
+      if !v.isTyping {
+        let p = CGPoint(x: sel.x + 20, y: sel.y + 20)
+        if let e = event(.leftMouseDown, p, in: v) { v.mouseDown(with: e) }
+        if let e = event(.leftMouseUp, p, in: v) { v.mouseUp(with: e) }
+      }
+      v.typeText(args.joined(separator: " ").replacingOccurrences(of: "\\n", with: "\n"))
     case "key":
       guard let v = mainView, let name = args.first else { return }
       key(v.window?.firstResponder as? NSView ?? v, name, flags)
@@ -135,6 +161,15 @@ enum TestHook {
         o = o.setting("hasImage", .bool(v.image != nil))
         o = o.setting("tool", v.tool.map { .string($0) } ?? .null)
         o = o.setting("shapes", .array(v.shapes.map { .string($0.type) }))
+        o = o.setting("shapeData", (try? JSON.encode(v.shapes)) ?? .null)
+        o = o.setting("selected", v.selectedId.map { .string($0) } ?? .null)
+        o = o.setting("popover", v.openPopover.map { .string($0) } ?? .null)
+        o = o.setting("guides", .number(Double(v.guideCount)))
+        o = o.setting("styleBar", .array(v.styleBarIds.map { .string($0) }))
+        o = o.setting("styleActive", .array(v.activeStyleIds.map { .string($0) }))
+        if let f = v.popoverFrame { o = o.setting("popoverFrame", .array([f.minX, f.minY, f.width, f.height].map { .number($0) })) }
+        o = o.setting("screen", .array([.number(v.bounds.width), .number(v.bounds.height)]))
+        o = o.setting("toolbar", .array(v.toolIds.map { .string($0) }))
         o = o.setting("typing", .bool(v.isTyping))
         if let s = v.sel { o = o.setting("selection", .array([s.x, s.y, s.w, s.h].map { .number($0) })) }
         o = o.setting("isKeyWindow", .bool(v.window?.isKeyWindow ?? false))
@@ -147,6 +182,8 @@ enum TestHook {
       if let pb, let out = NSBitmapImageRep(data: pb), let screen = app.capture.grabber.testImage, let area = LastArea.load(Paths.lastAreaFile) {
         o = o.setting("clipboardMatchesScreen", .bool(matches(out, screen, at: area.rect)))
       }
+      let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+      o = o.setting("screenLocked", .bool((session?["CGSSessionScreenIsLocked"] as? Bool) ?? false))
       o = o.setting("captureHotkeyRegistered", .bool(Hotkeys.shared.isRegistered("capture")))
       reply(o)
     default:

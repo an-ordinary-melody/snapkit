@@ -1,86 +1,132 @@
 import AppKit
+import SnapkitCore
 
 /**
- * A capture-mode toolbar (styles.css `.toolbar`): 32 pt buttons, 2 pt apart, 4 pt padding, on a
- * rounded panel. Horizontal for actions, vertical for tools. Also used for the style bar (swatches
- * and stroke widths).
+ * A capture-mode toolbar (styles.css `.toolbar`): buttons 2 pt apart with 4 pt padding on a rounded
+ * panel. Horizontal for actions, vertical for tools (32 pt buttons), and the style bar (28 pt buttons,
+ * swatches, widths, text looks and embedded controls).
  */
 final class ToolbarView: NSView {
   enum Item: Equatable {
-    case button(id: String, icon: String, tip: String)
-    /** A colour swatch button (the Color tool, or a palette swatch). */
-    case swatch(id: String, color: String, tip: String)
-    /** A stroke-width choice, drawn as a dot of that size. */
+    /** `more`: the tool has a right-click menu (corner mark). `dot`: a green "on" dot. */
+    case button(id: String, icon: String, tip: String, hint: String? = nil, sub: String? = nil, more: Bool = false, dot: Bool = false)
+    /** A colour: `round` in the style bar (16 pt circle), a rounded square on the Color tool. */
+    case swatch(id: String, color: String, tip: String, round: Bool = true)
+    /** The custom-colour button (a colour wheel). */
+    case customSwatch(id: String, tip: String)
+    /** A stroke width, as a dot of that size. */
     case width(id: String, dot: CGFloat, tip: String)
+    /** A text look ("A" plain, outlined, on light or dark). */
+    case glyph(id: String, look: TextLook, tip: String)
+    /** A control view of its own (slider, text field, value). */
+    case view(id: String, view: NSView, width: CGFloat)
     case separator
+
+    var id: String? {
+      switch self {
+      case let .button(id, _, _, _, _, _, _), let .swatch(id, _, _, _), let .customSwatch(id, _), let .width(id, _, _), let .glyph(id, _, _), let .view(id, _, _): return id
+      case .separator: return nil
+      }
+    }
+
+    var tip: (text: String, hint: String?, sub: String?)? {
+      switch self {
+      case let .button(_, _, tip, hint, sub, _, _): return (tip, hint, sub)
+      case let .swatch(_, _, tip, _), let .customSwatch(_, tip), let .width(_, _, tip), let .glyph(_, _, tip): return (tip, nil, nil)
+      default: return nil
+      }
+    }
+
+    static func == (a: Item, b: Item) -> Bool {
+      switch (a, b) {
+      case let (.button(a1, a2, a3, a4, a5, a6, a7), .button(b1, b2, b3, b4, b5, b6, b7)): return a1 == b1 && a2 == b2 && a3 == b3 && a4 == b4 && a5 == b5 && a6 == b6 && a7 == b7
+      case let (.swatch(a1, a2, a3, a4), .swatch(b1, b2, b3, b4)): return a1 == b1 && a2 == b2 && a3 == b3 && a4 == b4
+      case let (.customSwatch(a1, a2), .customSwatch(b1, b2)): return a1 == b1 && a2 == b2
+      case let (.width(a1, a2, a3), .width(b1, b2, b3)): return a1 == b1 && a2 == b2 && a3 == b3
+      case let (.glyph(a1, a2, a3), .glyph(b1, b2, b3)): return a1 == b1 && a2 == b2 && a3 == b3
+      case let (.view(a1, a2, a3), .view(b1, b2, b3)): return a1 == b1 && a2 === b2 && a3 == b3
+      case (.separator, .separator): return true
+      default: return false
+      }
+    }
   }
 
-  static let button: CGFloat = 32
   static let gap: CGFloat = 2
   static let padding: CGFloat = 4
 
   let vertical: Bool
-  var items: [Item] = [] { didSet { relayout() } }
-  var active: Set<String> = [] { didSet { needsDisplay = true } }
-  var disabled: Set<String> = [] { didSet { needsDisplay = true } }
-  var theme: Theme { didSet { needsDisplay = true } }
+  let button: CGFloat
+  var items: [Item] = [] { didSet { if items != oldValue { relayout() } } }
+  var active: Set<String> = [] { didSet { if active != oldValue { needsDisplay = true } } }
+  var disabled: Set<String> = [] { didSet { if disabled != oldValue { needsDisplay = true } } }
+  var theme: Theme { didSet { needsDisplay = true; updateShadow() } }
   var onPress: (String) -> Void = { _ in }
+  var onRightClick: (String) -> Void = { _ in }
+  /** Hovering a button (for the tooltip); nil when the pointer leaves. */
+  var onHover: (String?) -> Void = { _ in }
 
   private var frames: [(Item, CGRect)] = []
   private var hovered: Int?
   private var pressed: Int?
 
-  init(vertical: Bool, theme: Theme) {
+  init(vertical: Bool, button: CGFloat = 32, theme: Theme) {
     self.vertical = vertical
+    self.button = button
     self.theme = theme
     super.init(frame: .zero)
     wantsLayer = true
-    layer?.masksToBounds = false
-    shadow = {
-      let s = NSShadow()
-      s.shadowColor = theme.shadow
-      s.shadowBlurRadius = 24
-      s.shadowOffset = NSSize(width: 0, height: -6)
-      return s
-    }()
+    updateShadow()
   }
 
   required init?(coder: NSCoder) { fatalError() }
 
   override var isFlipped: Bool { true }
 
-  /** Natural size for the current items. */
-  var size: CGSize {
-    var length = Self.padding * 2
-    for (k, item) in items.enumerated() {
-      length += item == .separator ? 7 : Self.button
-      if k < items.count - 1 { length += Self.gap }
+  private func updateShadow() {
+    let s = NSShadow()
+    s.shadowColor = theme.shadow
+    s.shadowBlurRadius = 24
+    s.shadowOffset = NSSize(width: 0, height: -6)
+    shadow = s
+  }
+
+  private func length(_ item: Item) -> CGFloat {
+    switch item {
+    case .separator: return 7
+    case let .view(_, _, w): return w
+    default: return button
     }
-    let thick = Self.button + Self.padding * 2
-    return vertical ? CGSize(width: thick, height: length) : CGSize(width: length, height: thick)
+  }
+
+  /** Natural size for the current items (the bar's own padding included). */
+  var size: CGSize {
+    var len = Self.padding * 2
+    for (k, item) in items.enumerated() { len += length(item) + (k < items.count - 1 ? Self.gap : 0) }
+    let thick = button + Self.padding * 2
+    return vertical ? CGSize(width: thick, height: len) : CGSize(width: len, height: thick)
   }
 
   private func relayout() {
+    for sub in subviews { sub.removeFromSuperview() }
     var pos = Self.padding
     frames = items.map { item in
-      let len: CGFloat = item == .separator ? 7 : Self.button
-      let r = vertical
-        ? CGRect(x: Self.padding, y: pos, width: Self.button, height: len)
-        : CGRect(x: pos, y: Self.padding, width: len, height: Self.button)
+      let len = length(item)
+      let r = vertical ? CGRect(x: Self.padding, y: pos, width: button, height: len) : CGRect(x: pos, y: Self.padding, width: len, height: button)
       pos += len + Self.gap
+      if case let .view(_, v, _) = item {
+        v.frame = r
+        addSubview(v)
+      }
       return (item, r)
     }
     setFrameSize(size)
-    toolTip = nil
-    removeAllToolTips()
-    for (item, r) in frames {
-      switch item {
-      case let .button(_, _, tip), let .swatch(_, _, tip), let .width(_, _, tip): addToolTip(r, owner: tip as NSString, userData: nil)
-      case .separator: break
-      }
-    }
+    hovered = nil
     needsDisplay = true
   }
+
+  func frame(of id: String) -> CGRect? { frames.first { $0.0.id == id }?.1 }
+
+  func item(_ id: String) -> Item? { frames.first { $0.0.id == id }?.0 }
 
   override func updateTrackingAreas() {
     super.updateTrackingAreas()
@@ -96,12 +142,14 @@ final class ToolbarView: NSView {
     if h != hovered {
       hovered = h
       needsDisplay = true
+      onHover(h.flatMap { frames[$0].0.id })
     }
   }
 
   override func mouseExited(with event: NSEvent) {
     hovered = nil
     needsDisplay = true
+    onHover(nil)
   }
 
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -112,25 +160,27 @@ final class ToolbarView: NSView {
 
   override func mouseUp(with event: NSEvent) {
     defer { pressed = nil }
-    guard let i = index(at: convert(event.locationInWindow, from: nil)), i == pressed else { return }
-    switch frames[i].0 {
-    case let .button(id, _, _), let .swatch(id, _, _), let .width(id, _, _):
-      if !disabled.contains(id) { onPress(id) }
-    case .separator: break
+    guard let i = index(at: convert(event.locationInWindow, from: nil)), i == pressed, let id = frames[i].0.id else { return }
+    if !disabled.contains(id) {
+      onHover(nil)
+      onPress(id)
     }
   }
 
-  private func index(at p: CGPoint) -> Int? {
-    frames.firstIndex { $0.0 != .separator && $0.1.contains(p) }
+  // Right-clicks on the bars never reach capture mode (where they'd cancel it).
+  override func rightMouseDown(with event: NSEvent) {
+    guard let i = index(at: convert(event.locationInWindow, from: nil)), let id = frames[i].0.id else { return }
+    onHover(nil)
+    onRightClick(id)
   }
 
-  func frame(of id: String) -> CGRect? {
-    frames.first { item, _ in
+  private func index(at p: CGPoint) -> Int? {
+    frames.firstIndex { item, r in
       switch item {
-      case let .button(i, _, _), let .swatch(i, _, _), let .width(i, _, _): return i == id
-      case .separator: return false
+      case .separator, .view: return false
+      default: return r.contains(p)
       }
-    }?.1
+    }
   }
 
   override func draw(_ dirtyRect: NSRect) {
@@ -138,49 +188,153 @@ final class ToolbarView: NSView {
     let panel = NSBezierPath(roundedRect: bounds, xRadius: theme.radius, yRadius: theme.radius)
     theme.background.setFill()
     panel.fill()
-    // The rim: an inset hairline.
     let rim = NSBezierPath(roundedRect: bounds.insetBy(dx: theme.rimWidth / 2, dy: theme.rimWidth / 2), xRadius: theme.radius, yRadius: theme.radius)
     rim.lineWidth = theme.rimWidth
     theme.rim.setStroke()
     rim.stroke()
 
     for (k, (item, r)) in frames.enumerated() {
-      let id: String
-      switch item {
-      case .separator:
+      guard let id = item.id else {
         theme.separator.setFill()
-        let line = vertical ? CGRect(x: r.minX + 6, y: r.midY - 0.5, width: r.width - 12, height: 1) : CGRect(x: r.midX - 0.5, y: r.minY + 6, width: 1, height: r.height - 12)
+        let line = vertical ? CGRect(x: r.minX + 6, y: r.midY - 0.5, width: r.width - 12, height: 1) : CGRect(x: r.midX - 0.5, y: r.midY - 10, width: 1, height: 20)
         NSBezierPath(rect: line).fill()
         continue
-      case let .button(i, _, _), let .swatch(i, _, _), let .width(i, _, _): id = i
       }
+      if case .view = item { continue }
       let off = disabled.contains(id)
       let isActive = active.contains(id)
       let shape = NSBezierPath(roundedRect: r, xRadius: theme.buttonRadius, yRadius: theme.buttonRadius)
-      if isActive {
+      let swatchLike: Bool = {
+        switch item {
+        case let .swatch(_, _, _, round): return round
+        case .customSwatch: return true
+        default: return false
+        }
+      }()
+      if isActive && swatchLike {
+        theme.hover.setFill() // a picked swatch: hover background plus a ring
+        shape.fill()
+      } else if isActive {
         theme.activeBackground.setFill()
         shape.fill()
       } else if k == hovered && !off {
         theme.hover.setFill()
         shape.fill()
       }
-      let fg = (isActive ? theme.activeForeground : theme.foreground).withAlphaComponent(off ? 0.35 : 1)
+      let fg = (isActive && !swatchLike ? theme.activeForeground : theme.foreground).withAlphaComponent(off ? 0.35 : 1)
       switch item {
-      case let .button(_, icon, _):
-        Icons.draw(icon, in: r, size: 18, color: fg, ctx: ctx)
-      case let .swatch(_, color, _):
-        let box = CGRect(x: r.midX - 9, y: r.midY - 9, width: 18, height: 18)
-        let p = NSBezierPath(roundedRect: box, xRadius: 5, yRadius: 5)
-        NSColor(hex: color).setFill()
-        p.fill()
-        p.lineWidth = isActive ? 1.5 : 1
-        (isActive ? theme.activeForeground : theme.swatchEdge).setStroke()
-        (isActive ? NSBezierPath(roundedRect: box.insetBy(dx: -2, dy: -2), xRadius: 6.5, yRadius: 6.5) : NSBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), xRadius: 4.5, yRadius: 4.5)).stroke()
+      case let .button(_, icon, _, _, _, more, dot):
+        Icons.draw(icon, in: r, size: button == 32 ? 17 : 16, color: fg, ctx: ctx)
+        if more {
+          // Small corner mark: this button has a right-click menu.
+          let m = NSBezierPath()
+          m.move(to: CGPoint(x: r.maxX - 3, y: r.maxY - 3))
+          m.line(to: CGPoint(x: r.maxX - 7, y: r.maxY - 3))
+          m.line(to: CGPoint(x: r.maxX - 3, y: r.maxY - 7))
+          m.close()
+          fg.withAlphaComponent(0.55 * (off ? 0.35 : 1)).setFill()
+          m.fill()
+        }
+        if dot {
+          let d = CGRect(x: r.maxX - 11, y: r.minY + 4, width: 7, height: 7)
+          NSColor.white.setFill()
+          NSBezierPath(ovalIn: d.insetBy(dx: -1.5, dy: -1.5)).fill()
+          NSColor(hex: "#22c55e").setFill()
+          NSBezierPath(ovalIn: d).fill()
+        }
+      case let .swatch(_, color, _, round):
+        if round {
+          let c = CGRect(x: r.midX - 8, y: r.midY - 8, width: 16, height: 16)
+          NSColor(hex: color).setFill()
+          NSBezierPath(ovalIn: c).fill()
+          if isActive {
+            let ring = NSBezierPath(ovalIn: c.insetBy(dx: -1, dy: -1))
+            ring.lineWidth = 2
+            theme.ring.setStroke()
+            ring.stroke()
+          } else {
+            let edge = NSBezierPath(ovalIn: c.insetBy(dx: 0.5, dy: 0.5))
+            edge.lineWidth = 1
+            theme.swatchEdge.setStroke()
+            edge.stroke()
+          }
+        } else {
+          let box = CGRect(x: r.midX - 9, y: r.midY - 9, width: 18, height: 18)
+          NSColor(hex: color).setFill()
+          NSBezierPath(roundedRect: box, xRadius: 5, yRadius: 5).fill()
+          let edge = NSBezierPath(roundedRect: isActive ? box.insetBy(dx: -0.75, dy: -0.75) : box.insetBy(dx: 0.5, dy: 0.5), xRadius: 5, yRadius: 5)
+          edge.lineWidth = isActive ? 1.5 : 1
+          (isActive ? theme.activeForeground : theme.swatchEdge).setStroke()
+          edge.stroke()
+        }
+      case .customSwatch:
+        let c = CGRect(x: r.midX - 8, y: r.midY - 8, width: 16, height: 16)
+        drawColorWheel(in: c, ctx: ctx)
+        if isActive {
+          let ring = NSBezierPath(ovalIn: c.insetBy(dx: -1, dy: -1))
+          ring.lineWidth = 2
+          theme.ring.setStroke()
+          ring.stroke()
+        }
       case let .width(_, dot, _):
         fg.setFill()
         NSBezierPath(ovalIn: CGRect(x: r.midX - dot / 2, y: r.midY - dot / 2, width: dot, height: dot)).fill()
-      case .separator: break
+      case let .glyph(_, look, _):
+        drawGlyph(look, in: r, fg: fg)
+      default: break
       }
     }
+  }
+
+  /** The custom-colour button: a conic rainbow (conic-gradient(red, yellow, lime, aqua, blue, magenta, red)). */
+  private func drawColorWheel(in r: CGRect, ctx: CGContext) {
+    ctx.saveGState()
+    ctx.addEllipse(in: r)
+    ctx.clip()
+    let steps = 72
+    for i in 0..<steps {
+      let a0 = CGFloat(i) / CGFloat(steps) * 2 * .pi - .pi / 2
+      let a1 = CGFloat(i + 1) / CGFloat(steps) * 2 * .pi - .pi / 2 + 0.02
+      ctx.move(to: CGPoint(x: r.midX, y: r.midY))
+      ctx.addArc(center: CGPoint(x: r.midX, y: r.midY), radius: r.width, startAngle: a0, endAngle: a1, clockwise: false)
+      ctx.closePath()
+      ctx.setFillColor(NSColor(hue: CGFloat(i) / CGFloat(steps), saturation: 1, brightness: 1, alpha: 1).cgColor)
+      ctx.fillPath()
+    }
+    ctx.restoreGState()
+  }
+
+  private func drawGlyph(_ look: TextLook, in r: CGRect, fg: NSColor) {
+    let font = NSFont.systemFont(ofSize: 14, weight: .bold)
+    var attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: fg]
+    let size = NSAttributedString(string: "A", attributes: attrs).size()
+    let at = CGPoint(x: r.midX - size.width / 2, y: r.midY - size.height / 2)
+    switch look {
+    case .plain: break
+    case .stroke:
+      // White letter with a 3 pt outline (paint-order: stroke fill).
+      if let ctx = NSGraphicsContext.current?.cgContext {
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "A", attributes: [.font: font, .foregroundColor: theme.glyphLine]))
+        ctx.saveGState()
+        ctx.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
+        ctx.textPosition = CGPoint(x: at.x, y: at.y + font.ascender + (size.height - font.ascender + font.descender) / 2 - 1)
+        ctx.setTextDrawingMode(.stroke)
+        ctx.setLineWidth(3)
+        ctx.setLineJoin(.round)
+        ctx.setStrokeColor(theme.glyphLine.cgColor)
+        CTLineDraw(line, ctx)
+        ctx.restoreGState()
+      }
+      attrs[.foregroundColor] = theme.glyphFill
+    case .light, .dark:
+      let bg = CGRect(x: r.midX - size.width / 2 - 4, y: r.midY - size.height / 2 - 1, width: size.width + 8, height: size.height + 2)
+      NSColor(hex: look == .light ? "#ffffff" : "#111111").setFill()
+      NSBezierPath(roundedRect: bg, xRadius: 3, yRadius: 3).fill()
+      let edge = NSBezierPath(roundedRect: bg.insetBy(dx: 0.5, dy: 0.5), xRadius: 3, yRadius: 3)
+      theme.swatchEdge.setStroke()
+      edge.stroke()
+      attrs[.foregroundColor] = NSColor(hex: look == .light ? "#111111" : "#ffffff")
+    }
+    NSAttributedString(string: "A", attributes: attrs).draw(at: at)
   }
 }

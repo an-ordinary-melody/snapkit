@@ -8,7 +8,7 @@ enum Output {
   /**
    * The selection `sel` (points) of `image` with `shapes` drawn on top, at `scale` image px per point.
    */
-  static func render(image: CGImage, sel: LRect, scale: CGFloat, shapes: [Shape]) -> CGImage? {
+  static func render(image: CGImage, sel: LRect, scale: CGFloat, shapes: [Shape], env: RenderEnv) -> CGImage? {
     let crop = CGRect(x: (sel.x * scale).rounded(), y: (sel.y * scale).rounded(), width: (sel.w * scale).rounded(), height: (sel.h * scale).rounded())
       .intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
     guard crop.width >= 1, crop.height >= 1, let part = image.cropping(to: crop) else { return nil }
@@ -24,7 +24,9 @@ enum Output {
       ctx.scaleBy(x: scale, y: -scale)
       ctx.translateBy(x: -crop.minX / scale, y: -crop.minY / scale)
       ctx.clip(to: CGRect(x: sel.x, y: sel.y, width: sel.w, height: sel.h))
-      ShapeDrawing.draw(shapes, in: ctx, pixelScale: scale)
+      var env = env
+      env.pixelScale = scale
+      ShapeDrawing.draw(shapes, in: ctx, env: env)
     }
     return ctx.makeImage()
   }
