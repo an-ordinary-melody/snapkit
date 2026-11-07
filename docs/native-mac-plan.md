@@ -16,7 +16,7 @@ Windows version. Release details come later: the focus now is the app itself.
 | Windows | Stays Electron; no native Windows plan |
 | Minimum macOS | 14 (Sonoma) |
 | Intel Macs | Yes, universal binary (arm64 + x86_64) |
-| Apple Developer ID signing / notarization | No. Self-signed certificate recommended instead (§6) |
+| Apple Developer ID signing / notarization | No. Releases are signed with a self-signed certificate (§6) |
 | Update mechanism | Sparkle 2 |
 | Bundle id | Same as Electron, `com.charios.snapkit`, so the native app replaces it in place (Debug builds use `com.charios.snapkit.dev`, §5) |
 | Release tags, site download, beta channel | Later, once the app works |
@@ -416,8 +416,8 @@ even refuses an ad-hoc release unless explicitly allowed, and compares each
 build's designated requirement with the previous release to catch an accidental
 identity change.
 
-Recommendation: self-signed certificate for native from its first release. (The
-same would help the Electron Mac build; that is a separate change.) **Open.**
+Decision: self-signed certificate for native from its first release. (The
+same would help the Electron Mac build; that is a separate change.) **Decided: yes.**
 
 How it would work:
 
@@ -537,8 +537,5 @@ Testing adds roughly 6–7 weeks across the phases.
 
 ### Open questions
 
-1. Self-signed certificate for releases (§6, how it works)? Needed only when
-   release work starts, but deciding early keeps Screen Recording grants stable
-   from the first native build people install.
-2. Later, with release work: version numbers, beta period, feed hosting, site
+1. Later, with release work: version numbers, beta period, feed hosting, site
    wording for the switch from Electron.
