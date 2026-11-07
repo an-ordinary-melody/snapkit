@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 
 // Sends a test command to a running debug build of Snapkit (see TestHook.swift), e.g.
 //   swift run snapkitctl capture
@@ -24,6 +25,51 @@ if args[0] == "pixel", args.count >= 4, let rep = NSBitmapImageRep(data: (try? D
     let c = rep.colorAt(x: Int(nums[i] * k), y: Int(nums[i + 1] * k))?.usingColorSpace(.sRGB) ?? .black
     print(String(format: "#%02x%02x%02x", Int((c.redComponent * 255).rounded()), Int((c.greenComponent * 255).rounded()), Int((c.blueComponent * 255).rounded())))
   }
+  exit(0)
+}
+
+// `snapkitctl diff <a.png> <b.png> <out.png>` compares two renders: prints the share of pixels that
+// differ noticeably (any channel by more than 24) and writes a, b and the differences side by side.
+if args[0] == "diff", args.count == 4,
+   let a = NSBitmapImageRep(data: (try? Data(contentsOf: URL(fileURLWithPath: args[1]))) ?? Data())?.cgImage,
+   let b = NSBitmapImageRep(data: (try? Data(contentsOf: URL(fileURLWithPath: args[2]))) ?? Data())?.cgImage {
+  let w = min(a.width, b.width), h = min(a.height, b.height)
+  func pixels(_ img: CGImage) -> [UInt8] {
+    var buf = [UInt8](repeating: 0, count: w * h * 4)
+    let ctx = CGContext(data: &buf, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    ctx.draw(img, in: CGRect(x: 0, y: h - img.height, width: img.width, height: img.height))
+    return buf
+  }
+  let pa = pixels(a), pb = pixels(b)
+  var d = [UInt8](repeating: 0, count: w * h * 4)
+  var n = 0
+  for i in stride(from: 0, to: pa.count, by: 4) {
+    let off = (0..<3).contains { abs(Int(pa[i + $0]) - Int(pb[i + $0])) > 24 }
+    if off { n += 1 }
+    let g = UInt8((Int(pa[i]) + Int(pa[i + 1]) + Int(pa[i + 2])) / 12)
+    (d[i], d[i + 1], d[i + 2], d[i + 3]) = off ? (255, 0, 80, 255) : (g, g, g, 255)
+  }
+  let ctx = CGContext(data: nil, width: w * 3, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+  ctx.draw(a, in: CGRect(x: 0, y: h - a.height, width: a.width, height: a.height))
+  ctx.draw(b, in: CGRect(x: w, y: h - b.height, width: b.width, height: b.height))
+  let dctx = CGContext(data: &d, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+  ctx.draw(dctx.makeImage()!, in: CGRect(x: w * 2, y: 0, width: w, height: h))
+  try? NSBitmapImageRep(cgImage: ctx.makeImage()!).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[3]))
+  print(String(format: "%.2f %dx%d %dx%d", Double(n) * 100 / Double(w * h), a.width, a.height, b.width, b.height))
+  exit(0)
+}
+
+// `snapkitctl hold-hotkey <seconds>` registers ⌥⇧Z (Snapkit's default capture shortcut) as another
+// app would, holds it, then quits.
+if args[0] == "hold-hotkey", args.count == 2 {
+  var ref: EventHotKeyRef?
+  let status = RegisterEventHotKey(UInt32(kVK_ANSI_Z), UInt32(optionKey | shiftKey), EventHotKeyID(signature: 0x484F4C44, id: 1), GetApplicationEventTarget(), 0, &ref)
+  print(status == noErr ? "holding" : "failed \(status)")
+  fflush(stdout)
+  RunLoop.main.run(until: Date().addingTimeInterval(Double(args[1]) ?? 5))
   exit(0)
 }
 

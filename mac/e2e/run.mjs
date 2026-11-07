@@ -3,7 +3,7 @@
 // carries the label of the Electron check it ports (docs/native-mac-testing.md §2).
 // Usage: node mac/e2e/run.mjs [suite …]      (builds first; suites: capture annotate output safety hotkeys)
 // Note: capture mode really opens on screen while this runs (about 30 s).
-import { execFileSync, spawnSync } from 'child_process'
+import { execFileSync, spawn, spawnSync } from 'child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
@@ -386,6 +386,7 @@ const SUITES = {
     send('thumb', 'edit')
     s = await state()
     check(s.capturing && s.shapes.length === 1, 'edit restores drawings')
+    check(s.hasImage && s.editorOpen && s.editorPreview?.[2] > 0, 'Editor opened from the preview shows the image', `${s.hasImage} ${s.editorOpen} ${JSON.stringify(s.editorPreview)}`)
     send('tool', 'rect')
     send('drag', 0, 0, 0, 0)
     send('key', 'esc')
@@ -749,8 +750,10 @@ const SUITES = {
     check(!saved().appearance, 'Reset section puts Appearance back to defaults', JSON.stringify(saved().appearance))
     await set({ capture: { dimColor: '#1e3a8a' }, appearance: { glass: true } })
     check(saved().capture?.dimColor === '#1e3a8a' && saved().appearance?.glass === true, 'dim colour and Liquid Glass saved')
+    await set({ capture: { dimOpacity: 0.37 } })
     t = await texts()
     check(/Liquid Glass/.test(t) && /Dim/.test(t), 'appearance rows (Liquid Glass, Dim)', t.slice(0, 300))
+    check(/\b37%/.test(t), 'Dim amount in 1% steps (37% shown)', (t.match(/\d+%/g) ?? []).join(' '))
     await set({ appearance: { glass: false } })
     send('history')
 
@@ -793,6 +796,7 @@ const SUITES = {
     send('key', 'w')
     s = await state()
     check(s.tool === 'arrow', 'W picks Arrow in capture mode', s.tool)
+    check(s.styleBar.find((x) => x.startsWith('color:')) === 'color:#00aa55', 'Quick colours reach capture mode (first swatch #00aa55)', JSON.stringify(s.styleBar))
     const snap = async (png) => {
       rmSync(png, { force: true })
       send('snapshot', png)
@@ -834,6 +838,157 @@ const SUITES = {
     send('settings-close')
   },
 
+  // Electron checks that had no native port yet (docs/native-mac-testing.md §2).
+  async parity() {
+    await launch({ capture: { quickCopy: true } })
+    // Quick area capture: a click is not an area; capture mode stays.
+    send('capture')
+    send('drag', 400, 300, 400, 300)
+    let s = await state()
+    check(s.capturing, 'Quick area capture ignores a click')
+    send('key', 'esc')
+    send('setting', '{"capture":{"quickCopy":false}}')
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    s = await state()
+    check(s.capturing && s.selection, 'Quick capture off: drawing an area keeps capture mode open')
+
+    // Smart align in each situation: a rectangle 3 pt off lining up with another snaps to it.
+    const rects = [
+      { id: 'r1', type: 'rect', x: 400, y: 260, w: 120, h: 80, color: '#ef4444', width: 4 },
+      { id: 'r2', type: 'rect', x: 403, y: 400, w: 120, h: 60, color: '#3b82f6', width: 4 }
+    ]
+    const r2x = async () => (await state()).shapeData.find((x) => x.id === 'r2').x
+    const reset = () => send('shapes', JSON.stringify(rects))
+    reset()
+    send('click', 430, 400) // select r2 (its top edge, away from the resize handle)
+    send('drag', 430, 400, 433, 400)
+    check((await r2x()) === 400, 'Smart align, selected shape', String(await r2x()))
+    reset()
+    send('tool', 'rect')
+    send('drag', 463, 400, 466, 400)
+    s = await state()
+    check(s.shapeData.length === 2 && (await r2x()) === 400, 'Smart align with a drawing tool active (grabbing a shape moves it)', `${s.shapeData.length} shapes, x ${await r2x()}`)
+    send('tool', 'rect')
+    // While typing: the text box moves (and snaps to the rectangle's left edge), typing goes on.
+    reset()
+    send('tool', 'text')
+    send('click', 430, 330)
+    send('type', 'Note')
+    s = await state()
+    const box = s.textBox
+    if (box) send('textframe-drag', 400 + 4 - box[0], 30) // 4 pt off lining up with the rectangles
+    s = await state()
+    const typed = s.textBox
+    check(s.typing && typed && Math.abs(typed[1] - (box[1] + 30)) <= 6, 'Moving a text box while typing (snap may nudge a few px)', `${JSON.stringify(box)} -> ${JSON.stringify(typed)} typing ${s.typing}`)
+    check(typed && typed[0] !== 404 && Math.abs(typed[0] - 400) <= 3, 'Smart align while typing text (it snaps to the nearest shape)', JSON.stringify(typed))
+    send('key', 'esc')
+    send('key', 'esc')
+
+    // Text style changes stay with the text: other tools keep their colour.
+    await launch()
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    send('tool', 'text')
+    send('click', 600, 300)
+    send('type', 'Styled')
+    send('style', 'look:dark')
+    send('key', 'esc')
+    send('key', 'esc')
+    send('tool', 'arrow')
+    send('drag', 320, 220, 380, 260)
+    s = await state()
+    check(s.shapeData.at(-1)?.type === 'arrow' && s.shapeData.at(-1).color !== '#ffffff', 'Text background style doesn\'t recolour other tools', JSON.stringify(s.shapeData.at(-1)))
+    send('key', 'esc')
+    send('key', 'esc')
+
+    // Editor: pinch zooms in; Compress switch; tools fit a small screen; smart align inside the editor.
+    await launch({ compress: { enabled: true } })
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    send('tool', 'beautifyEdit')
+    s = await state()
+    const p = s.editorPreview
+    send('editor', 'pinch', 0.5, p[0] + p[2] / 2, p[1] + p[3] / 2)
+    let z = await state()
+    check(z.editorZoom > s.editorZoom, 'Trackpad pinch zooms in', `${s.editorZoom} -> ${z.editorZoom}`)
+    send('key', '0', 'cmd')
+    s = await state()
+    check(s.editorControls.includes('compress') && s.editorControls.includes('compressPreset') && /KB|MB/.test(s.editorOutput), 'Editor Compress switch follows the setting, shows the size', `${s.editorControls} | ${s.editorOutput}`)
+    send('editor', 'press', 'compress')
+    s = await state()
+    check(!s.editorControls.includes('compressPreset'), 'Compress switch turns off, chips hidden')
+    send('overlay-size', 1280, 720)
+    await wait(300)
+    s = await state()
+    check(s.editorOpen && s.editorControlsInside, 'Editor tools fit a small screen (1280×720)', `${JSON.stringify(s.editorBounds)} outside: ${s.editorOutside}`)
+    send('key', 'esc')
+    send('key', 'esc')
+
+    // Smart align in the editor, also while typing there.
+    await launch()
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    reset()
+    send('tool', 'beautifyEdit')
+    s = await state()
+    const [ox, oy, k] = s.editorTransform
+    const at = (x, y) => [ox + x * k, oy + y * k]
+    send('editor', 'drag', ...at(430, 400), ...at(433, 400))
+    check((await r2x()) === 400, 'Smart align in the editor', String(await r2x()))
+    send('tool', 'text')
+    send('editor', 'drag', ...at(430, 330), ...at(430, 330))
+    send('type', 'Note')
+    s = await state()
+    const ebox = s.textBox
+    if (ebox) send('textframe-drag', (404 - ebox[0]) * k, 30 * k)
+    s = await state()
+    check(s.typing && s.editorOpen && s.textBox && s.textBox[0] !== 404 && Math.abs(s.textBox[0] - 400) <= 3, 'Smart align while typing text in the editor', `${JSON.stringify(ebox)} -> ${JSON.stringify(s.textBox)} typing ${s.typing}`)
+
+    // Display change during capture: capture stays open, new windows only after it closes.
+    await launch()
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    let mark = logMark()
+    send('screen-change')
+    await wait(800)
+    s = await state()
+    check(s.capturing && !/new capture windows/.test(logSince(mark)), 'Display change during capture: kept open', logSince(mark).slice(-200))
+    send('key', 'esc')
+    await wait(1000)
+    check(/new capture windows: deferred until capture mode closed/.test(logSince(mark)), 'Display change: windows rebuilt after capture closes')
+    // A capture that was seen and used, closed by the hotkey: same windows next time.
+    mark = logMark()
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    send('capture')
+    send('capture')
+    await wait(300)
+    s = await state()
+    check(s.capturing && !/replacing the capture windows|new capture windows/.test(logSince(mark)), 'macOS: a seen capture closed by the hotkey keeps its windows')
+    send('key', 'esc')
+
+    // History: the panel is a normal macOS window (its own close button); labelled Clear button.
+    send('history')
+    await wait(400)
+    s = await state()
+    check(s.historyVisible && s.historyStandardClose === true, 'History close button: macOS uses its own (none of ours)')
+    check(/Clear/.test(s.historyClearAll), 'Labelled Clear History button', s.historyClearAll)
+    send('history')
+
+    // A shortcut another app holds when Snapkit starts.
+    quit()
+    const holder = spawn(ctl, ['hold-hotkey', '6'], { stdio: ['ignore', 'pipe', 'ignore'] })
+    const held = await new Promise((r) => holder.stdout.on('data', (d) => r(String(d).trim())))
+    await launch({ hotkeys: { capture: 'Alt+Shift+Z' } })
+    s = await state()
+    const whileHeld = s.captureHotkeyRegistered
+    await new Promise((r) => holder.on('exit', r))
+    await wait(6000)
+    s = await state()
+    check(held === 'holding' && s.captureHotkeyRegistered, 'Takes a shortcut back once the app holding it quits', `holder: ${held} | while held: ${whileHeld} | after: ${s.captureHotkeyRegistered}`)
+  },
+
   async hotkeys() {
     await launch({ hotkeys: { capture: 'CommandOrControl+Shift+Z' } })
     let s = await state()
@@ -851,11 +1006,16 @@ const SUITES = {
 }
 
 const names = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SUITES)
+const runMark = logMark()
 try {
   for (const name of names) {
     console.log(name)
     await SUITES[name]()
   }
+  // As Electron's "No page errors": nothing went wrong in the app while the suites ran. (A failed
+  // update check is the network, not Snapkit.)
+  const bad = logSince(runMark).split('\n').filter((l) => /error|failed|couldn't|exception|crash/i.test(l) && !/\[test\]|\[updates\]/.test(l))
+  check(bad.length === 0, 'no errors in the log', bad.slice(0, 3).join(' / '))
 } finally {
   quit()
   rmSync(root, { recursive: true, force: true })

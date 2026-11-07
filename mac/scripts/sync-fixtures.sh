@@ -1,7 +1,7 @@
 #!/bin/bash
 # Regenerate Sources/SnapkitCore/DefaultSettings.swift from the shared fixture
 # fixtures/default-settings.json (the Electron app's macOS defaults, written by `npm run fixtures`).
-# Run by build-app.sh; SnapkitChecks fails if the two differ.
+# Run by build-app.sh; the unit tests fail if the two differ.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SRC=../fixtures/default-settings.json

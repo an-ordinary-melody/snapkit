@@ -3,6 +3,11 @@ import ServiceManagement
 import SnapkitCore
 import SwiftUI
 
+extension NSFont {
+  /** The default line height AppKit and SwiftUI give this font. */
+  var lineHeight: CGFloat { ceil(ascender - descender + leading) }
+}
+
 /** What the settings window shows and changes (SettingsSnapshot in ipc.ts), kept current. */
 final class SettingsModel: ObservableObject {
   let store: SettingsStore
@@ -130,8 +135,12 @@ struct SRow<Control: View>: View {
       if !first { Rectangle().fill(th.cardEdge).frame(height: 0.5) }
       HStack(alignment: .center, spacing: 16) {
         VStack(alignment: .leading, spacing: 2) {
-          Text(label).font(.system(size: 13)).foregroundColor(th.fg)
-          if let desc { Text(desc).font(.system(size: 11.5)).foregroundColor(th.faint).fixedSize(horizontal: false, vertical: true) }
+          // Line heights as in settings.css (1.3): 16.9 pt for the label, 14.95 for the description.
+          Text(label).font(.system(size: 13)).foregroundColor(th.fg).frame(minHeight: 16.9)
+          if let desc {
+            Text(desc).font(.system(size: 11.5)).foregroundColor(th.faint).lineSpacing(14.95 - NSFont.systemFont(ofSize: 11.5).lineHeight)
+              .padding(.vertical, (14.95 - NSFont.systemFont(ofSize: 11.5).lineHeight) / 2).fixedSize(horizontal: false, vertical: true)
+          }
         }
         Spacer(minLength: 0)
         HStack(spacing: 8) { control() }.fixedSize()

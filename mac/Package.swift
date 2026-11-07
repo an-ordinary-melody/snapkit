@@ -1,6 +1,6 @@
 // swift-tools-version:5.10
-// Native macOS Snapkit (plan: docs/native-mac-plan.md). Builds with the Command Line Tools:
-// `swift build`, then mac/scripts/build-app.sh wraps the binary into Snapkit.app.
+// Native macOS Snapkit (plan: docs/native-mac-plan.md). `swift build`, then mac/scripts/build-app.sh
+// wraps the binary into Snapkit.app. `swift test` runs the unit tests (needs Xcode, for Swift Testing).
 import PackageDescription
 
 let package = Package(
@@ -14,9 +14,8 @@ let package = Package(
       dependencies: ["SnapkitCore"],
       linkerSettings: [.linkedFramework("Carbon"), .linkedFramework("ScreenCaptureKit")]
     ),
-    // Unit checks for SnapkitCore. A plain executable because the Command Line Tools have no XCTest;
-    // these move to Swift Testing once Xcode is installed.
-    .executableTarget(name: "SnapkitChecks", dependencies: ["SnapkitCore"]),
+    // Unit tests for SnapkitCore (Swift Testing).
+    .testTarget(name: "SnapkitCoreTests", dependencies: ["SnapkitCore"]),
     // Sends test commands to a running debug build (TestHook.swift).
     .executableTarget(name: "snapkitctl")
   ]

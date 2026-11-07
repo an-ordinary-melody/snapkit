@@ -29,8 +29,10 @@ releases; don't run it next to the Electron app, it uses the same data folder.
 ## Test
 
 ```bash
-cd mac && swift run SnapkitChecks     # unit checks on SnapkitCore (ports of the vitest cases)
-node mac/e2e/run.mjs [suite …]        # flows in test mode: capture annotate output safety hotkeys
+cd mac && swift test                 # unit tests on SnapkitCore (ports of the vitest cases)
+node mac/e2e/run.mjs [suite …]        # flows in test mode (all suites by default)
+node mac/scripts/parity-coverage.mjs  # every Electron e2e check mapped (docs/native-mac-testing.md §2)
+node mac/e2e/scene.mjs fixtures/scenes <out> --compare <electron-out>   # screenshots vs Electron
 ```
 
 The flow checks run the debug app with a fixed test screen (`-SnapkitTestScreen`), an isolated
@@ -44,13 +46,13 @@ No Screen Recording permission is needed for either.
 |---|---|
 | `Sources/SnapkitCore` | Logic without UI: settings model and merge rules, feature registry, hotkey parsing, file naming, toolbar layout, annotation model, last area |
 | `Sources/Snapkit` | The app: menu bar, hotkeys, capture windows (`OverlayPool`), capture mode (`OverlayView`), screen grabbing, output |
-| `Sources/SnapkitChecks` | Unit checks (a plain executable until Xcode's test runner is set up) |
+| `Tests/SnapkitCoreTests` | Unit tests (Swift Testing) |
 | `Sources/snapkitctl` | Sends test commands to a running debug build |
 | `e2e/run.mjs` | Flow checks |
 
 Shared with the Electron app: `fixtures/default-settings.json` and `fixtures/features.json` (written by
 `npm run fixtures`). `scripts/sync-fixtures.sh` (run by `build-app.sh`) generates the native defaults from
-the first; `SnapkitChecks` fails if either file and the Swift side differ.
+the first; the unit tests fail if either file and the Swift side differ.
 
 The toolbar icons are Lucide's (ISC licence), drawn from the same SVG paths the Electron app uses.
 

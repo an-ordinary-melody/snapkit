@@ -148,6 +148,8 @@ final class OverlayView: NSView {
   var shapes: [Shape] { history.present }
   var selectedShape: Shape? { shapes.first { $0.id == selectedId } }
   var isTyping: Bool { editing != nil }
+  /** The box shown while typing (test hooks drag its frame). */
+  var textEditorView: NSView? { textEditor }
 
   var renderEnv: RenderEnv {
     var env = RenderEnv(settings: settings, source: image, imageScale: imageScale, pixelScale: window?.backingScaleFactor ?? 2)
@@ -1416,6 +1418,7 @@ final class OverlayView: NSView {
 
   /** Test hooks. */
   var editorView: BackgroundEditorView? { editor }
+  var testViewTransform: (origin: CGPoint, k: CGFloat) { viewTransform }
 
   /** The selected shape's frame and handles, line end points, and snap guides (AnnotationLayer's UI layer). */
   private func paintShapeUI(_ ctx: CGContext) {
@@ -1595,12 +1598,15 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
 
   // Dragging the frame (not the text) moves the box while typing.
   override func mouseDown(with e: NSEvent) {
-    dragStart = (NSEvent.mouseLocation, CGPoint(x: shape.x, y: shape.y))
+    dragStart = (screenPoint(e), CGPoint(x: shape.x, y: shape.y))
   }
+
+  /** The pointer in screen coordinates. */
+  private func screenPoint(_ e: NSEvent) -> CGPoint { window?.convertPoint(toScreen: e.locationInWindow) ?? NSEvent.mouseLocation }
 
   override func mouseDragged(with e: NSEvent) {
     guard let start = dragStart, let owner else { return }
-    let m = NSEvent.mouseLocation
+    let m = screenPoint(e)
     let k = owner.viewTransform.k
     let target = CGPoint(x: start.origin.x + (m.x - start.mouse.x) / k, y: start.origin.y - (m.y - start.mouse.y) / k)
     let o = owner.textMoved(to: target, free: e.modifierFlags.contains(.command))

@@ -353,6 +353,8 @@ private final class PinView: NSView {
   }
 
   override func mouseEntered(with e: NSEvent) { hover = true; layoutSlider(); needsDisplay = true }
+  /** Test hook: as if the pointer left. */
+  func testUnhover() { hover = false; layoutSlider(); needsDisplay = true }
   override func mouseExited(with e: NSEvent) { hover = false; layoutSlider(); needsDisplay = true }
   override func mouseMoved(with e: NSEvent) {
     (e.modifierFlags.contains(.option) ? NSCursor.dragCopy : NSCursor.openHand).set()
@@ -550,6 +552,8 @@ private final class ThumbView: NSView {
   }
 
   override func mouseEntered(with e: NSEvent) { hover = true; needsDisplay = true }
+  /** Test hook: as if the pointer left. */
+  func testUnhover() { hover = false; needsDisplay = true }
   override func mouseExited(with e: NSEvent) { hover = false; needsDisplay = true }
 
   override func mouseDown(with e: NSEvent) {
@@ -654,4 +658,14 @@ extension PinView: NSDraggingSource {
 extension Floating {
   func thumbLabels(_ item: Item) -> [String] { (item.panel.contentView as? ThumbView)?.labels ?? [] }
   func thumbPress(_ item: Item, _ id: String) { (item.panel.contentView as? ThumbView)?.press(id) }
+}
+
+extension Floating {
+  /** Test hook: no floating window shows its hover controls. */
+  func testUnhoverAll() {
+    for i in items {
+      (i.panel.contentView as? PinView)?.testUnhover()
+      (i.panel.contentView as? ThumbView)?.testUnhover()
+    }
+  }
 }

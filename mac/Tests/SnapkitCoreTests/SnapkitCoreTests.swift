@@ -1,39 +1,24 @@
 import Foundation
 import ImageIO
 import SnapkitCore
+import Testing
 
-// Unit checks for SnapkitCore: ports of the Electron vitest cases (settings, naming, layout, model)
-// plus native-only ones. Run: `swift run SnapkitChecks` (from mac/). Prints one line per failed check
-// and a summary; exits 1 on any failure. Moves to Swift Testing once Xcode is installed.
+// Unit tests for SnapkitCore: ports of the Electron vitest cases (settings, naming, layout, model,
+// version) plus native-only ones, checked against the shared fixtures. Run: `swift test` (from mac/).
 
-var failures = 0
-var passed = 0
-var group = ""
-
-func describe(_ name: String, _ body: () throws -> Void) {
-  group = name
-  do { try body() } catch {
-    failures += 1
-    print("✗ \(group): threw \(error)")
-  }
+func expect<T: Equatable>(_ got: T, _ want: T, _ what: String, sourceLocation: SourceLocation = #_sourceLocation) {
+  #expect(got == want, Comment(rawValue: what), sourceLocation: sourceLocation)
 }
 
-func expect<T: Equatable>(_ got: T, _ want: T, _ what: String, file: String = #fileID, line: Int = #line) {
-  if got == want { passed += 1 } else {
-    failures += 1
-    print("✗ \(group): \(what)\n    got:  \(got)\n    want: \(want)   (\(file):\(line))")
-  }
-}
-
-func expectTrue(_ ok: Bool, _ what: String, file: String = #fileID, line: Int = #line) {
-  expect(ok, true, what, file: file, line: line)
+func expectTrue(_ ok: Bool, _ what: String, sourceLocation: SourceLocation = #_sourceLocation) {
+  #expect(ok, Comment(rawValue: what), sourceLocation: sourceLocation)
 }
 
 func json(_ s: String) -> JSON { try! JSON.parse(s) }
 
 // MARK: - JSON
 
-describe("json") {
+@Test("json") func json() throws {
   let text = ##"{"b":1,"a":[true,null,"x\n\"y\"",1.5,-2],"c":{"é":"é 😀"}}"##
   let v = try JSON.parse(text)
   expect(v.keys, ["b", "a", "c"], "keeps key order")
@@ -45,7 +30,7 @@ describe("json") {
 
 // MARK: - Settings (settings.test.ts)
 
-describe("settings") {
+@Test("settings") func settings() throws {
   let saved = json(##"{"annotate":{"text":{"fontSize":30,"strokeWidth":4}},"save":{"askLocation":false}}"##)
   expect(SettingsRules.applyPatch(saved, json(##"{"annotate":{"text":{"fontSize":24}}}"##)),
          json(##"{"annotate":{"text":{"fontSize":24,"strokeWidth":4}},"save":{"askLocation":false}}"##),
@@ -76,7 +61,7 @@ describe("settings") {
   expect(d.features["ruler"], false, "ruler off by default")
 }
 
-describe("toolbarOrder") {
+@Test("toolbarOrder") func toolbarorder() throws {
   var s = SettingsRules.defaults
   let saved = s.toolbarOrder.filter { $0 != "ruler" }
   s.toolbarOrder = ["blur"] + saved.filter { $0 != "blur" }
@@ -89,7 +74,7 @@ describe("toolbarOrder") {
   expect(SettingsRules.defaults.visibleFeatures(.action).map(\.id), ["beautify", "beautifyEdit", "ocr", "pin", "save", "copy", "close"], "default actions")
 }
 
-describe("settings store") {
+@Test("settings store") func settingsStore() throws {
   let dir = FileManager.default.temporaryDirectory.appendingPathComponent("snapkit-checks-\(UUID().uuidString)")
   defer { try? FileManager.default.removeItem(at: dir) }
   let file = dir.appendingPathComponent("settings.json")
@@ -111,7 +96,7 @@ describe("settings store") {
 
 // MARK: - Naming (naming.test.ts)
 
-describe("file naming") {
+@Test("file naming") func fileNaming() throws {
   var cal = Calendar(identifier: .gregorian)
   cal.timeZone = TimeZone(identifier: "UTC")!
   let at = cal.date(from: DateComponents(year: 2026, month: 10, day: 24, hour: 5, minute: 30, second: 12))!
@@ -129,7 +114,7 @@ describe("file naming") {
 
 // MARK: - Accelerators
 
-describe("accelerators") {
+@Test("accelerators") func accelerators() throws {
   let a = Accelerator("Alt+Shift+Z")
   expect(a?.keyCode, 0x06, "Z key code")
   expect(a?.modifiers, [.option, .shift], "Alt+Shift")
@@ -149,7 +134,7 @@ describe("accelerators") {
 
 // MARK: - Layout (layout.test.ts)
 
-describe("placeToolbars") {
+@Test("placeToolbars") func placetoolbars() throws {
   let screen = LSize(w: 1440, h: 900)
   let actions = LSize(w: 200, h: 40)
   let tools = LSize(w: 40, h: 300)
@@ -205,7 +190,7 @@ describe("placeToolbars") {
 
 // MARK: - Annotation model (model.test.ts)
 
-describe("annotation model") {
+@Test("annotation model") func annotationModel() throws {
   let (dx, dy) = Annotations.snap45(10, 3)
   expect([dx, dy], [10, 0], "snap45 to horizontal")
   let (ex, ey) = Annotations.snap45(10, 9)
@@ -237,14 +222,14 @@ describe("annotation model") {
   expect(again, shapes, "shapes round trip")
 }
 
-describe("colors") {
+@Test("colors") func colors() throws {
   expect(HexColor.readableOn("#18181b"), "#ffffff", "white on dark")
   expect(HexColor.readableOn("#facc15"), "#111111", "black on yellow")
   expect(HexColor.parse("ABC"), "#aabbcc", "short hex")
   expect(jsRound(-2.5), -2, "Math.round semantics")
 }
 
-describe("last area") {
+@Test("last area") func lastArea() throws {
   let a = LastArea(displayId: 1, displayBounds: .init(x: 0, y: 0, width: 1470, height: 956), rect: .init(x: 2000, y: 10, width: 300, height: 200))
   let r = a.resolve(displays: [(id: 7, bounds: .init(x: 0, y: 0, width: 1470, height: 956))])
   expect(r?.id, 7, "found again by bounds when the id changed")
@@ -254,7 +239,7 @@ describe("last area") {
   expect(parsed.rect.width, 688.75, "reads Electron's last-area.json")
 }
 
-describe("model (model.test.ts, the rest)") {
+@Test("model (model.test.ts, the rest)") func modelModelTestTsTheRest() throws {
   let rect = { (id: String, x: Double) in Shape.box(.init(id: id, type: "rect", x: x, y: 0, w: 10, h: 10, color: "#000", width: 2)) }
   var h = ShapeHistory()
   h.commit([rect("a", 0)])
@@ -310,7 +295,7 @@ describe("model (model.test.ts, the rest)") {
   }
 }
 
-describe("compress (UPNG port) and capture documents") {
+@Test("compress (UPNG port) and capture documents") func compressUpngPortAndCaptureDocuments() throws {
   // 4×2 image, three colours.
   let colors: [[UInt8]] = [[255, 0, 0, 255], [0, 128, 255, 255], [20, 20, 20, 255]]
   var px: [UInt8] = []
@@ -347,7 +332,7 @@ describe("compress (UPNG port) and capture documents") {
   expect(d2?.beautify["presetId"], .string("ocean"), "reads an Electron doc.json, background kept")
 }
 
-describe("beautify layout (layout.test.ts)") {
+@Test("beautify layout (layout.test.ts)") func beautifyLayoutLayoutTestTs() throws {
   let l = BeautifyGeometry.layout(w: 800, h: 600, padding: 48, radius: 12, shadow: 0.3, frame: nil, scale: 2)
   expect([l.width, l.height, l.x, l.y, l.radius], [992, 792, 96, 96, 24], "adds padding on every side, in image pixels")
   let b = BeautifyGeometry.layout(w: 40, h: 20, padding: 10, radius: 100, shadow: 2, frame: nil, scale: 1)
@@ -372,7 +357,7 @@ describe("beautify layout (layout.test.ts)") {
   expect(BeautifyState.initial(SettingsRules.defaults, last: nil).presetId, "ocean", "default preset")
 }
 
-describe("history pruning (history.test.ts)") {
+@Test("history pruning (history.test.ts)") func historyPruningHistoryTestTs() throws {
   let MB = 1024 * 1024
   let day = 86_400_000.0
   let now = 100 * day
@@ -408,7 +393,7 @@ describe("history pruning (history.test.ts)") {
 
 // MARK: - Shared fixtures (fixtures/*.json, written by the Electron side with `npm run fixtures`)
 
-describe("fixtures") {
+@Test("fixtures") func fixtures() throws {
   let fixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../fixtures").standardized
   let defaults = try JSON.parse(Data(contentsOf: fixtures.appendingPathComponent("default-settings.json")))
   expect(SettingsRules.defaultsJSON, defaults, "native defaults are fixtures/default-settings.json (run mac/scripts/sync-fixtures.sh)")
@@ -427,7 +412,7 @@ describe("fixtures") {
 }
 
 // Version (src/shared/version.test.ts)
-do {
+@Test("version") func version() throws {
   expectTrue(Version.compare("0.1.0", "0.2.0") < 0 && Version.compare("v1.10.0", "1.9.9") > 0 && Version.compare("1.2", "v1.2.0") == 0, "compares versions, v prefix and missing parts")
   expectTrue(Version.compare("1.0.0-beta.1", "1.0.0") < 0 && Version.compare("1.0.0", "1.0.0-rc.1") > 0 && Version.compare("1.0.0-beta.2", "1.0.0-beta.1") > 0, "a prerelease is older than its release")
   expectTrue(Version.compare("1.0.0-beta.10", "1.0.0-beta.2") > 0 && Version.compare("1.0.0-beta", "1.0.0-beta.1") < 0 && Version.compare("1.0.0-rc.1", "1.0.0-beta.9") > 0, "prerelease numbers compare as numbers")
@@ -437,6 +422,3 @@ do {
   expect(Version.pick(list, current: "0.1.0")?.tag, "v0.1.5", "only stable releases for everyone else")
   expectTrue(Version.pick([Version.Release(tag: "v0.2.0-beta.1", prerelease: true)], current: "0.1.0") == nil, "no stable release: nothing offered")
 }
-
-print(failures == 0 ? "✓ \(passed) checks passed" : "\n\(failures) failed, \(passed) passed")
-exit(failures == 0 ? 0 : 1)

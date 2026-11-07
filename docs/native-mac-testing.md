@@ -1,6 +1,6 @@
 # Native macOS Snapkit: testing plan
 
-Status: proposal, goes with [native-mac-plan.md](native-mac-plan.md). No test code yet.
+Status: in use, goes with [native-mac-plan.md](native-mac-plan.md). §2 maps every Electron check to its native check; §6 lists the commands. Some of §1 and §4 describes the original plan (XCUITest, per-theme scenes, token tests) where the build went a simpler way; §2 and §4 say what runs today.
 
 Goal: the native app does everything the Electron app does, looks and behaves
 the same, and every bug the Electron e2e suites guard against stays guarded.
@@ -85,253 +85,253 @@ Real capture (actual ScreenCaptureKit, real hotkeys) runs in a separate
 
 ## 2. Parity with Electron: every e2e check mapped
 
-Every check in `e2e/run-all.mjs` gets a native test with the same label. The
-native runner prints the same labels, so a missing one is visible the same way.
-Status in the native runner: a check is either **ported**, **N/A with a reason
-written here**, or **failing**; there is no "skipped" without a row below.
+Every check in `e2e/run-all.mjs` has a native check or an N/A row with the reason.
+Native checks live in `mac/e2e/run.mjs` (flow checks: the debug app driven through
+`snapkitctl`, written as `suite › label`) and `mac/Tests/SnapkitCoreTests` (unit tests,
+written as `unit › test`). `mac/scripts/parity-coverage.mjs` fails if a native check
+named here doesn't exist, so a renamed or dropped check shows up.
 
-Layer codes as in §1. "Same" = the native test asserts the same result.
+Why not XCUITest: capture mode, the editor, pins and the history grid are custom-drawn
+AppKit views (as Electron draws on a canvas), so XCUITest would see one big element per
+window. The test hook drives the same event handlers the mouse and keyboard reach, and
+reads state back, which is what the Electron suites do through Playwright. The Settings
+window (SwiftUI) is read through text recognition on its own render, because SwiftUI
+builds no accessibility tree until an assistive app attaches.
 
 ### annotate (21)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Typing into a new text box: Enter adds a line | `AnnotateTests.testEnterAddsLine` | UI |
-| Esc while typing ends the text, not the capture | `testEscEndsTextOnly` | UI |
-| Moving a text box while typing (snap may nudge a few px) | `testMoveTextWhileTyping` | UI |
-| One text style at a time | `testOneTextStyle` + `AnnotationModelTests` | UI, U |
-| Typed text size applies | `testTypedTextSize` | UI |
-| Readable (white) text on a dark background | `ColorTests.readableText` + `testDarkBackgroundWhiteText` | U, UI |
-| Highlighter has its own five colours | `testHighlighterSwatches` | UI |
-| A blur area can be clicked and adjusted | `testBlurHitTest` | UI |
-| Blur strength down to 0 (no blur) | `RenderTests.blurZero` + `testBlurZero` | R, UI |
-| Style bar follows the selected shape | `testStyleBarFollowsSelection` | UI |
-| Custom colours from the picker | `testCustomSwatch` | UI |
-| Background toggle and its dot | `testBackgroundToggleDot` | UI |
-| Solid colour presets (8) | `testSolidSwatches` | UI |
-| Fine shadow slider (step 0.01) | `testShadowSliderStep` | UI |
-| Arrow right-click menu (Arrow, Two-way arrow) | `testArrowVariantsMenu` | UI |
-| Two-way arrow draws a head at each end | `RenderTests.twoWayArrow` | R |
-| Colour picker not clipped | `testPickerVisible` + visual scene `picker-edge` | UI, V |
-| Esc while typing in the editor stays in the editor | `testEditorEscWhileTyping` | UI |
-| Esc closes the editor only | `testEditorEscClosesEditorOnly` | UI |
-| Fixed output size (16:9) | `RenderTests.frames` | R |
-| No page errors | `NoErrorsTests`: no log line at error level during the suite | UI |
+| Electron check | Native check |
+|---|---|
+| Typing into a new text box: Enter adds a line | editor › Enter adds a line: "Hello\nSnapkit"; Esc ends the text, not the capture |
+| Esc while typing ends the text, not the capture | annotate › Esc while typing ends the text, not the capture |
+| Moving a text box while typing (snap may nudge a few px) | parity › Moving a text box while typing (snap may nudge a few px) |
+| One text style at a time | editor › one text style at a time |
+| Typed text size applies | editor › typed text size applies |
+| Readable (white) text on a dark background | editor › dark background sets white text; unit › colors |
+| Highlighter has its own five colours | editor › highlighter has its own five colors |
+| A blur area can be clicked and adjusted | editor › a blur area can be clicked (hit-testing) |
+| Blur strength down to 0 (no blur) | editor › blur strength goes down to 0 |
+| Style bar follows the selected shape | editor › style bar follows the selected arrow |
+| Custom colours from the picker | editor › custom swatch added; the selected arrow takes it |
+| Background toggle and its dot | background › background on, dot shown |
+| Solid colour presets (8) | background › color tab -> solid swatches |
+| Fine shadow slider (step 0.01) | background › fine shadow slider (0.01 steps) |
+| Arrow right-click menu (Arrow, Two-way arrow) | editor › arrow right-click menu |
+| Two-way arrow draws a head at each end | editor › two-way arrow draws a head at each end |
+| Colour picker not clipped | editor › picker fully visible |
+| Esc while typing in the editor stays in the editor | background › Esc while typing in the editor -> still in editor, typing ends |
+| Esc closes the editor only | background › Esc closes the editor only, still capturing |
+| Fixed output size (16:9) | background › fixed output size: 16:9 |
+| No page errors | all › no errors in the log |
 
 ### regressions (13)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Esc with the colour picker open only closes the picker | `RegressionTests.testEscClosesPickerOnly` | UI |
-| Text background style doesn't recolour other tools | `testTextStyleKeepsShapeColor` + `AnnotationModelTests` | UI, U |
-| Editor opened from the preview shows the image | `testEditFromPreviewShowsImage` | UI |
-| Ctrl/⌘ + scroll zooms around the pointer, drawings sharp | `testEditorZoomAroundPointer` + visual scene `editor-zoom-2x` | UI, V |
-| Space + drag pans the zoomed editor, draws nothing | `testSpacePans` | UI |
-| Trackpad pinch zooms in | `testPinchZoom` (synthesized magnify event) | UI |
-| Ctrl/⌘ + 0 fits again, still in editor | `testZeroFits` | UI |
-| Quick area capture copies the drawn area | `testQuickCopy` | UI |
-| Quick area capture ignores a click | `testQuickCopyIgnoresClick` | UI |
-| Quick capture off: drawing keeps capture mode open | `testQuickCopyOff` | UI |
-| Thin themed scrollbars without a track | N/A as written: native uses system overlay scrollers. Covered by visual scenes `history`, `settings-*` | V |
-| Editor tools fit a small screen | `testEditorToolsFitSmallScreen` (test screen 1280×720) | UI |
-| No page errors | `NoErrorsTests` | UI |
+| Electron check | Native check |
+|---|---|
+| Esc with the colour picker open only closes the picker | editor › Esc closes only the color picker |
+| Text background style doesn't recolour other tools | parity › Text background style doesn't recolour other tools |
+| Editor opened from the preview shows the image | preview › Editor opened from the preview shows the image |
+| Ctrl/⌘ + scroll zooms around the pointer, drawings sharp | editorView › editor zoom in: the point stays under the pointer |
+| Space + drag pans the zoomed editor, draws nothing | editorView › Space hand pans, draws nothing |
+| Trackpad pinch zooms in | parity › Trackpad pinch zooms in |
+| Ctrl/⌘ + 0 fits again, still in editor | editorView › Ctrl/⌘ + 0 fits again, still in editor |
+| Quick area capture copies the drawn area | output › Quick area capture copies the drawn area |
+| Quick area capture ignores a click | parity › Quick area capture ignores a click |
+| Quick capture off: drawing keeps capture mode open | parity › Quick capture off: drawing an area keeps capture mode open |
+| Thin themed scrollbars without a track | N/A: native uses macOS overlay scrollers (thin, no track) in Settings and History; seen in the scene renders |
+| Editor tools fit a small screen | parity › Editor tools fit a small screen (1280×720) |
+| No page errors | all › no errors in the log |
 
 ### compress (6)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Copies are smaller PNGs, exact bytes on the clipboard, full size | `CompressTests.standard` + `testCopyExactBytes` | R, UI |
-| Editor Compress switch follows the setting, shows the size | `testCompressSwitchDefault` | UI |
-| Compress switch turns off, chips hidden | `testCompressSwitchOff` | UI |
-| Copy with Compress off is the original | `testCopyUncompressed` | UI |
-| Smallest brings HiDPI captures to 1× | `CompressTests.smallest` | R |
-| No page errors | `NoErrorsTests` | UI |
+| Electron check | Native check |
+|---|---|
+| Copies are smaller PNGs, exact bytes on the clipboard, full size | compress › standard copy: a palette PNG on the clipboard, smaller than a plain PNG, full size |
+| Editor Compress switch follows the setting, shows the size | parity › Editor Compress switch follows the setting, shows the size |
+| Compress switch turns off, chips hidden | parity › Compress switch turns off, chips hidden |
+| Copy with Compress off is the original | compress › copy with Compress off is the original |
+| Smallest brings HiDPI captures to 1× | compress › smallest copy is 1× size |
+| No page errors | all › no errors in the log |
 
 ### lastarea (7)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Nothing remembered: a normal capture | `LastAreaUITests.testFirstUse` | UI |
-| Reopens the last copied area, toolbar shown | `testReopensArea` | UI |
-| A cancelled capture is not remembered | `testCancelNotRemembered` | UI |
-| After full screen it selects the whole screen | `testAfterFullScreen` | UI |
-| Copy right away: no capture mode, copies the area | `testInstantCopy` | UI |
-| Survives a restart | `testRememberedAfterRestart` (relaunch with same profile) | UI |
-| No page errors | `NoErrorsTests` | UI |
+| Electron check | Native check |
+|---|---|
+| Nothing remembered: a normal capture | lastarea › Capture last area with nothing remembered: a normal capture |
+| Reopens the last copied area, toolbar shown | lastarea › reopens the last copied area, toolbar shown |
+| A cancelled capture is not remembered | lastarea › a cancelled capture is not remembered |
+| After full screen it selects the whole screen | lastarea › after full screen it selects the whole screen |
+| Copy right away: no capture mode, copies the area | lastarea › copy right away: no capture mode, copied the area |
+| Survives a restart | lastarea › the last area survives a restart |
+| No page errors | all › no errors in the log |
 
 ### ruler (5)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Off by default | `SettingsTests.defaults` + `testRulerHidden` | U, UI |
-| Right after Blur in the toolbar | `SettingsTests.toolbarOrder` | U |
-| Measures in image pixels | `AnnotationModelTests.rulerLabel` + `testRulerLabel` | U, UI |
-| Dragging an end updates the length | `testRulerDragEnd` | UI |
-| No page errors | `NoErrorsTests` | UI |
+| Electron check | Native check |
+|---|---|
+| Off by default | unit › settings (ruler off by default) |
+| Right after Blur in the toolbar | editor › Ruler sits right after Blur; unit › toolbarOrder |
+| Measures in image pixels | editor › ruler drawn (shows 400 px on Retina) |
+| Dragging an end updates the length | editor › dragging a ruler end updates the length |
+| No page errors | all › no errors in the log |
 
 ### ocr (8)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Reads English and Vietnamese into the text panel | `OCRTests.testPanelText` (fixture image) | UI |
-| The lines found are outlined | `testLinesOutlined` | UI |
-| One line + Copy text copies and closes | `testCopyOneLine` | UI |
-| Capture text opens the panel (hint, toolbars hidden, copies, closes) | `testCaptureTextPanel` | UI |
-| Copy right away, with a message | `testCaptureTextCopyNow` | UI |
-| An area without text says "No text found" | `testEmptyArea` | UI |
-| The floating preview copies its text | `testPreviewCopyText` | UI |
-| No page errors | `NoErrorsTests` | UI |
-| (Electron skips OCR on its scaled CI run) | Native runs it at scale 1 and 2 test screens | UI |
+| Electron check | Native check |
+|---|---|
+| Reads English and Vietnamese into the text panel | ocr › Copy text reads English and Vietnamese into the text panel |
+| The lines found are outlined | ocr › the lines found are outlined |
+| One line + Copy text copies and closes | ocr › One line + Copy text copies and closes |
+| Capture text opens the panel (hint, toolbars hidden, copies, closes) | ocr › Capture text opens with toolbars hidden (hint: Drag over text to copy it); ocr › capture text copies and closes |
+| Copy right away, with a message | ocr › copy right away, with a message |
+| An area without text says "No text found" | ocr › an area without text says so |
+| The floating preview copies its text | preview › the preview reads its text |
+| No page errors | all › no errors in the log |
 
 ### textedit (4)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Click into selected text to edit it (caret at end) | `TextEditTests.testClickSelectedText` | UI |
-| Edits are kept | `testEditsKept` | UI |
-| Click into text with the Text tool | `testClickWithTextTool` | UI |
-| Dragging text moves it without editing | `testDragMoves` | UI |
+| Electron check | Native check |
+|---|---|
+| Click into selected text to edit it (caret at end) | editor › click into selected text to edit it |
+| Edits are kept | editor › edits are kept |
+| Click into text with the Text tool | editor › click into text with the Text tool |
+| Dragging text moves it without editing | editor › dragging text moves it without editing |
 
 ### snap (6)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Smart align, no tool (guides shown) | `SnapTests.testUnselectedDrag` + `AnnotationModelTests.snapBox` | UI, U |
-| Smart align, selected shape | `testSelectedDrag` | UI |
-| Smart align with a drawing tool active | `testToolActiveDrag` | UI |
-| Smart align in the editor | `testEditorDrag` | UI |
-| Smart align while typing text | `testDragWhileTyping` | UI |
-| Smart align while typing text in the editor | `testEditorDragWhileTyping` | UI |
-| (Electron e2e: ⌘ places freely) | `testCommandPlacesFreely` (new, from `snap.mjs` description) | UI |
+| Electron check | Native check |
+|---|---|
+| Smart align, no tool (guides shown) | editor › smart align: a dragged shape snaps to line up with another; unit › model (snapBox) |
+| Smart align, selected shape | parity › Smart align, selected shape |
+| Smart align with a drawing tool active | parity › Smart align with a drawing tool active (grabbing a shape moves it) |
+| Smart align in the editor | parity › Smart align in the editor |
+| Smart align while typing text | parity › Smart align while typing text (it snaps to the nearest shape) |
+| Smart align while typing text in the editor | parity › Smart align while typing text in the editor |
+| (also: ⌘ places freely) | editor › ⌘ places freely |
 
 ### pin (10; one is Windows-only)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Floating preview toggle and its dot | `PinTests.testPreviewToggle` | UI |
-| Preview after ⌘C in the bottom-right corner | `testPreviewCorner` | UI |
-| Windows: preview stays on top of the app you go back to | N/A (Windows only). Mac equivalent: `testPreviewAboveFrontApp` | UI |
-| Copy again from the preview | `testCopyFromPreview` | UI |
-| Edit restores drawings | `testEditRestoresDrawings` | UI |
-| Done keeps the preview | `testDoneKeepsPreview` | UI |
-| Movable preview (moved by −120, −80) | `testMovePreview` | UI |
-| Pin from the preview, preview closes | `testPinFromPreview` | UI |
-| No preview when off for this capture; pin still visible | `testPreviewOffPerCapture` | UI |
-| Closing pins | `testClosePins` | UI |
+| Electron check | Native check |
+|---|---|
+| Floating preview toggle and its dot | preview › Floating preview toggle: on, with its dot |
+| Preview after ⌘C in the bottom-right corner | preview › preview after ⌘C in the bottom-right corner |
+| Windows: preview stays on top of the app you go back to | N/A: Windows only (the Mac preview is a floating panel above other apps by design) |
+| Copy again from the preview | preview › copy again from the preview |
+| Edit restores drawings | preview › edit restores drawings |
+| Done keeps the preview | preview › leaving the editor keeps the preview |
+| Movable preview (moved by −120, −80) | preview › movable preview (-120, -80) |
+| Pin from the preview, preview closes | preview › pin from the preview; preview closed |
+| No preview when off for this capture; pin still visible | preview › no preview when off; pin still visible |
+| Closing pins | preview › closing pins |
 
 ### history (7)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Limit prunes old captures (5 kept, 5 folders) | `HistoryStoreTests.prune` + `HistoryUITests.testLimit` | U, UI |
-| Panel opens with 5 cards | `testPanelOpens` | UI |
-| Starring | `testStar` | UI |
-| Enter copies (size per scale), panel closes | `testEnterCopies` | UI |
-| Editing updates the same entry | `testEditUpdatesEntry` | UI |
-| Delete removes files | `testDelete` | UI |
-| Clear keeps starred | `testClearKeepStarred` | UI |
+| Electron check | Native check |
+|---|---|
+| Limit prunes old captures (5 kept, 5 folders) | history › kept: 5 (limit 5) \| folders on disk: 5; unit › history pruning |
+| Panel opens with 5 cards | history › history panel opens with 5 cards |
+| Starring | history › starring |
+| Enter copies (size per scale), panel closes | history › Enter copies (800×600 on Retina) and closes the panel |
+| Editing updates the same entry | history › after edit: count 5 \| same entry on top |
+| Delete removes files | history › delete removes files |
+| Clear keeps starred | history › clear keeps starred |
 
 ### fullscreen (12)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Goes straight to the preview, no overlay | `FullScreenTests.testStraightToPreview` | UI |
-| Can copy | `testCopies` | UI |
-| Edit a full-screen capture | `testEdit` | UI |
-| Resizable history window remembers its size | `testHistoryWindowSize` | UI |
-| History keeps 10 by default | `SettingsTests.defaults` | U |
-| History close button: macOS uses its own (none of ours) | `testHistoryNoCustomClose` | UI |
-| Labelled Clear History button | `testClearButtonLabel` | UI |
-| Drag a capture out of history (`Snapkit <date>.png`) | `testDragOutFileName` (drag source file promise name) | UI |
-| Clear, keep starred | `testClearKeepStarred` | UI |
-| Clear all asks twice ("Click again to delete all") | `testClearAllConfirm` | UI |
-| Clear all | `testClearAll` | UI |
-| Background on by default applies to copy, preview and history | `testDefaultBackground` + `RenderTests.fullScreenBackground` | UI, R |
+| Electron check | Native check |
+|---|---|
+| Goes straight to the preview, no overlay | fullscreen › full-screen capture goes straight to the preview |
+| Can copy | fullscreen › full-screen capture can copy (Copy full-screen captures) |
+| Edit a full-screen capture | fullscreen › edit a full-screen capture |
+| Resizable history window remembers its size | historyPanel › resizable history window remembers its size (columns 4 -> 5) |
+| History keeps 10 by default | settings › history keeps 10 by default (up to 30) |
+| History close button: macOS uses its own (none of ours) | parity › History close button: macOS uses its own (none of ours) |
+| Labelled Clear History button | parity › Labelled Clear History button |
+| Drag a capture out of history (`Snapkit <date>.png`) | historyPanel › drag a capture out of history (Snapkit <date>.png) |
+| Clear, keep starred | history › clear keeps starred |
+| Clear all asks twice ("Click again to delete all") | historyPanel › clear all asks twice |
+| Clear all | historyPanel › clear all |
+| Background on by default applies to copy, preview and history | historyPanel › full-screen capture gets the background when it is on by default (preview, history) |
 
 ### hotkeys (9; one is Windows-only)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Default shortcuts registered | `HotkeyTests.testDefaults` (registration status from the wrapper) | UI |
-| ⌘⇧Z steps aside while capturing | `testStepAside` | UI |
-| Selection outline width 1.5 px | `UITokenTests.selectionOutline` + visual scene `overlay-select` | U, V |
-| ⌘⇧Z registered again after capture | `testStepBack` | UI |
-| Gray theme in every window | visual scenes `*-gray` + `testGrayEverywhere` | V, UI |
-| No glass knob with Liquid Glass off (22 px solid) | `UITokenTests.switchKnob` + visual scene | U, V |
-| Glass knob with Liquid Glass on | same, glass variant | U, V |
-| Takes a shortcut back once the app holding it quits | `testRetakeShortcut` (helper process holds it) | UI |
-| Windows: notices a shortcut another app holds | N/A (Windows only; macOS lets both register) | — |
+| Electron check | Native check |
+|---|---|
+| Default shortcuts registered | hotkeys › default capture hotkey ⌥⇧Z registers; settings › the settings shortcut is registered from the start |
+| ⌘⇧Z steps aside while capturing | hotkeys › a capture-mode shortcut steps aside while capturing (⌘⇧Z = Redo) |
+| Selection outline width 1.5 px | scene `overlay-selection` (§4) |
+| ⌘⇧Z registered again after capture | hotkeys › it comes back after capture |
+| Gray theme in every window | settings › Gray is a dark theme with lighter surfaces, in every open window |
+| No glass knob with Liquid Glass off (22 px solid) | N/A for automation: a held SwiftUI switch can't be driven without an assistive app; checked by hand (§4 manual list). The knob stretches to 22 pt, solid |
+| Glass knob with Liquid Glass on | Same as above; with Liquid Glass on the held knob is a white-to-clear gradient (Liquid Glass is drawn solid everywhere else, see the plan) |
+| Takes a shortcut back once the app holding it quits | parity › Takes a shortcut back once the app holding it quits |
+| Windows: notices a shortcut another app holds | N/A: Windows only; macOS lets two apps register the same shortcut |
 
 ### safety (11, including 3 macOS-only)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| Capture hotkey again closes capture mode | `SafetyTests.testHotkeyToggles` | UI |
-| Idle timeout | `testIdleCloses` (short limit via launch argument) | UI |
-| A stuck overlay never leaves the screen dimmed | `testStuckOverlayNoDim` (test hook blocks the main view's draw) | UI |
-| Capture works after a stuck one | `testCaptureAfterStuck` | UI |
-| No listener leak over many captures | `testNoLeakOver100Captures` (window and observer counts) | UI |
-| Display change during capture: kept open, rebuilt after | `testDisplayChangeDeferred` (simulated screen-change notification) | UI |
-| macOS: a capture window that never showed is replaced | `testUnseenPanelReplaced` (watchdog with a forced not-on-screen panel) | UI |
-| macOS: capture works after replacing it | `testCaptureAfterReplace` | UI |
-| macOS: a seen capture closed by the hotkey keeps its windows | `testSeenCaptureKeepsPanels` | UI |
-| History record switch pauses history | `testRecordSwitch` | UI |
-| History folder button leaves no stuck dim | `testFolderButtonNoDim` | UI |
+| Electron check | Native check |
+|---|---|
+| Capture hotkey again closes capture mode | safety › capture hotkey again closes capture mode |
+| Idle timeout | safety › idle timeout closes capture mode |
+| A stuck overlay never leaves the screen dimmed | N/A: there is no separate renderer that can hang while its window stays up; the frozen image and the dim are one view drawn on the main thread. The closest Mac risk, a capture window that never reached the screen, is the next rows |
+| Capture works after a stuck one | safety › capture works after replacing them |
+| No listener leak over many captures | safety › many captures in a row leave nothing on screen |
+| Display change during capture: kept open, rebuilt after | parity › Display change during capture: kept open; parity › Display change: windows rebuilt after capture closes |
+| macOS: a capture window that never showed is replaced | safety › pressed again with no input since opening: the capture windows are replaced |
+| macOS: capture works after replacing it | safety › capture works after replacing them |
+| macOS: a seen capture closed by the hotkey keeps its windows | parity › macOS: a seen capture closed by the hotkey keeps its windows |
+| History record switch pauses history | historyPanel › nothing recorded while paused |
+| History folder button leaves no stuck dim | N/A: the Electron bug was the history window's dim staying behind Finder; the native history panel has no dim layer. Its folder button only calls NSWorkspace |
 
 ### settings (32)
 
-| Electron check | Native test | Layer |
-|---|---|---|
-| General groups: Startup, After a capture, Saving | `SettingsUITests.testGeneralGroups` | UI |
-| Quick area capture switch, off by default | `testQuickCaptureSwitch` | UI |
-| Saving rows in order | `testSavingRows` | UI |
-| Defaults: 75% dim, Dark | `SettingsTests.defaults` | U |
-| History keeps 10, up to 30 | `testHistorySlider` | UI |
-| History Recording switch on by default | `testHistoryRecordingSwitch` | UI |
-| Short shortcut names, no descriptions | `testShortcutRowNames` | UI |
-| Dock icon only while Settings is open | `testDockIcon` (activation policy) | UI |
-| Open Settings shortcut | `testSettingsHotkey` | UI |
-| Blue switches | `UITokenTests.switchOn` + visual | U, V |
-| File naming preview "Example: Bug 001.png" | `testNamePreview` | UI |
-| Recording a hotkey saves `CommandOrControl+Alt+Shift+F11` | `testRecordHotkey` + `AcceleratorTests` | UI, U |
-| Tool letters saved | `testToolLetter` | UI |
-| Theme mode saved | `testThemeMode` | UI |
-| Readable dropdown options in dark theme | N/A as written (native pop-up menus are system-drawn). Visual scene `settings-dark` covers it | V |
-| Dim colour setting (black by default) | `testDimColor` | UI |
-| Dim amount in 1% steps | `testDimStep` | UI |
-| Capture mode dims in the chosen colour | `testDimApplied` + visual scene | UI, V |
-| Liquid Glass toggle | `testGlassToggle` | UI |
-| Theme reaches windows already open | `testThemeLive` | UI |
-| No separate Line / Ellipse rows (Arrows 2, Shapes 5) | `testToolGroups` | UI |
-| Quick colours saved | `testPalette` | UI |
-| Step colour saved | `testStepColor` | UI |
-| Remember last background toggles off | `testRememberLast` | UI |
-| Step outline/shadow defaults and saved | `testStepOutline` | UI |
-| Step badges use those settings | `RenderTests.stepBadge` | R |
-| Gradient library reset (32) | `testGradientsReset` | UI |
-| Settings reach capture mode (W selects arrow) | `testSettingsReachCapture` | UI |
-| Numbered file names, next number 3 | `testNumberedSaves` | UI |
-| Update check (needs internet) | `UpdateTests` against a local fixture feed; live check in `RealCapture` plan | U, UI |
-| Reset one section | `testResetSection` | UI |
-| No page errors | `NoErrorsTests` | UI |
+| Electron check | Native check |
+|---|---|
+| General groups: Startup, After a capture, Saving | settings › General starts with Startup, Capture, Saving |
+| Quick area capture switch, off by default | settings › quick area capture switch shown; unit › settings (defaults from the fixture) |
+| Saving rows in order | settings › saving rows |
+| Defaults: 75% dim, Dark | settings › dim amount and dark mode by default (shared fixture) |
+| History keeps 10, up to 30 | settings › history keeps 10 by default (up to 30) |
+| History Recording switch on by default | historyPanel › nothing recorded while paused; unit › settings (paused false by default) |
+| Short shortcut names, no descriptions | settings › global shortcut rows include Settings |
+| Dock icon only while Settings is open | settings › Dock icon while Settings is open; settings › the Dock icon goes when Settings closes |
+| Open Settings shortcut | settings › the settings shortcut is registered from the start |
+| Blue switches | scene `settings-general` (§4) |
+| File naming preview "Example: Bug 001.png" | settings › name preview "Bug 001.png" |
+| Recording a hotkey saves `CommandOrControl+Alt+Shift+F11` | settings › recording a hotkey saves CommandOrControl+Alt+Shift+F11 |
+| Tool letters saved | settings › tool letter saved |
+| Theme mode saved | settings › theme mode dark reaches Settings and the open history panel |
+| Readable dropdown options in dark theme | N/A: native pop-up menus are drawn by macOS in the window's appearance |
+| Dim colour setting (black by default) | settings › dim colour and Liquid Glass saved |
+| Dim amount in 1% steps | settings › Dim amount in 1% steps (37% shown) |
+| Capture mode dims in the chosen colour | settings › capture mode dims in the chosen colour |
+| Liquid Glass toggle | settings › dim colour and Liquid Glass saved |
+| Theme reaches windows already open | settings › theme mode dark reaches Settings and the open history panel |
+| No separate Line / Ellipse rows (Arrows 2, Shapes 5) | settings › tool group rows (Arrows, Shapes) |
+| Quick colours saved | settings › Quick colours reach capture mode (first swatch #00aa55) |
+| Step colour saved | settings › a step badge uses the colour and outline from Settings |
+| Remember last background toggles off | settings › remember last background off |
+| Step outline/shadow defaults and saved | settings › step outline 2 px white and 30% shadow by default (fixture) |
+| Step badges use those settings | settings › a step badge uses the colour and outline from Settings |
+| Gradient library reset (32) | settings › gradients reset to the defaults; settings › the gradient library has 32 by default |
+| Settings reach capture mode (W selects arrow) | settings › W picks Arrow in capture mode; settings › capture mode uses the new toolbar order and hides Highlighter |
+| Numbered file names, next number 3 | settings › saves are numbered Bug 001, Bug 002 |
+| Update check (needs internet) | settings › update check answers; unit › version |
+| Reset one section | settings › Reset section puts Appearance back to defaults; settings › resetting one section keeps the others |
+| No page errors | all › no errors in the log |
 
 ### Not in `run-all.mjs`
 
 | Electron script | Native |
 |---|---|
 | `winkeep.mjs` (3 checks, Windows only) | N/A: no Mac equivalent; Mac panels are hidden between captures |
-| `timing.mjs` (hotkey → dim → frozen image) | `PerfTests` (§4), same three timings |
+| `timing.mjs` (hotkey → dim → frozen image) | Not ported yet: timings are logged (`[capture]` lines) but no harness compares them |
 | `smoke.mjs` (Linux/Xvfb) | N/A: no Linux build |
-| `backlog.mjs` | Reused as is, with native suite names prefixed `mac-` (§6) |
+| `backlog.mjs` | Not ported: the native suites are small enough to run whole |
 
-New native-only checks (no Electron equivalent): pool rebuild on Space change and
-wake, panel ignores the mouse while idle, signing identity unchanged between
-releases (once release work starts).
-
-A script, `scripts/parity-coverage.mjs`, reads `SUITES` from `e2e/run-all.mjs`
-and the native test list (`xcodebuild test -enumerate-tests` output), and fails
-if any Electron label has no native test and no N/A row in this file. That's the
-guard against dropping a check silently, including checks added to Electron later.
+Native-only checks (no Electron equivalent): capture window keyboard focus without
+activating, arrow-key nudge/resize of the selection, undo/redo, the Electron-format
+`last-area.json`, pin zoom and opacity, acknowledgements in About.
 
 ## 3. Shared fixtures
 
@@ -473,17 +473,15 @@ Kept in `docs/native-mac-checklist.md` (to write in Phase 1), ticked per release
 
 ### Commands
 
-npm scripts in the root `package.json`, wrapping `xcodebuild` with test plans
-(`mac/TestPlans/*.xctestplan`):
+Run from the repository root (each builds what it needs):
 
 | Command | Runs |
 |---|---|
-| `npm run mac:test` | Unit + Render test plan |
-| `npm run mac:e2e [-- suite…]` | UI test plan, all or named suites; prints the same check labels as `run-all.mjs` |
-| `npm run mac:parity` | Builds both apps, renders every scene in both, diffs, opens the HTML report |
-| `npm run mac:real` | `RealCapture` plan: real ScreenCaptureKit, real hotkeys, live update check |
-| `npm run mac:soak` | Starts the 24 h soak script |
-| `npm run mac:all` | All of the above except soak, then `parity-coverage` |
+| `cd mac && swift test` | Unit tests (`mac/Tests/SnapkitCoreTests`, Swift Testing) |
+| `node mac/e2e/run.mjs [suite…]` | Flow checks, all or named suites; prints a label per check. Capture mode really opens on screen while it runs |
+| `node e2e/scene.mjs fixtures/scenes <dir>` | Electron scene renders (after `npm run build`) |
+| `node mac/e2e/scene.mjs fixtures/scenes <dir> --compare <electron-dir>` | Native scene renders, diffed against Electron's: `<dir>/compare/` |
+| `node mac/scripts/parity-coverage.mjs` | Every Electron check mapped (§2) |
 
 ### CI (GitHub Actions)
 

@@ -112,6 +112,7 @@ enum TestHook {
     case "pin-move":
       if let p = Floating.shared.items.last, nums.count == 2 { Floating.shared.moveBy(p, dx: nums[0], dy: nums[1]) }
     case "closepins": Floating.shared.closeAll()
+    case "unhover": Floating.shared.testUnhoverAll()
     case "clearclip": Output.pasteboard.clearContents()
     case "history": app.historyPanel.toggle()
     case "hist":
@@ -203,6 +204,7 @@ enum TestHook {
       case "slider" where args.count >= 3: ed.setSlider(args[1], Double(args[2]) ?? 0)
       case "zoom": ed.zoomTo(CGFloat(Double(args[1]) ?? 1), at: nums.count >= 3 ? CGPoint(x: nums[1], y: nums[2]) : nil)
       case "space": ed.setHand(args[1] == "down")
+      case "pinch" where nums.count >= 3: ed.pinch(CGFloat(nums[0]), at: CGPoint(x: nums[1], y: nums[2]))
       case "drag" where nums.count >= 4:
         // editor drag x1 y1 x2 y2: in the editor's own coordinates (stage), through its mouse handlers
         let a = CGPoint(x: nums[0], y: nums[1]), b = CGPoint(x: nums[2], y: nums[3])
@@ -243,6 +245,32 @@ enum TestHook {
       if args.count >= 2 { mainView?.pickVariant(args[0], args[1]) }
     case "style":
       if let id = args.first { mainView?.pressStyle(id) }
+    case "overlay-size":
+      // overlay-size <w> <h>: shrink the capture window (a small screen), top-left kept
+      if let w = mainView?.window, nums.count == 2 {
+        let f = w.frame
+        w.setFrame(CGRect(x: f.minX, y: f.maxY - nums[1], width: nums[0], height: nums[1]), display: true)
+        mainView?.layoutSubtreeIfNeeded()
+      }
+    case "textframe-drag":
+      // textframe-drag <dx> <dy>: drag the frame of the text box being typed in (from its top-left corner)
+      guard let v = mainView, let t = v.textEditorView, nums.count >= 2 else { return }
+      let a = CGPoint(x: t.frame.minX + 2, y: t.frame.minY + 2)
+      for (type, k) in [(NSEvent.EventType.leftMouseDown, 0.0), (.leftMouseDragged, 0.5), (.leftMouseDragged, 1), (.leftMouseUp, 1)] as [(NSEvent.EventType, CGFloat)] {
+        if let e = event(type, CGPoint(x: a.x + nums[0] * k, y: a.y + nums[1] * k), in: v, flags: flags) {
+          switch type {
+          case .leftMouseDown: t.mouseDown(with: e)
+          case .leftMouseDragged: t.mouseDragged(with: e)
+          default: t.mouseUp(with: e)
+          }
+        }
+      }
+    case "screen-change":
+      // As if a display was added or removed
+      NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: NSApp)
+    case "shapes":
+      // shapes <json array>: replace the drawings (doc.json shapes), as when reopening a capture
+      if let data = args.joined(separator: " ").data(using: .utf8), let list = try? JSONDecoder().decode([SnapkitCore.Shape].self, from: data) { mainView?.setShapes(list) }
     case "pick":
       if let hex = args.first { mainView?.testPick(hex) }
     case "blur":
@@ -296,6 +324,7 @@ enum TestHook {
         o = o.setting("screen", .array([.number(v.bounds.width), .number(v.bounds.height)]))
         o = o.setting("toolbar", .array(v.toolIds.map { .string($0) }))
         o = o.setting("typing", .bool(v.isTyping))
+        if let t = v.editing { o = o.setting("textBox", .array([.number(t.x), .number(t.y)])) }
         if let s = v.sel { o = o.setting("selection", .array([s.x, s.y, s.w, s.h].map { .number($0) })) }
         o = o.setting("editorOpen", .bool(v.editorOpen))
         o = o.setting("beautify", v.beautifyJSON)
@@ -308,6 +337,12 @@ enum TestHook {
           o = o.setting("editorOutput", .string(ed.outputLabel))
           o = o.setting("editorTab", .string(ed.currentTab))
           o = o.setting("editorZoom", .number(Double(ed.zoomLevel)))
+          o = o.setting("editorControls", .array(ed.controlIds.map { .string($0) }))
+          o = o.setting("editorControlsInside", .bool(ed.controlsInside))
+          let vt = v.testViewTransform
+          o = o.setting("editorTransform", .array([vt.origin.x, vt.origin.y, vt.k].map { .number(Double($0)) }))
+          o = o.setting("editorBounds", .array([ed.bounds.width, ed.bounds.height].map { .number(Double($0)) }))
+          o = o.setting("editorOutside", .array(ed.controlsOutside.map { .string($0) }))
         }
         o = o.setting("lit", .array(v.lit.sorted().map { .string($0) }))
         o = o.setting("toolbarsShown", .bool(v.toolbarsShown))
@@ -352,6 +387,7 @@ enum TestHook {
       o = o.setting("settingsSection", .string(app.settingsWindow.model.section))
       o = o.setting("hotkeysRegistered", .object(["capture", "lastArea", "fullscreen", "ocr", "history", "settings"].map { ($0, .bool(Hotkeys.shared.isRegistered($0))) }))
       o = o.setting("historyVisible", .bool(app.historyPanel.isVisible))
+      if let w = app.historyPanel.testView?.window { o = o.setting("historyStandardClose", .bool(w.standardWindowButton(.closeButton).map { !$0.isHidden } ?? false)) }
       o = o.setting("historyClearAll", .string(app.historyPanel.testView?.clearAllLabel ?? ""))
       o = o.setting("historyNote", app.historyPanel.testView?.note.map { .string($0) } ?? .null)
       o = o.setting("historySelected", .number(Double(app.historyPanel.testView?.selected ?? 0)))

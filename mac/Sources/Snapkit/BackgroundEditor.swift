@@ -149,6 +149,12 @@ final class BackgroundEditorView: NSView {
     needsDisplay = true
   }
 
+  /** A new size (a display change while editing): lay the sidebar out again. */
+  override func setFrameSize(_ size: NSSize) {
+    super.setFrameSize(size)
+    if owner != nil { refresh() }
+  }
+
   override func draw(_ dirtyRect: NSRect) {
     guard let ctx = NSGraphicsContext.current?.cgContext, let owner else { return }
     theme.editorBackdrop.setFill()
@@ -268,9 +274,10 @@ final class BackgroundEditorView: NSView {
     zoomTo(zoom * min(1.25, max(0.8, exp(d * 0.002))), at: convert(e.locationInWindow, from: nil))
   }
 
-  override func magnify(with e: NSEvent) {
-    zoomTo(zoom * (1 + e.magnification), at: convert(e.locationInWindow, from: nil))
-  }
+  override func magnify(with e: NSEvent) { pinch(e.magnification, at: convert(e.locationInWindow, from: nil)) }
+
+  /** A trackpad pinch: zoom by 1 + magnification around the fingers. */
+  func pinch(_ magnification: CGFloat, at p: CGPoint) { zoomTo(zoom * (1 + magnification), at: p) }
 
   /** Space held: a hand over the preview instead of the drawing tools. */
   func setHand(_ on: Bool) {
@@ -660,6 +667,10 @@ final class BackgroundEditorView: NSView {
   func pickSwatch(_ i: Int) { (controls["grid"] as? SwatchGrid)?.onPick(i) }
   func setSlider(_ id: String, _ v: Double) { (controls["slider:\(id)"] as? SliderView)?.onChange(v) }
   var outputLabel: String { (controls["output"] as? LabelView)?.text ?? "" }
+  /** Sidebar controls shown, and whether each lies fully inside the editor (test hooks). */
+  var controlIds: [String] { controls.filter { !$0.value.isHidden && $0.value.superview != nil }.keys.sorted() }
+  var controlsOutside: [String] { controls.filter { !$0.value.isHidden && $0.value.superview != nil && !bounds.contains($0.value.convert($0.value.bounds, to: self)) }.keys.sorted() }
+  var controlsInside: Bool { controls.values.filter { !$0.isHidden && $0.superview != nil }.allSatisfy { bounds.contains($0.convert($0.bounds, to: self)) } }
   var currentTab: String { tab }
 }
 
