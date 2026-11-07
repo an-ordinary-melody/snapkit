@@ -449,6 +449,9 @@ function rememberSelection(sender: Electron.WebContents, out?: OutputOptions) {
   if (display) rememberArea(display, { x: a.x, y: a.y, width: a.w, height: a.h })
 }
 
+/** Sessions that copied, saved or finished an edit: only these may add to history (the entry comes after the output). */
+const outputSessions = new Set<number>()
+
 export function registerOverlayIpc() {
   const valid = (s: number) => active && s === session
 
@@ -505,6 +508,7 @@ export function registerOverlayIpc() {
   })
   ipcOn(IPC.copy, (e, s: number, png: ArrayBuffer, extra: CopyExtra | undefined, out?: OutputOptions) => {
     if (!valid(s)) return
+    outputSessions.add(s)
     rememberSelection(e.sender, out)
     const target = editTarget
     const origin = BrowserWindow.fromWebContents(e.sender)?.getBounds() ?? { x: 0, y: 0 }
@@ -524,18 +528,22 @@ export function registerOverlayIpc() {
     touched = true
     touchIdleTimer()
   })
-  // Sent right after an output; the session has usually ended by then.
+  // Sent right after an output; the session has usually ended by then. A capture closed before its
+  // output went out (Esc right after ⌘C) has none, so it isn't kept.
   ipcOn(IPC.historyAdd, (_e, r: HistoryRecord) => {
+    if (!outputSessions.delete(r?.session)) return
     void addToHistory(r).then((id) => id && linkThumbToHistory(r.session, id))
   })
   ipcOn(IPC.editDone, (_e, s: number, png: ArrayBuffer, doc: CaptureDoc) => {
     if (!valid(s)) return
+    outputSessions.add(s)
     editTarget?.(Buffer.from(png), doc)
     endCapture()
     releaseFocus()
   })
   ipcOn(IPC.save, async (e, s: number, png: ArrayBuffer, out?: OutputOptions) => {
     if (!valid(s)) return
+    outputSessions.add(s)
     rememberSelection(e.sender, out)
     endCapture() // hide first so the save dialog isn't covered by the overlay
     await savePng(Buffer.from(png), out)

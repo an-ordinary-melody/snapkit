@@ -28,6 +28,8 @@ interface Pin {
   opacity: number
   /** Temp file used when dragging the image into another app. */
   file: string
+  /** A save is in progress (its dialog may be open): ⌘S held or pressed again waits for it. */
+  saving?: boolean
 }
 
 /** Floating screenshots and previews, keyed by their window's webContents id. */
@@ -230,6 +232,13 @@ function updateThumb(p: Pin, png: Buffer, doc: CaptureDoc) {
   p.win.webContents.send(IPC.pinImage, { png: new Uint8Array(png), appearance: getSettings().appearance })
 }
 
+/** One save at a time per pin. */
+function savePin(p: Pin) {
+  if (p.saving) return
+  p.saving = true
+  void savePng(p.png, { scale: p.doc?.scale }).finally(() => (p.saving = false))
+}
+
 export function closeAllPins() {
   for (const p of [...pins.values()]) p.win.close()
 }
@@ -255,7 +264,7 @@ function showMenu(p: Pin) {
   const pct = (v: number) => `${Math.round(v * 100)}%`
   Menu.buildFromTemplate([
     { label: 'Copy', accelerator: 'CommandOrControl+C', click: () => void copyPng(p.png, { scale: p.doc?.scale }) },
-    { label: 'Save…', accelerator: 'CommandOrControl+S', click: () => void savePng(p.png, { scale: p.doc?.scale }) },
+    { label: 'Save…', accelerator: 'CommandOrControl+S', click: () => savePin(p) },
     { type: 'separator' },
     {
       label: 'Zoom',
@@ -312,7 +321,7 @@ export function registerPinIpc() {
   })
   ipcOn(IPC.pinSave, (e) => {
     const p = of(e)
-    if (p) void savePng(p.png, { scale: p.doc?.scale })
+    if (p) savePin(p)
   })
   ipcOn(IPC.pinClose, (e) => of(e)?.win.close())
   ipcOn(IPC.pinMenu, (e) => {

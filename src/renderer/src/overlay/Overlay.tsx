@@ -58,7 +58,8 @@ let lastVariants: Record<string, string> = {}
 /** Beautify preset and tweaks; whether it's on resets to the setting each capture. */
 let lastBeautify: BeautifyState | null = null
 /** Settings the remembered picks above were made under; when they change, the picks reset. */
-let lastDefaults = ''
+let lastDrawDefaults = ''
+let lastBgDefaults = ''
 
 function initialBeautify(s: Settings): BeautifyState {
   const presets = s.beautify.presets
@@ -196,6 +197,14 @@ export function Overlay() {
   const [screen, setScreen] = useState({ w: window.innerWidth, h: window.innerHeight })
   const busy = useRef(false)
   const painted = useRef(deferred())
+  /**
+   * Async work checks these after each wait and stops if one changed meanwhile, so a late result
+   * never lands in the next capture (docs/state-machines.md, "Overlay page"). `opened`: bumped
+   * when capture mode opens or closes (outputs, the edit image). `area`: also by a new area, the
+   * area going to another display, and every text read (only the latest read counts).
+   */
+  const opened = useRef(0)
+  const area = useRef(0)
 
   // Annotations
   const annRef = useRef<AnnotationLayerHandle>(null)
@@ -233,15 +242,23 @@ export function Overlay() {
     api.onArm((p) => {
       busy.current = false
       painted.current = deferred()
+      const armEpoch = ++opened.current
+      area.current++
       // Commit the dim to the DOM before telling main to show the window.
       applyTheme(p.settings.appearance)
-      const defaults = JSON.stringify([p.settings.annotate, p.settings.beautify, p.settings.toolVariants])
-      if (defaults !== lastDefaults) {
-        // New defaults from the settings window win over this session's picks.
-        lastDefaults = defaults
+      // New defaults from the settings window win over this session's picks. Drawing and background
+      // apart: "Remember last background" changes the background defaults after a copy, and that
+      // mustn't reset the color and tool styles picked.
+      const drawDefaults = JSON.stringify([p.settings.annotate, p.settings.toolVariants])
+      const bgDefaults = JSON.stringify(p.settings.beautify)
+      if (drawDefaults !== lastDrawDefaults) {
+        lastDrawDefaults = drawDefaults
         lastStyle = null
-        lastBeautify = null
         lastVariants = {}
+      }
+      if (bgDefaults !== lastBgDefaults) {
+        lastBgDefaults = bgDefaults
+        lastBeautify = null
       }
       const doc = p.edit
       const scale = doc ? doc.scale : p.width / window.innerWidth
@@ -279,6 +296,7 @@ export function Overlay() {
       if (doc) {
         // No pixels step: paint the stored crop ourselves.
         void createImageBitmap(new Blob([doc.png as BlobPart], { type: 'image/png' })).then((bmp) => {
+          if (opened.current !== armEpoch) return bmp.close() // closed (or another capture opened) meanwhile
           const canvas = canvasRef.current!
           canvas.width = bmp.width
           canvas.height = bmp.height
@@ -286,6 +304,10 @@ export function Overlay() {
           bmp.close()
           painted.current.resolve()
           setPaintedVersion((v) => v + 1)
+        }, (err) => {
+          // Nothing to edit: close rather than leave an editor whose outputs wait forever.
+          console.error('edit image unreadable:', err instanceof Error ? err.message : err)
+          if (opened.current === armEpoch) api.cancel(p.session)
         })
       }
       api.armed(p.session)
@@ -300,11 +322,21 @@ export function Overlay() {
       setPaintedVersion((v) => v + 1)
       requestAnimationFrame(() => api.painted(p.session))
     })
+    // A selection started on another display: this one's area, drawings, text and editor go.
     api.onClearSelection(() => {
+      area.current++
       setSel(null)
       setDrag(null)
+      setHistory(emptyHistory())
+      setTool(null)
+      setSelectedId(null)
+      setEditorOpen(false)
+      setOcr(null)
+      setNote(null)
     })
     api.onReset(() => {
+      opened.current++
+      area.current++
       setCap(null)
       setSel(null)
       setDrag(null)
@@ -393,13 +425,18 @@ export function Overlay() {
   const readText = useCallback(
     async (r: Rect) => {
       if (!cap || busy.current) return
+      // One read at a time: a newer one (or a new area, or the capture closing) drops this one's result.
+      const mine = ++area.current
       annRef.current?.finishEditing()
       setSelectedId(null)
       setTool(null)
       setOcr({ reading: true })
       await painted.current.promise
+      if (area.current !== mine) return
       const png = await (await toBlob(composeSelection(r, cap.scale, false), 'image/png')).arrayBuffer()
+      if (area.current !== mine) return
       const res = await api.ocr(png)
+      if (area.current !== mine) return
       if ('error' in res) {
         setOcr(null)
         setNote(`Couldn't read the text: ${res.error}`)
@@ -449,9 +486,12 @@ export function Overlay() {
       if (id === 'ocr') return void readText(sel)
       if (id === 'copy' || id === 'save' || id === 'editDone') {
         busy.current = true
+        const mine = opened.current
         try {
           flushSync(() => setSelectedId(null))
           const { canvas, png } = await renderOutput(sel)
+          // Closed (Esc, the hotkey) while it rendered: send nothing, and keep it out of history.
+          if (opened.current !== mine) return
           const history = cap.settings.history
           const toHistory = !history.paused && history.maxCount > 0
           // Taken now: main clears this session's canvas right after the output.
@@ -558,6 +598,9 @@ export function Overlay() {
       } else if (!mod && !e.altKey && sel && key === 'x' && actionIds.has('ocr')) {
         e.preventDefault()
         void runAction('ocr')
+      } else if (cap.textOnly && (toolKeys.has(key) || (mod && (key === 'c' || key === 's')) || e.key === 'Enter')) {
+        // "Capture text" reads text only: no drawing, and nothing copies or saves the image.
+        e.preventDefault()
       } else if (!mod && !e.altKey && sel && toolKeys.has(key)) {
         e.preventDefault()
         void runAction(toolKeys.get(key)!)
@@ -606,6 +649,7 @@ export function Overlay() {
       setDrag({ kind: 'create', origin: p })
       setSel({ x: p.x, y: p.y, w: 0, h: 0 })
       setOcr(null)
+      area.current++ // a text read of the previous area is dropped
       api.selectionStarted(cap.session)
     }
   }
@@ -803,7 +847,7 @@ export function Overlay() {
         />
       )}
 
-      {hasSel && !editorOpen && annotationLayer}
+      {hasSel && !editorOpen && !cap?.textOnly && annotationLayer}
 
       {cap && sel && !drag && !cap.edit && (
         <div className="handles" style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h }}>
