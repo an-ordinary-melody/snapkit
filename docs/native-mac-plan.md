@@ -480,7 +480,7 @@ Rough effort, one developer with an AI assistant.
 
 | Phase | Scope | Effort |
 |---|---|---|
-| 0. Baseline | Measure Electron (launch, hotkey→dim, memory, size); `mac/` project; CI builds an empty universal menu-bar app with the self-signed cert; shared fixtures | 3–4 days |
+| 0. Baseline | Measure Electron (launch, hotkey→dim, memory, size); `mac/` project; CI builds an empty universal menu-bar app (unsigned until release work); shared fixtures | 3–4 days |
 | 1. MVP | Menu bar, capture hotkey, pooled overlay with rebuild + watchdog, all displays/Spaces/full screen, select + handles, copy (exact PNG) and save (naming rule), Esc, pencil/arrow/rect/text basics, undo, reads `settings.json` | 2–3 weeks |
 | 2. Editor parity | All tools and variants, select/move/resize/restyle, snap, steps, blur, ruler, highlighter, text styles, style bar, toolbar order, tool keys | 3–4 weeks |
 | 3. Around the capture | Full-screen and last-area, quick copy, floating preview, pins, notifications, compress, OCR | 2–3 weeks |
