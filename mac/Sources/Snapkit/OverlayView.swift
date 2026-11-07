@@ -1152,6 +1152,7 @@ final class OverlayView: NSView {
     }
     if cmd && key == "z" { run(mods.contains(.shift) ? "redo" : "undo"); return }
     if cmd && key == "y" { run("redo"); return }
+    if cmd && key == "," { delegate?.overlayAction(self, "settings"); return }
     if cmd && key == "c" { delegate?.overlayCopy(self); return }
     if cmd && key == "s" { delegate?.overlaySave(self); return }
     if !cmd && !mods.contains(.option), sel != nil, key == "x", visible(.action).contains(where: { $0.id == "ocr" }) {

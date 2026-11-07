@@ -53,3 +53,7 @@ Shared with the Electron app: `fixtures/default-settings.json` and `fixtures/fea
 the first; `SnapkitChecks` fails if either file and the Swift side differ.
 
 The toolbar icons are Lucide's (ISC licence), drawn from the same SVG paths the Electron app uses.
+
+## Credits
+
+UPNG.js (MIT), Lucide (ISC) and Snapzy (BSD-3-Clause, ideas): see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The app lists them under Settings → About → Acknowledgements.

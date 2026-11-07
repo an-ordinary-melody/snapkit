@@ -1,5 +1,6 @@
 #if DEBUG
 import AppKit
+import SwiftUI
 import SnapkitCore
 
 /**
@@ -121,6 +122,55 @@ enum TestHook {
       if a == "text" { app.historyPanel.testView?.copyText(entries[i].id) } else { app.historyPanel.act(entries[i].id, a) }
     case "hist-key":
       if let k = args.first, let v = app.historyPanel.testView { key(v, k, flags) }
+    case "settings": app.showSettings(section: args.first)
+    case "settings-close": app.settingsWindow.close()
+    case "snapshot-settings":
+      guard let path = args.first, let v = app.settingsWindow.testWindow?.contentView else { return }
+      v.layoutSubtreeIfNeeded()
+      if let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) {
+        v.cacheDisplay(in: v.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+      }
+    case "settings-texts":
+      // The text the settings window shows, read off its pixels (SwiftUI builds no accessibility tree
+      // without an assistive app attached), top to bottom.
+      // Drawn in a very tall offscreen window so the whole section fits without scrolling.
+      let tall = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 880, height: 4000), styleMask: [.borderless], backing: .buffered, defer: false)
+      tall.isReleasedWhenClosed = false
+      tall.appearance = app.settingsWindow.testWindow?.appearance
+      let v = NSHostingView(rootView: SettingsRoot(model: app.settingsWindow.model))
+      tall.contentView = v
+      v.layoutSubtreeIfNeeded()
+      v.display()
+      guard let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return }
+      v.cacheDisplay(in: v.bounds, to: rep)
+      tall.contentView = nil
+      if let path = args.first { try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path)) }
+      guard let img = rep.cgImage else { return }
+      // In window-sized tiles (overlapping a little, so no line is only ever cut in half): Vision
+      // reads small text badly in one very tall image.
+      let tile = 1600, step = 1500
+      let tiles = stride(from: 0, to: img.height, by: step).compactMap { y in img.cropping(to: CGRect(x: 0, y: y, width: img.width, height: min(tile, img.height - y))) }
+      var texts: [String] = []
+      func next(_ i: Int) {
+        guard i < tiles.count else { return reply(.object([("texts", .array(texts.map { .string($0) }))])) }
+        TextRecognition.recognize(tiles[i]) { result, _ in
+          texts += ((try? result.get()) ?? []).map(\.text)
+          next(i + 1)
+        }
+      }
+      next(0)
+    case "settings-reset":
+      // settings-reset <section id>: the section header's Reset section button
+      if let id = args.first, let sec = SettingsSections.all.first(where: { $0.id == id }) { app.settingsWindow.model.reset(sec.keys) }
+    case "settings-check":
+      // About → Check now
+      let m = app.settingsWindow.model
+      m.checking = true
+      m.checkUpdates { r in m.update = r; m.checking = false }
+    case "set-hotkey":
+      // set-hotkey <name> <accelerator|none>
+      if args.count == 2 { reply(.object([("error", app.setHotkey(args[0], args[1] == "none" ? "" : args[1]).map { .string($0) } ?? .null)])) }
     case "snapshot-view":
       // snapshot-view <history|pin|thumb> <png>: a window's content as it draws itself
       guard args.count >= 2 else { return }
@@ -293,6 +343,14 @@ enum TestHook {
         return j
       }))
       o = o.setting("historyFolders", .number(Double(((try? FileManager.default.contentsOfDirectory(atPath: app.history.dir.path)) ?? []).filter { $0 != "index.json" && !$0.hasSuffix(".tmp") }.count)))
+      o = o.setting("settingsOpen", .bool(app.settingsWindow.isOpen))
+      o = o.setting("dockIcon", .bool(NSApp.activationPolicy() == .regular))
+      if let m = app.settingsWindow.model.update { o = o.setting("updateStatus", .string("\(m.status)")) }
+      o = o.setting("updateChecking", .bool(app.settingsWindow.model.checking))
+      o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))
+      if let t = app.historyPanel.testView?.theme { o = o.setting("historyTheme", .object([("dark", .bool(t.dark)), ("background", .string(hexOf(t.background)))])) }
+      o = o.setting("settingsSection", .string(app.settingsWindow.model.section))
+      o = o.setting("hotkeysRegistered", .object(["capture", "lastArea", "fullscreen", "ocr", "history", "settings"].map { ($0, .bool(Hotkeys.shared.isRegistered($0))) }))
       o = o.setting("historyVisible", .bool(app.historyPanel.isVisible))
       o = o.setting("historyClearAll", .string(app.historyPanel.testView?.clearAllLabel ?? ""))
       o = o.setting("historyNote", app.historyPanel.testView?.note.map { .string($0) } ?? .null)
@@ -318,3 +376,9 @@ enum TestHook {
   }
 }
 #endif
+
+/** "#rrggbb" (alpha dropped) for test output. */
+func hexOf(_ c: NSColor) -> String {
+  guard let c = c.usingColorSpace(.sRGB) else { return "?" }
+  return String(format: "#%02x%02x%02x", Int((c.redComponent * 255).rounded()), Int((c.greenComponent * 255).rounded()), Int((c.blueComponent * 255).rounded()))
+}

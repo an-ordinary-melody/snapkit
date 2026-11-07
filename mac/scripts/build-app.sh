@@ -13,11 +13,15 @@ VERSION=$(node -p "require('../package.json').version" 2>/dev/null || echo 0.0.0
 if [ "$MODE" = release ]; then
   NAME="Snapkit"; ID="com.charios.snapkit"
   ARCHS="--arch arm64 --arch x86_64"
-  swift build -c release $ARCHS --product Snapkit 2>&1 | grep -vE "PlatformPath|xcrun: error" || true
+  st=0; out=$(swift build -c release $ARCHS --product Snapkit 2>&1) || st=$?
+  echo "$out" | grep -vE "PlatformPath|xcrun: error" || true
+  [ $st = 0 ] || { echo "build failed"; exit 1; }
   BIN=$(swift build -c release $ARCHS --show-bin-path 2>/dev/null)/Snapkit
 else
   NAME="Snapkit Dev"; ID="com.charios.snapkit.dev"
-  swift build --product Snapkit 2>&1 | grep -vE "PlatformPath|xcrun: error" || true
+  st=0; out=$(swift build --product Snapkit 2>&1) || st=$?
+  echo "$out" | grep -vE "PlatformPath|xcrun: error" || true
+  [ $st = 0 ] || { echo "build failed"; exit 1; }
   BIN=$(swift build --show-bin-path 2>/dev/null)/Snapkit
 fi
 [ -x "$BIN" ] || { echo "build failed: no $BIN"; exit 1; }

@@ -426,5 +426,17 @@ describe("fixtures") {
   }
 }
 
+// Version (src/shared/version.test.ts)
+do {
+  expectTrue(Version.compare("0.1.0", "0.2.0") < 0 && Version.compare("v1.10.0", "1.9.9") > 0 && Version.compare("1.2", "v1.2.0") == 0, "compares versions, v prefix and missing parts")
+  expectTrue(Version.compare("1.0.0-beta.1", "1.0.0") < 0 && Version.compare("1.0.0", "1.0.0-rc.1") > 0 && Version.compare("1.0.0-beta.2", "1.0.0-beta.1") > 0, "a prerelease is older than its release")
+  expectTrue(Version.compare("1.0.0-beta.10", "1.0.0-beta.2") > 0 && Version.compare("1.0.0-beta", "1.0.0-beta.1") < 0 && Version.compare("1.0.0-rc.1", "1.0.0-beta.9") > 0, "prerelease numbers compare as numbers")
+  expectTrue(Version.compare("nightly", "0.0.1") < 0, "junk is 0.0.0")
+  let list = [Version.Release(tag: "v0.2.0-beta.2", prerelease: true), Version.Release(tag: "v0.3.0", draft: true), Version.Release(tag: "v0.1.5"), Version.Release(tag: "v0.2.0-beta.1", prerelease: true)]
+  expect(Version.pick(list, current: "0.2.0-beta.1")?.tag, "v0.2.0-beta.2", "betas offered to beta users, never drafts")
+  expect(Version.pick(list, current: "0.1.0")?.tag, "v0.1.5", "only stable releases for everyone else")
+  expectTrue(Version.pick([Version.Release(tag: "v0.2.0-beta.1", prerelease: true)], current: "0.1.0") == nil, "no stable release: nothing offered")
+}
+
 print(failures == 0 ? "✓ \(passed) checks passed" : "\n\(failures) failed, \(passed) passed")
 exit(failures == 0 ? 0 : 1)

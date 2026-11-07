@@ -16,6 +16,17 @@ guard !args.isEmpty else {
   exit(2)
 }
 
+// `snapkitctl pixel <png> <x> <y> [<x> <y>…]` prints the colour at each point (in the image's points) as #rrggbb.
+if args[0] == "pixel", args.count >= 4, let rep = NSBitmapImageRep(data: (try? Data(contentsOf: URL(fileURLWithPath: args[1]))) ?? Data()) {
+  let k = Double(rep.pixelsWide) / rep.size.width
+  let nums = args.dropFirst(2).compactMap(Double.init)
+  for i in stride(from: 0, to: nums.count - 1, by: 2) {
+    let c = rep.colorAt(x: Int(nums[i] * k), y: Int(nums[i + 1] * k))?.usingColorSpace(.sRGB) ?? .black
+    print(String(format: "#%02x%02x%02x", Int((c.redComponent * 255).rounded()), Int((c.greenComponent * 255).rounded()), Int((c.blueComponent * 255).rounded())))
+  }
+  exit(0)
+}
+
 if args[0] == "make-screen", args.count == 2 {
   let s = NSScreen.screens[0]
   let w = Int(s.frame.width * s.backingScaleFactor), h = Int(s.frame.height * s.backingScaleFactor)

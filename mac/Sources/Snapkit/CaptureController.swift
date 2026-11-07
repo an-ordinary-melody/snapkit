@@ -323,6 +323,8 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
 
   func overlayAction(_ view: OverlayView, _ id: String) {
     switch id {
+    case "settings":
+      (NSApp.delegate as? AppDelegate)?.showSettings()
     case "pin":
       floatingOn.toggle()
       for e in pool.entries.values { updatePinButton(e.view) }
@@ -458,7 +460,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
   /** Tests record notifications instead of showing them. */
   static var posted: [(String, String)] = []
 
-  static func post(title: String, body: String, reveal: URL? = nil) {
+  static func post(title: String, body: String, reveal: URL? = nil, open: URL? = nil) {
     posted.append((title, body))
     if UserDefaults.standard.string(forKey: "SnapkitTestPasteboard") != nil { return }
     let center = UNUserNotificationCenter.current()
@@ -469,6 +471,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
       content.title = title
       content.body = body
       if let reveal { content.userInfo = ["reveal": reveal.path] }
+      if let open { content.userInfo = ["open": open.absoluteString] }
       center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
   }
@@ -476,6 +479,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
   func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler done: @escaping () -> Void) {
     if let path = response.notification.request.content.userInfo["reveal"] as? String {
       NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+    if let s = response.notification.request.content.userInfo["open"] as? String, let url = URL(string: s) {
+      NSWorkspace.shared.open(url)
     }
     done()
   }

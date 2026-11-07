@@ -686,6 +686,154 @@ const SUITES = {
     check(!s.capturing && s.visiblePanels === 0, 'many captures in a row leave nothing on screen')
   },
 
+  async settings() {
+    const saves = await launch({ notifications: { onSave: false } })
+    const saved = () => JSON.parse(readFileSync(join(profile, 'settings.json'), 'utf8'))
+    const texts = async () => {
+      rmSync(stateFile, { force: true })
+      send('settings-texts')
+      for (let i = 0; i < 100 && !existsSync(stateFile); i++) await wait(100)
+      return existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, 'utf8')).texts.join(' | ') : ''
+    }
+    const set = async (patch) => { send('setting', JSON.stringify(patch)); await wait(300) }
+    const section = async (id) => { send('settings', id); await wait(400) }
+
+    await section('general')
+    let s = await state()
+    check(s.settingsOpen && s.settingsSection === 'general', 'settings window opens (from capture mode: ⌘,)')
+    check(s.dockIcon, 'Dock icon while Settings is open')
+    let t = await texts()
+    const order = ['Startup', 'Capture', 'Saving'].map((g) => t.indexOf(g))
+    check(order.every((i, k) => i >= 0 && (k === 0 || i > order[k - 1])), 'General starts with Startup, Capture, Saving', t.slice(0, 200))
+    check(/Quick area capture/.test(t), 'quick area capture switch shown')
+    check(/Ask where to save/.test(t) && /Screenshots folder|Save to/i.test(t), 'saving rows', t.slice(t.indexOf('Saving'), t.indexOf('Saving') + 200))
+    const def = JSON.parse(readFileSync(join(mac, '..', 'fixtures', 'default-settings.json'), 'utf8'))
+    check(def.capture.dimOpacity > 0 && def.appearance.mode === 'dark', 'dim amount and dark mode by default (shared fixture)', `${def.capture.dimOpacity} ${def.appearance.mode}`)
+    check(def.history.maxCount === 10, 'history keeps 10 by default (up to 30)')
+
+    // File naming: the preview reads like the saved name.
+    await set({ save: { name: { text: 'Bug', date: 'off', number: 'after', digits: 3 }, nextNumber: 1 } })
+    t = await texts()
+    // The preview shows each part as a chip: Bug | 001 | .png (OCR may read the dot as •).
+    check(/Bug \| 001 \| [.•·]?png/.test(t), 'name preview "Bug 001.png"', t.slice(t.indexOf('Padded'), t.indexOf('Padded') + 120))
+
+    // Shortcuts: recording a hotkey saves and registers it; tool letters.
+    await section('shortcuts')
+    t = await texts()
+    check(/Settings/.test(t) && /Capture area/.test(t), 'global shortcut rows include Settings', t.slice(0, 300))
+    s = await state()
+    check(s.hotkeysRegistered.settings, 'the settings shortcut is registered from the start')
+    send('set-hotkey', 'capture', 'CommandOrControl+Alt+Shift+F11')
+    await wait(300)
+    s = await state()
+    check(saved().hotkeys?.capture === 'CommandOrControl+Alt+Shift+F11' && s.hotkeysRegistered.capture, 'recording a hotkey saves CommandOrControl+Alt+Shift+F11', saved().hotkeys?.capture)
+    rmSync(stateFile, { force: true })
+    send('set-hotkey', 'capture', 'none')
+    await wait(200)
+    check(/can't be turned off/.test(readFileSync(stateFile, 'utf8')), 'the capture shortcut can\'t be turned off')
+    await set({ toolKeys: { arrow: 'w' } })
+    check(saved().toolKeys?.arrow === 'w', 'tool letter saved')
+
+    // Appearance: dark mode, dim colour, glass; open windows follow at once.
+    send('history')
+    await section('appearance')
+    await set({ appearance: { mode: 'dark' } })
+    s = await state()
+    check(s.settingsAppearance.includes('DarkAqua') && s.historyTheme?.dark, 'theme mode dark reaches Settings and the open history panel', `${s.settingsAppearance} ${JSON.stringify(s.historyTheme)}`)
+    const darkBg = s.historyTheme?.background
+    await set({ appearance: { mode: 'gray' } })
+    s = await state()
+    check(s.historyTheme?.dark && s.historyTheme.background !== darkBg, 'Gray is a dark theme with lighter surfaces, in every open window', JSON.stringify(s.historyTheme))
+    send('settings-reset', 'appearance')
+    await wait(300)
+    check(!saved().appearance, 'Reset section puts Appearance back to defaults', JSON.stringify(saved().appearance))
+    await set({ capture: { dimColor: '#1e3a8a' }, appearance: { glass: true } })
+    check(saved().capture?.dimColor === '#1e3a8a' && saved().appearance?.glass === true, 'dim colour and Liquid Glass saved')
+    t = await texts()
+    check(/Liquid Glass/.test(t) && /Dim/.test(t), 'appearance rows (Liquid Glass, Dim)', t.slice(0, 300))
+    await set({ appearance: { glass: false } })
+    send('history')
+
+    // Toolbar: hide Highlighter, move Text first; groups show their variants.
+    await section('toolbar')
+    t = await texts()
+    check(/Arrows/.test(t) && /Shapes/.test(t), 'tool group rows (Arrows, Shapes)', t.slice(0, 400))
+    const order0 = def.toolbarOrder ?? []
+    await set({ features: { highlighter: false }, toolbarOrder: ['text', ...order0.filter((x) => x !== 'text')] })
+    check(saved().features?.highlighter === false && saved().toolbarOrder?.[0] === 'text', 'highlighter off and Text first saved')
+
+    // Tools: palette, step badge.
+    await set({ annotate: { palette: ['#00aa55', ...def.annotate.palette.slice(1)], stepColor: '#3b82f6', stepStroke: { width: 4, color: '#00ff00' }, stepShadow: 0 } })
+    check(def.annotate.stepStroke.width === 2 && def.annotate.stepShadow === 0.3, 'step outline 2 px white and 30% shadow by default (fixture)', JSON.stringify(def.annotate.stepStroke) + ' ' + def.annotate.stepShadow)
+    await section('tools')
+    t = await texts()
+    check(/Numbered steps/.test(t) && /Badge color/.test(t), 'tools section shows step badge rows', t.slice(0, 300))
+
+    // Background: remember last off; gradients reset to 32.
+    await section('background')
+    await set({ beautify: { rememberLast: false, gradients: [['#000000', '#ffffff']] } })
+    check(saved().beautify?.rememberLast === false, 'remember last background off')
+    send('settings-reset', 'background')
+    await wait(300)
+    s = await state()
+    check(!saved().beautify, 'gradients reset to the defaults')
+    check(def.beautify.gradients.length === 32, 'the gradient library has 32 by default', def.beautify.gradients.length)
+    check(saved().features?.highlighter === false, 'resetting one section keeps the others')
+
+    // Capture mode picks it all up.
+    send('settings-close')
+    await wait(500)
+    s = await state()
+    check(!s.settingsOpen && !s.dockIcon, 'the Dock icon goes when Settings closes')
+    await set({ capture: { dimColor: '#1e3a8a', dimOpacity: 0.5 } })
+    send('capture')
+    send('select', 300, 200, 600, 400)
+    s = await state()
+    check(s.toolbar[0] === 'text' && !s.toolbar.includes('highlighter'), 'capture mode uses the new toolbar order and hides Highlighter', JSON.stringify(s.toolbar))
+    send('key', 'w')
+    s = await state()
+    check(s.tool === 'arrow', 'W picks Arrow in capture mode', s.tool)
+    const snap = async (png) => {
+      rmSync(png, { force: true })
+      send('snapshot', png)
+      for (let i = 0; i < 50 && !existsSync(png); i++) await wait(100)
+      await wait(200)
+    }
+    const png = join(root, 'dim.png')
+    await snap(png)
+    const px = run(ctl, ['pixel', png, '50', '50']).trim()
+    const blueish = (h) => parseInt(h.slice(5, 7), 16) > parseInt(h.slice(1, 3), 16) + 15
+    check(blueish(px), 'capture mode dims in the chosen colour', px)
+    send('tool', 'step')
+    send('click', 450, 350)
+    s = await state()
+    const step = s.shapeData?.at(-1)
+    await snap(png)
+    // Outward from the badge's centre: its colour, then the green outline.
+    const ring = run(ctl, ['pixel', png, ...Array.from({ length: 30 }, (_, i) => [450 + i, 350]).flat().map(String)]).trim().split('\n')
+    const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+    const blue = (h) => { const [r, g, b] = rgb(h); return b > r + 80 && b > g + 40 }
+    const green = (h) => { const [r, g, b] = rgb(h); return g > r + 80 && g > b + 80 }
+    check(step?.type === 'step' && ring.some(blue) && ring.some(green), 'a step badge uses the colour and outline from Settings', JSON.stringify(ring))
+    send('key', 's', 'cmd')
+    await wait(800)
+    send('capture')
+    send('select', 300, 200, 600, 400)
+    send('key', 's', 'cmd')
+    await wait(800)
+    const files = existsSync(saves) ? readdirSync(saves).sort() : []
+    check(JSON.stringify(files) === '["Bug 001.png","Bug 002.png"]' && saved().save.nextNumber === 3, 'saves are numbered Bug 001, Bug 002', JSON.stringify(files) + ' next ' + saved().save?.nextNumber)
+
+    // About: a real update check.
+    await section('about')
+    send('settings-check')
+    s = await waitFor((x) => !x.updateChecking && x.updateStatus, 15000)
+    check(['available', 'latest', 'unavailable', 'error'].includes(s.updateStatus), 'update check answers', s.updateStatus)
+    t = await texts()
+    check(/Acknowledgements|UPNG/.test(t), 'About lists acknowledgements', t.slice(-300))
+    send('settings-close')
+  },
+
   async hotkeys() {
     await launch({ hotkeys: { capture: 'CommandOrControl+Shift+Z' } })
     let s = await state()

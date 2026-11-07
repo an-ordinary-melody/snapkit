@@ -4,6 +4,8 @@ import SnapkitCore
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, HistoryActions {
   private(set) var history: HistoryStore!
   private(set) var historyPanel: HistoryPanel!
+  private(set) var settingsWindow: SettingsWindowController!
+  private(set) var updater: Updater!
   private(set) var store: SettingsStore!
   private(set) var capture: CaptureController!
   private var pool: OverlayPool!
@@ -30,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     capture = CaptureController(store: store, pool: pool, grabber: grabber)
     capture.onModeChange = { on in Hotkeys.shared.captureMode(on) }
     setUpHistory()
+    setUpSettings()
     pool.rebuild()
     grabber.refresh()
     NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -45,6 +48,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     #if DEBUG
     TestHook.install(self)
     #endif
+  }
+
+  /** A click on the Dock icon (only there while Settings is open) brings Settings forward. */
+  func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+    if settingsWindow.isOpen { settingsWindow.show() }
+    return true
   }
 
   func applicationWillTerminate(_ notification: Notification) {
@@ -120,6 +129,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
   /** Opens the settings window (set when it exists). */
   var openSettings: (() -> Void)?
 
+  // MARK: - Settings window and updates
+
+  private func setUpSettings() {
+    updater = Updater(store: store)
+    let model = SettingsModel(store: store)
+    model.history = history
+    model.openHistoryFolder = { [weak self] in self?.historyPanel.reveal() }
+    model.checkUpdates = { [weak self] done in self?.updater.check(manual: true, done: done) }
+    model.hotkeyTaken = { name in !Hotkeys.shared.isRegistered(name) && !name.isEmpty }
+    model.setHotkey = { [weak self] name, acc in self?.setHotkey(name, acc) }
+    history.onChange { [weak model] _ in model?.refreshHistory() }
+    settingsWindow = SettingsWindowController(model: model)
+    openSettings = { [weak self] in self?.showSettings() }
+    extraHotkeys.append(("settings", \.settings, { [weak self] in self?.showSettings() }))
+    store.onChange { [weak self] s, prev in
+      if s.appearance != prev.appearance {
+        self?.settingsWindow.applyAppearance()
+        self?.historyPanel.testView?.theme = Theme.from(s.appearance)
+      }
+    }
+    updater.schedule()
+  }
+
+  /** From anywhere, capture mode included (it closes, so the window isn't hidden behind it). */
+  func showSettings(section: String? = nil) {
+    if capture.active { capture.end(reason: "settings opened") }
+    historyPanel.hide(giveFocusBack: false)
+    settingsWindow.show(section: section)
+  }
+
+  /**
+   * Change a hotkey from the settings window. Returns an error message if the shortcut can't be used
+   * (the old one is kept). "" turns it off (not the capture hotkey).
+   */
+  func setHotkey(_ name: String, _ acc: String) -> String? {
+    if acc.isEmpty && name == "capture" { return "The capture shortcut can't be turned off." }
+    if !acc.isEmpty && Accelerator(acc) == nil { return "Snapkit can't use that shortcut." }
+    let h = store.current.hotkeys
+    let others = ["capture": h.capture, "history": h.history, "fullscreen": h.fullscreen, "settings": h.settings, "lastArea": h.lastArea, "ocr": h.ocr].filter { $0.key != name }
+    if !acc.isEmpty, let clash = others.first(where: { $0.value == acc }) {
+      return "\(Accelerator.display(acc)) is already used for \(clash.key == "lastArea" ? "Capture last area" : clash.key == "ocr" ? "Capture text" : clash.key.capitalized)."
+    }
+    store.update(.object([("hotkeys", .object([(name, .string(acc))]))]))
+    return nil
+  }
+
   func registerHotkeys() {
     let h = store.current.hotkeys
     for (name, key, action) in hotkeyActions {
@@ -167,12 +222,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     for item in extraMenuItems() { menu.addItem(item) }
     menu.addItem(NSMenuItem(title: "Open Screenshots Folder", action: #selector(openFolder), keyEquivalent: ""))
     menu.addItem(NSMenuItem(title: "Close All Pins", action: #selector(closePins), keyEquivalent: ""))
-    menu.addItem(NSMenuItem(title: "Show Settings File", action: #selector(showSettingsFile), keyEquivalent: ""))
+    let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettingsMenu), keyEquivalent: ",")
+    if !s.hotkeys.settings.isEmpty { setKey(settingsItem, s.hotkeys.settings) }
+    menu.addItem(settingsItem)
     menu.addItem(.separator())
     let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
-    let about = NSMenuItem(title: "\(Paths.appName) \(version) (native preview)", action: nil, keyEquivalent: "")
-    about.isEnabled = false
-    menu.addItem(about)
+    if let u = updater.latest, u.status == .available, let v = u.version {
+      menu.addItem(ClosureMenuItem(title: "Update available: \(v)…") { if let s = u.url, let url = URL(string: s) { NSWorkspace.shared.open(url) } })
+    } else {
+      let about = NSMenuItem(title: "\(Paths.appName) \(version)", action: nil, keyEquivalent: "")
+      about.isEnabled = false
+      menu.addItem(about)
+    }
     menu.addItem(NSMenuItem(title: "Quit \(Paths.appName)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) { item.target = self }
   }
@@ -207,6 +268,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
   @objc private func captureFull() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.captureFullScreen() } }
   @objc private func captureText() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.toggle(textOnly: true) } }
   @objc private func closePins() { Floating.shared.closeAll() }
+  @objc private func showSettingsMenu() { showSettings() }
   @objc private func showHistory() { DispatchQueue.main.async { self.historyPanel.toggle() } }
   @objc private func toggleRecording() { store.update(.object([("history", .object([("paused", .bool(!store.current.history.paused))]))])) }
 
