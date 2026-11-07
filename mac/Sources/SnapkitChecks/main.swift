@@ -253,5 +253,25 @@ describe("last area") {
   expect(parsed.rect.width, 688.75, "reads Electron's last-area.json")
 }
 
+// MARK: - Shared fixtures (fixtures/*.json, written by the Electron side with `npm run fixtures`)
+
+describe("fixtures") {
+  let fixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../fixtures").standardized
+  let defaults = try JSON.parse(Data(contentsOf: fixtures.appendingPathComponent("default-settings.json")))
+  expect(SettingsRules.defaultsJSON, defaults, "native defaults are fixtures/default-settings.json (run mac/scripts/sync-fixtures.sh)")
+  expectTrue((try? defaults.decode(Settings.self)) != nil, "the Electron defaults decode into the Swift settings model")
+
+  let list = try JSON.parse(Data(contentsOf: fixtures.appendingPathComponent("features.json"))).array ?? []
+  expect(Features.all.map(\.id), list.compactMap { $0["id"]?.string }, "same feature ids in the same order as features.ts")
+  for (f, j) in zip(Features.all, list) {
+    let variants = (j["variants"]?.array ?? []).map { FeatureVariant(id: $0["id"]?.string ?? "", label: $0["label"]?.string ?? "") }
+    let same = f.label == j["label"]?.string && f.kind.rawValue == j["kind"]?.string && f.hint == j["hint"]?.string
+      && f.drawing == (j["drawing"]?.bool ?? false) && f.variants == variants && f.groupLabel == j["groupLabel"]?.string
+      && f.variantsHint == j["variantsHint"]?.string && f.tipNote == j["tipNote"]?.string
+      && f.defaultEnabled == j["defaultEnabled"]?.bool && f.inGroup == (j["inGroup"]?.bool ?? false)
+    expectTrue(same, "feature \(f.id) matches features.ts")
+  }
+}
+
 print(failures == 0 ? "✓ \(passed) checks passed" : "\n\(failures) failed, \(passed) passed")
 exit(failures == 0 ? 0 : 1)

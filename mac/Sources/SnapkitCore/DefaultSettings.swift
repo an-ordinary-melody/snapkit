@@ -1,6 +1,5 @@
-// The Electron app's DEFAULT_SETTINGS on macOS (src/shared/settings.ts, defaultsFor('darwin')),
-// as of v0.2.0-beta.14. Checked against fixtures/default-settings.json once that export exists.
-// Keep in step with settings.ts: a changed default there must change here too.
+// Generated from fixtures/default-settings.json by mac/scripts/sync-fixtures.sh: don't edit.
+// That file is the Electron app's macOS defaults (defaultsFor('darwin') in src/shared/settings.ts).
 
 let defaultSettingsJSON = #"""
 {

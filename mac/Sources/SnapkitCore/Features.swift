@@ -1,11 +1,16 @@
 // Feature registry: a Swift copy of src/shared/features.ts (same ids, order, letters, variants and
-// defaults). The toolbars are built from this list filtered by the user's settings, as in Electron.
+// defaults; SnapkitChecks compares it with fixtures/features.json). The toolbars are built from this list filtered by the user's settings, as in Electron.
 // `native` says whether the native app has built the feature yet; features it hasn't stay out of
 // the toolbars until it has.
 
 public struct FeatureVariant: Equatable {
   public let id: String
   public let label: String
+
+  public init(id: String, label: String) {
+    self.id = id
+    self.label = label
+  }
 }
 
 public struct Feature: Equatable {

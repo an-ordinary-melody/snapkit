@@ -7,6 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 MODE=${1:-debug}
+scripts/sync-fixtures.sh
 VERSION=$(node -p "require('../package.json').version" 2>/dev/null || echo 0.0.0)
 
 if [ "$MODE" = release ]; then

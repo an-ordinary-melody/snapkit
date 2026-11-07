@@ -48,4 +48,8 @@ No Screen Recording permission is needed for either.
 | `Sources/snapkitctl` | Sends test commands to a running debug build |
 | `e2e/run.mjs` | Flow checks |
 
+Shared with the Electron app: `fixtures/default-settings.json` and `fixtures/features.json` (written by
+`npm run fixtures`). `scripts/sync-fixtures.sh` (run by `build-app.sh`) generates the native defaults from
+the first; `SnapkitChecks` fails if either file and the Swift side differ.
+
 The toolbar icons are Lucide's (ISC licence), drawn from the same SVG paths the Electron app uses.
