@@ -283,7 +283,7 @@ builds no accessibility tree until an assistive app attaches.
 | History record switch pauses history | historyPanel › nothing recorded while paused |
 | History folder button leaves no stuck dim | N/A: the Electron bug was the history window's dim staying behind Finder; the native history panel has no dim layer. Its folder button only calls NSWorkspace |
 
-### settings (32)
+### settings (34)
 
 | Electron check | Native check |
 |---|---|
@@ -316,6 +316,8 @@ builds no accessibility tree until an assistive app attaches.
 | Gradient library reset (32) | settings › gradients reset to the defaults; settings › the gradient library has 32 by default |
 | Settings reach capture mode (W selects arrow) | settings › W picks Arrow in capture mode; settings › capture mode uses the new toolbar order and hides Highlighter |
 | Numbered file names, next number 3 | settings › saves are numbered Bug 001, Bug 002 |
+| Text starting style: Light and Dark save a background, the segment follows | settings › text starting style: Dark and Light save a background, the segment follows; unit › starting text style |
+| Text starts as: Dark background | settings › text starts as: Dark background (white text); unit › starting text style |
 | Update check (needs internet) | settings › update check answers; unit › version |
 | Reset one section | settings › Reset section puts Appearance back to defaults; settings › resetting one section keeps the others |
 | No page errors | all › no errors in the log |

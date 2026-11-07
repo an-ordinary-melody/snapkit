@@ -422,3 +422,22 @@ func json(_ s: String) -> JSON { try! JSON.parse(s) }
   expect(Version.pick(list, current: "0.1.0")?.tag, "v0.1.5", "only stable releases for everyone else")
   expectTrue(Version.pick([Version.Release(tag: "v0.2.0-beta.1", prerelease: true)], current: "0.1.0") == nil, "no stable release: nothing offered")
 }
+
+// Starting text style (tools.tsx textLookPatch, Overlay.tsx initial text colour)
+@Test("starting text style") func startingTextStyle() throws {
+  var t = SettingsRules.defaults.annotate.text
+  expect(StartingTextLook.patch("dark", background: "#ffffff"), json(##"{"style":"background","background":"#111111"}"##), "Dark on a light colour: #111111")
+  expect(StartingTextLook.patch("dark", background: "#1e3a8a"), json(##"{"style":"background","background":"#1e3a8a"}"##), "Dark keeps a dark colour")
+  expect(StartingTextLook.patch("light", background: "#111111"), json(##"{"style":"background","background":"#ffffff"}"##), "Light on a dark colour: #ffffff")
+  expect(StartingTextLook.patch("light", background: "#fde047"), json(##"{"style":"background","background":"#fde047"}"##), "Light keeps a light colour")
+  expect(StartingTextLook.patch("stroke", background: "#111111"), json(##"{"style":"stroke"}"##), "Stroke only changes the style")
+  t.style = "background"; t.background = "#111111"
+  expect(StartingTextLook.current(t), "dark", "background + dark colour shows Dark")
+  t.background = ""
+  expect(StartingTextLook.current(t), "light", "background with no colour shows Light (white)")
+  var s = SettingsRules.defaults
+  s.annotate.text.style = "background"; s.annotate.text.background = "#111111"
+  expect(Style.initial(s).textColor, "#ffffff", "text on a dark background starts white")
+  s.annotate.text.style = "plain"
+  expect(Style.initial(s).textColor, s.annotate.palette[0], "plain text starts in the first quick colour")
+}

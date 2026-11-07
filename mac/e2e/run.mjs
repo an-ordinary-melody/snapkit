@@ -772,7 +772,18 @@ const SUITES = {
     await set({ annotate: { palette: ['#00aa55', ...def.annotate.palette.slice(1)], stepColor: '#3b82f6', stepStroke: { width: 4, color: '#00ff00' }, stepShadow: 0 } })
     check(def.annotate.stepStroke.width === 2 && def.annotate.stepShadow === 0.3, 'step outline 2 px white and 30% shadow by default (fixture)', JSON.stringify(def.annotate.stepStroke) + ' ' + def.annotate.stepShadow)
     await section('tools')
+    // Text starting style: Light and Dark backgrounds (as in the style bar); left on Dark.
+    const looks = []
+    for (const look of ['dark', 'light', 'dark']) {
+      rmSync(stateFile, { force: true })
+      send('text-look', look)
+      await wait(200)
+      const shown = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, 'utf8')).look : '?'
+      looks.push(`${look}: ${saved().annotate?.text?.style} ${saved().annotate?.text?.background} ${shown}`)
+    }
+    check(looks.join(' | ') === 'dark: background #111111 dark | light: background #ffffff light | dark: background #111111 dark', 'text starting style: Dark and Light save a background, the segment follows', looks.join(' | '))
     t = await texts()
+    check(/Light and Dark put a background/.test(t) && /\bLight\b/.test(t) && /\bDark\b/.test(t), 'Starting style offers Plain, Stroke, Light, Dark', t.slice(t.indexOf('Starting'), t.indexOf('Starting') + 160))
     check(/Numbered steps/.test(t) && /Badge color/.test(t), 'tools section shows step badge rows', t.slice(0, 300))
 
     // Background: remember last off; gradients reset to 32.
@@ -799,6 +810,10 @@ const SUITES = {
     send('key', 'w')
     s = await state()
     check(s.tool === 'arrow', 'W picks Arrow in capture mode', s.tool)
+    send('tool', 'text')
+    s = await state()
+    check(s.styleActive.includes('look:dark'), 'text starts as: Dark background (white text)', JSON.stringify(s.styleActive))
+    send('tool', 'arrow')
     check(s.styleBar.find((x) => x.startsWith('color:')) === 'color:#00aa55', 'Quick colours reach capture mode (first swatch #00aa55)', JSON.stringify(s.styleBar))
     const snap = async (png) => {
       rmSync(png, { force: true })

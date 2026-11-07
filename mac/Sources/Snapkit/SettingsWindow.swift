@@ -582,14 +582,16 @@ struct ToolsSection: View {
         SSelect(value: a.text.fontFamily, options: (Self.fonts.contains { $0.0 == a.text.fontFamily } ? [] : [(a.text.fontFamily, "Custom")]) + Self.fonts, th: th) { setT("fontFamily", str($0)) }
       }
       SRow(label: "Size", th: th) { SNumber(value: a.text.fontSize, min: 8, max: 200, unit: "px", th: th) { setT("fontSize", n($0)) } }
-      SRow(label: "Starting style", th: th) {
-        SSegmented(value: a.text.style, options: [("plain", "Plain"), ("stroke", "Stroke"), ("background", "Background")], th: th) { setT("style", str($0)) }
+      SRow(label: "Starting style", desc: "Light and Dark put a background behind the text.", th: th) {
+        SSegmented(value: StartingTextLook.current(a.text), options: [("plain", "Plain"), ("stroke", "Stroke"), ("light", "Light"), ("dark", "Dark")], th: th) {
+          model.set(["annotate", "text"], StartingTextLook.patch($0, background: a.text.background))
+        }
       }
       SRow(label: "Stroke", th: th) {
         SColorField(value: a.text.strokeColor, th: th) { setT("strokeColor", str($0)) }
         SNumber(value: a.text.strokeWidth, min: 1, max: 12, unit: "px", th: th) { setT("strokeWidth", n($0)) }
       }
-      SRow(label: "Background color", desc: "For the background style. Text stays readable on it.", th: th) {
+      SRow(label: "Background color", desc: "For the Light and Dark styles. Text stays readable on it.", th: th) {
         SColorField(value: a.text.background.isEmpty ? "#ffffff" : a.text.background, th: th) { setT("background", str($0)) }
       }
       SRow(label: "Shadow", th: th) {

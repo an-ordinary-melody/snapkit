@@ -31,8 +31,10 @@ public struct Style: Equatable {
   public static func initial(_ s: Settings) -> Style {
     let a = s.annotate
     let first = a.palette.first ?? "#ef4444"
+    // Text that starts on a background is black or white, as when Light or Dark is picked in the style bar.
+    let textColor = a.text.style == "background" ? HexColor.readableOn(a.text.background.isEmpty ? "#ffffff" : a.text.background) : first
     return Style(
-      color: first, textColor: first, highlighterColor: a.highlighterColor, stepColor: a.stepColor, widthIndex: a.strokeWidth,
+      color: first, textColor: textColor, highlighterColor: a.highlighterColor, stepColor: a.stepColor, widthIndex: a.strokeWidth,
       blurMode: a.blurMode, blurStrength: a.blurStrength, fontSize: a.text.fontSize, fontFamily: a.text.fontFamily, shadow: a.text.shadow,
       textBackground: a.text.style == "background" ? a.text.background : "",
       textStroke: a.text.style == "stroke" ? a.text.strokeColor : "",
@@ -342,5 +344,23 @@ extension Annotations {
       guides.append(Guide(vertical: false, at: bestY.at, from: min(moved.x, t.x), to: max(moved.x + moved.w, t.x + t.w)))
     }
     return (dx, dy, guides)
+  }
+}
+
+/** Settings → Tools → Text "Starting style" (tools.tsx): Plain, Stroke, Light or Dark. */
+public enum StartingTextLook {
+  /** The segment shown: Light and Dark are both stored as style "background", told apart by the colour. */
+  public static func current(_ t: Settings.Annotate.Text) -> String {
+    t.style == "background" ? (HexColor.isLight(t.background.isEmpty ? "#ffffff" : t.background) ? "light" : "dark") : t.style
+  }
+
+  /** The annotate.text patch for a pick; Light and Dark keep the background colour when it already fits. */
+  public static func patch(_ look: String, background: String) -> JSON {
+    let bg = background.isEmpty ? "#ffffff" : background
+    switch look {
+    case "light": return .object([("style", .string("background")), ("background", .string(HexColor.isLight(bg) ? bg : "#ffffff"))])
+    case "dark": return .object([("style", .string("background")), ("background", .string(HexColor.isLight(bg) ? "#111111" : bg))])
+    default: return .object([("style", .string(look))])
+    }
   }
 }

@@ -162,6 +162,13 @@ enum TestHook {
         }
       }
       next(0)
+    case "text-look":
+      // text-look <plain|stroke|light|dark>: Settings → Tools → Text, Starting style
+      if let look = args.first {
+        let m = app.settingsWindow.model
+        m.set(["annotate", "text"], StartingTextLook.patch(look, background: m.s.annotate.text.background))
+        reply(.object([("look", .string(StartingTextLook.current(m.s.annotate.text)))]))
+      }
     case "settings-reset":
       // settings-reset <section id>: the section header's Reset section button
       if let id = args.first, let sec = SettingsSections.all.first(where: { $0.id == id }) { app.settingsWindow.model.reset(sec.keys) }
