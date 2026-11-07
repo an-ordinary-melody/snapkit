@@ -3,7 +3,8 @@
 #   mac/scripts/build-app.sh            debug build: "Snapkit Dev.app", bundle id com.charios.snapkit.dev,
 #                                       its own data folder, test hooks on
 #   mac/scripts/build-app.sh release    release build: "Snapkit.app", com.charios.snapkit, universal (arm64 + x86_64)
-# Output: mac/build/<name>.app, ad-hoc signed. Set DEVELOPER_DIR to pick a toolchain.
+# Output: mac/build/<name>.app, ad-hoc signed (SIGN_IDENTITY picks a certificate). Sparkle keys come
+# from scripts/sparkle.env. Set DEVELOPER_DIR to pick a toolchain.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 MODE=${1:-debug}
@@ -32,6 +33,16 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Snapkit"
 cp ../resources/trayTemplate.png ../resources/trayTemplate@2x.png "$APP/Contents/Resources/"
 cp ../build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Sparkle.framework (updates), next to the binary it was linked against; ditto keeps its symlinks.
+mkdir -p "$APP/Contents/Frameworks"
+ditto "$(dirname "$BIN")/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+. scripts/sparkle.env
+SPARKLE_KEYS=""
+if [ -n "$SPARKLE_PUBLIC_KEY" ] && [ -n "$SPARKLE_FEED_URL" ]; then
+  SPARKLE_KEYS="<key>SUPublicEDKey</key><string>$SPARKLE_PUBLIC_KEY</string>
+  <key>SUFeedURL</key><string>$SPARKLE_FEED_URL</string>
+  <key>SUEnableAutomaticChecks</key><false/>"
+fi
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -50,8 +61,17 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSAppNapIsDisabled</key><true/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSScreenCaptureUsageDescription</key><string>Snapkit needs to record the screen to take screenshots.</string>
+  $SPARKLE_KEYS
 </dict>
 </plist>
 PLIST
-codesign --force --sign - --options runtime "$APP" >/dev/null 2>&1
+# Inside out, as Sparkle's docs say: its helpers, the framework, then the app.
+SIGN=${SIGN_IDENTITY:--}
+FW="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+codesign -f -s "$SIGN" -o runtime "$FW/XPCServices/Installer.xpc"
+codesign -f -s "$SIGN" -o runtime --preserve-metadata=entitlements "$FW/XPCServices/Downloader.xpc"
+codesign -f -s "$SIGN" -o runtime "$FW/Autoupdate"
+codesign -f -s "$SIGN" -o runtime "$FW/Updater.app"
+codesign -f -s "$SIGN" -o runtime "$APP/Contents/Frameworks/Sparkle.framework"
+codesign -f -s "$SIGN" -o runtime --entitlements Snapkit.entitlements "$APP"
 echo "$APP"

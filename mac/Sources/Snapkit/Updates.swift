@@ -1,5 +1,6 @@
 import AppKit
 import SnapkitCore
+import Sparkle
 
 /** The result of an update check (UpdateCheck in ipc.ts). */
 struct UpdateCheck {
@@ -91,5 +92,82 @@ final class Updater {
     }
     onCheck(r)
     done(r)
+  }
+}
+
+/**
+ * Updates through Sparkle 2: used when the build has a feed and an EdDSA public key in Info.plist
+ * (scripts/sparkle.env); otherwise Snapkit keeps the GitHub check above. Sparkle shows the new
+ * version and its notes, downloads, checks the signature, replaces the app and relaunches.
+ * `updates.autoCheck` maps to Sparkle's daily automatic checks; betas only for people on a beta.
+ */
+final class SparkleUpdates: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
+  static var configured: Bool {
+    let info = Bundle.main.infoDictionary ?? [:]
+    return !((info["SUFeedURL"] as? String) ?? "").isEmpty && !((info["SUPublicEDKey"] as? String) ?? "").isEmpty
+  }
+
+  let store: SettingsStore
+  private var controller: SPUStandardUpdaterController!
+  var onCheck: (UpdateCheck) -> Void = { _ in }
+
+  init(store: SettingsStore) {
+    self.store = store
+    super.init()
+    controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: self)
+  }
+
+  var updater: SPUUpdater { controller.updater }
+
+  func start() {
+    updater.automaticallyChecksForUpdates = store.current.updates.autoCheck
+    updater.updateCheckInterval = 86_400
+    do { try updater.start() } catch { log("[updates] Sparkle didn't start: \(error.localizedDescription)") }
+    store.onChange { [weak self] s, prev in
+      if s.updates.autoCheck != prev.updates.autoCheck { self?.updater.automaticallyChecksForUpdates = s.updates.autoCheck }
+    }
+  }
+
+  /** "Check now" / "Check for Updates…": Sparkle's own window shows the result. */
+  func checkNow() {
+    NSApp.activate(ignoringOtherApps: true)
+    controller.checkForUpdates(nil)
+  }
+
+  var canCheck: Bool { updater.canCheckForUpdates }
+
+  // MARK: SPUUpdaterDelegate
+
+  func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+    Updater.current.contains("-") ? ["beta"] : []
+  }
+
+  func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+    finish(UpdateCheck(status: .available, current: Updater.current, version: item.displayVersionString, url: nil, page: item.releaseNotesURL?.absoluteString))
+  }
+
+  func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
+    let latest = (error as NSError).code == Int(SUError.noUpdateError.rawValue)
+    finish(UpdateCheck(status: latest ? .latest : .error, current: Updater.current, message: latest ? nil : error.localizedDescription))
+  }
+
+  func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+    if (error as NSError).code == Int(SUError.noUpdateError.rawValue) { return }
+    finish(UpdateCheck(status: .error, current: Updater.current, message: error.localizedDescription))
+  }
+
+  private func finish(_ r: UpdateCheck) {
+    store.update(.object([("updates", .object([("lastCheck", .number(Date().timeIntervalSince1970 * 1000))]))]))
+    log("[updates] Sparkle: \(r.status)\(r.version.map { " " + $0 } ?? "")\(r.message.map { " (" + $0 + ")" } ?? "")")
+    onCheck(r)
+  }
+
+  // MARK: SPUStandardUserDriverDelegate
+
+  /** Snapkit lives in the menu bar: a found update waits politely instead of popping up mid-capture. */
+  var supportsGentleScheduledUpdateReminders: Bool { true }
+
+  func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
+    NSApp.activate(ignoringOtherApps: true)
   }
 }

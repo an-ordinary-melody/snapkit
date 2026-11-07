@@ -836,7 +836,7 @@ struct AboutSection: View {
         }
       }()
       SRow(label: "Check for updates", desc: text, first: true, th: th) {
-        if c?.status == .available {
+        if c?.status == .available, !model.usesSparkle {
           SButton(label: "What's new", subtle: true, th: th) { if let p = c?.page, let url = URL(string: p) { NSWorkspace.shared.open(url) } }
           SButton(label: "Download \(c?.version ?? "")", primary: true, th: th) { if let p = c?.url, let url = URL(string: p) { NSWorkspace.shared.open(url) } }
         }
@@ -845,7 +845,7 @@ struct AboutSection: View {
           model.checkUpdates { r in model.update = r; model.checking = false }
         }
       }
-      SRow(label: "Check automatically", desc: "Once a day; a notification when there's a new version. Nothing installs by itself.", th: th) {
+      SRow(label: "Check automatically", desc: model.usesSparkle ? "Once a day. A new version installs only after you agree." : "Once a day; a notification when there's a new version. Nothing installs by itself.", th: th) {
         SToggle(value: u.autoCheck, th: th) { model.set(["updates", "autoCheck"], .bool($0)) }
       }
       SRow(label: "Logs", desc: "Timing and errors, for troubleshooting.", th: th) {
@@ -882,6 +882,7 @@ struct AboutSection: View {
 enum Acknowledgements {
   struct Item { let name, what, license, url: String }
   static let all = [
+    Item(name: "Sparkle", what: "Updates: checks, downloads and installs new versions.", license: "MIT", url: "https://github.com/sparkle-project/Sparkle"),
     Item(name: "UPNG.js", what: "PNG colour quantizer, ported to Swift for Compress.", license: "MIT", url: "https://github.com/photopea/UPNG.js"),
     Item(name: "Lucide", what: "Toolbar and settings icons.", license: "ISC", url: "https://github.com/lucide-icons/lucide"),
     Item(name: "Snapzy", what: "How the capture windows stay on top across Spaces and full-screen apps.", license: "BSD-3-Clause", url: "https://github.com/duongductrong/Snapzy"),

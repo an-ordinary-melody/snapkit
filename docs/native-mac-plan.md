@@ -463,6 +463,12 @@ key in `Info.plist`, "Check for Updates…" in the menu, the existing
 is hosted, the beta/stable channels, and the CI signing step are release work and
 come later.
 
+Status (2026-11-08): built in. Sparkle 2.10 is linked and embedded; release builds use it when
+`mac/scripts/sparkle.env` has the public key and feed URL, else they fall back to the GitHub check.
+Betas go to a `beta` channel offered only to people on a beta. `mac/scripts/sparkle-release.sh`
+signs a zip and writes the appcast; `mac/e2e/sparkle-update.mjs` tests an update end to end with a
+throwaway key. Waiting on: the key pair (you), feed hosting and CI (release work).
+
 ### Packaging and CI
 
 - Universal `.app`, zipped for Sparkle, plus a DMG for the site (later).

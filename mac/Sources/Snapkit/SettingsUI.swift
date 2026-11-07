@@ -16,6 +16,8 @@ final class SettingsModel: ObservableObject {
   @Published var login: (enabled: Bool, needsApproval: Bool)? = nil
   @Published var update: UpdateCheck?
   @Published var checking = false
+  /** Updates install inside Snapkit (Sparkle) rather than by download. */
+  var usesSparkle = false
   @Published var hotkeyErrors: [String: String] = [:]
   @Published var section = "general"
   var history: HistoryStore?

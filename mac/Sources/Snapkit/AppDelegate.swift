@@ -6,6 +6,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
   private(set) var historyPanel: HistoryPanel!
   private(set) var settingsWindow: SettingsWindowController!
   private(set) var updater: Updater!
+  /** Sparkle, when this build has a feed and key (release builds); else `updater` checks GitHub. */
+  private(set) var sparkle: SparkleUpdates?
   private(set) var store: SettingsStore!
   private(set) var capture: CaptureController!
   private var pool: OverlayPool!
@@ -136,7 +138,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     let model = SettingsModel(store: store)
     model.history = history
     model.openHistoryFolder = { [weak self] in self?.historyPanel.reveal() }
-    model.checkUpdates = { [weak self] done in self?.updater.check(manual: true, done: done) }
+    if SparkleUpdates.configured {
+      let sp = SparkleUpdates(store: store)
+      sparkle = sp
+      model.usesSparkle = true
+      var pending: ((UpdateCheck) -> Void)?
+      sp.onCheck = { r in
+        model.update = r
+        pending?(r)
+        pending = nil
+      }
+      model.checkUpdates = { done in
+        pending = done
+        sp.checkNow()
+      }
+    } else {
+      model.checkUpdates = { [weak self] done in self?.updater.check(manual: true, done: done) }
+    }
     model.hotkeyTaken = { name in !Hotkeys.shared.isRegistered(name) && !name.isEmpty }
     model.setHotkey = { [weak self] name, acc in self?.setHotkey(name, acc) }
     history.onChange { [weak model] _ in model?.refreshHistory() }
@@ -149,7 +167,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
         self?.historyPanel.testView?.theme = Theme.from(s.appearance)
       }
     }
-    updater.schedule()
+    if let sparkle { sparkle.start() } else { updater.schedule() }
+  }
+
+  @objc private func checkForUpdates() {
+    if let sparkle { sparkle.checkNow() } else { updater.check(manual: true) { _ in } }
   }
 
   /** From anywhere, capture mode included (it closes, so the window isn't hidden behind it). */
@@ -225,6 +247,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettingsMenu), keyEquivalent: ",")
     if !s.hotkeys.settings.isEmpty { setKey(settingsItem, s.hotkeys.settings) }
     menu.addItem(settingsItem)
+    menu.addItem(NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: ""))
     menu.addItem(.separator())
     let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     if let u = updater.latest, u.status == .available, let v = u.version {

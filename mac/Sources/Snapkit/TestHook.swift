@@ -265,6 +265,14 @@ enum TestHook {
           }
         }
       }
+    case "sparkle-background":
+      // Download a found update in the background; it installs when Snapkit quits.
+      guard let sp = app.sparkle else { return reply(.object([("sparkle", .bool(false))])) }
+      sp.updater.automaticallyDownloadsUpdates = true
+      sp.updater.checkForUpdatesInBackground()
+      reply(.object([("sparkle", .bool(true))]))
+    case "quit":
+      NSApp.terminate(nil)
     case "screen-change":
       // As if a display was added or removed
       NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: NSApp)
@@ -411,10 +419,9 @@ enum TestHook {
     }
   }
 }
-#endif
-
 /** "#rrggbb" (alpha dropped) for test output. */
 func hexOf(_ c: NSColor) -> String {
   guard let c = c.usingColorSpace(.sRGB) else { return "?" }
   return String(format: "#%02x%02x%02x", Int((c.redComponent * 255).rounded()), Int((c.greenComponent * 255).rounded()), Int((c.blueComponent * 255).rounded()))
 }
+#endif
