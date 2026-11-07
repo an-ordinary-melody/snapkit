@@ -64,7 +64,12 @@ export function Thumb() {
   }
 
   return (
-    <div className="thumb" onDoubleClick={() => api.thumbEdit()} onContextMenu={(e) => e.preventDefault()}>
+    <div
+      className="thumb"
+      // Double-clicking the image edits it; a quick double click on a button is just two clicks.
+      onDoubleClick={(e) => !(e.target as HTMLElement).closest('button') && api.thumbEdit()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {src && (
         <img
           src={src}

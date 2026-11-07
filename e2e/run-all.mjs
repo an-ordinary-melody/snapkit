@@ -33,6 +33,17 @@ const SUITES = {
     [/16:9\? true/, 'fixed output size'],
     [/renderer errors: none/, 'no page errors']
   ],
+  states: [
+    [/late read: note none \| tools still work: true \| clipboard: before/, 'a text read finishing after capture mode closed froze the next capture'],
+    [/two reads: clipboard second area/, 'two text reads at once: only the newest one is copied'],
+    [/capture text: drawing layer false \| still capturing after (Meta|Control)\+C: true/, 'Capture text has no drawing and doesn\'t copy the image'],
+    [/area moved away: editor before true \| editor after a new area false \| nothing to undo true/, 'an area moved to another display left its drawings and editor behind'],
+    [/color after background default changed: picked #\w+ \| kept true/, '"Remember last background" reset the color picked'],
+    [/Esc during copy: .*consistent true/, 'Esc right after ⌘C still added the capture to history'],
+    [/preview Copy double-clicked: editor opened false/, 'double-clicking a preview button opened the editor'],
+    [/pin saved twice quickly: files 1/, 'a pin saved twice at once wrote two files'],
+    [/renderer errors: none/, 'no page errors']
+  ],
   regressions: [
     [/Esc closes only the color picker: true/, 'Esc with the color picker open cancelled the capture'],
     [/text style keeps the rectangle color: true/, 'text background style recolored other tools'],

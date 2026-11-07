@@ -12,8 +12,21 @@ export function hasScreenPermission(): boolean {
  * the wallpaper, so we stop and explain how to grant it instead.
  * Returns true when it's OK to capture.
  */
+/** Asking right now: another press of a capture hotkey meanwhile does nothing (no second dialog, no second capture). */
+let asking = false
+
 export async function ensureScreenPermission(): Promise<boolean> {
   if (hasScreenPermission()) return true
+  if (asking) return false
+  asking = true
+  try {
+    return await askForPermission()
+  } finally {
+    asking = false
+  }
+}
+
+async function askForPermission(): Promise<boolean> {
 
   // Asking for a capture once makes macOS list Snapkit in System Settings
   // (and shows the system prompt the very first time).
