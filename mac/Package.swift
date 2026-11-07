@@ -16,6 +16,8 @@ let package = Package(
     ),
     // Unit checks for SnapkitCore. A plain executable because the Command Line Tools have no XCTest;
     // these move to Swift Testing once Xcode is installed.
-    .executableTarget(name: "SnapkitChecks", dependencies: ["SnapkitCore"])
+    .executableTarget(name: "SnapkitChecks", dependencies: ["SnapkitCore"]),
+    // Sends test commands to a running debug build (TestHook.swift).
+    .executableTarget(name: "snapkitctl")
   ]
 )
