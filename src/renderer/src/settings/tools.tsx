@@ -5,6 +5,15 @@ import { toolbarOrder, visibleFeatures, type Settings } from '@shared/settings'
 import { FeatureIcon } from '../overlay/Toolbars'
 import { ColorField, Group, NumberField, Row, Segmented, SliderField, Toggle } from './controls'
 import type { SectionProps } from './Settings'
+import { isLight } from '../overlay/annotate/color'
+
+/** Settings for a starting text look; Light and Dark keep the background color if it already fits. */
+function textLookPatch(look: string, background: string): Partial<Settings['annotate']['text']> {
+  const bg = background || '#ffffff'
+  if (look === 'light') return { style: 'background', background: isLight(bg) ? bg : '#ffffff' }
+  if (look === 'dark') return { style: 'background', background: isLight(bg) ? '#111111' : bg }
+  return { style: look as 'plain' | 'stroke' }
+}
 
 /** The user's full order: saved ids first, then any new features. */
 const fullOrder = (s: Settings) => toolbarOrder(s)
@@ -228,23 +237,24 @@ export function ToolsSection({ snap, set }: SectionProps) {
         <Row label="Size">
           <NumberField label="Text size" min={8} max={200} value={a.text.fontSize} unit="px" onChange={(fontSize) => setText({ fontSize })} />
         </Row>
-        <Row label="Starting style">
+        <Row label="Starting style" desc="Light and Dark put a background behind the text.">
           <Segmented
             label="Starting text style"
-            value={a.text.style}
+            value={a.text.style === 'background' ? (isLight(a.text.background || '#ffffff') ? 'light' : 'dark') : a.text.style}
             options={[
               { value: 'plain', label: 'Plain' },
               { value: 'stroke', label: 'Stroke' },
-              { value: 'background', label: 'Background' }
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' }
             ]}
-            onChange={(style) => setText({ style })}
+            onChange={(look) => setText(textLookPatch(look, a.text.background))}
           />
         </Row>
         <Row label="Stroke">
           <ColorField label="Stroke color" value={a.text.strokeColor} onChange={(strokeColor) => setText({ strokeColor })} />
           <NumberField label="Stroke width" min={1} max={12} value={a.text.strokeWidth} unit="px" onChange={(strokeWidth) => setText({ strokeWidth })} />
         </Row>
-        <Row label="Background color" desc="For the background style. Text stays readable on it.">
+        <Row label="Background color" desc="For the Light and Dark styles. Text stays readable on it.">
           <ColorField label="Text background color" value={a.text.background || '#ffffff'} onChange={(background) => setText({ background })} />
         </Row>
         <Row label="Shadow">
