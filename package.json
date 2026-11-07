@@ -19,7 +19,9 @@
     "build:win": "npm run build && electron-builder --win --publish never",
     "build:dir": "npm run build && electron-builder --dir --publish never",
     "e2e:smoke": "node e2e/smoke.mjs",
-    "fixtures": "vite-node scripts/export-fixtures.ts"
+    "fixtures": "vite-node scripts/export-fixtures.ts",
+    "scenes": "npm run build && node e2e/scene.mjs fixtures/scenes",
+    "ui-tokens": "npm run build && node e2e/ui-tokens.mjs"
   },
   "dependencies": {
     "koffi": "3.3.2",

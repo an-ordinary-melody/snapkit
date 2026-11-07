@@ -265,6 +265,16 @@ export function Overlay() {
         setVariants({ ...p.settings.toolVariants, ...lastVariants })
         setEditorOpen(!!doc)
       })
+      const sc = p.scene
+      if (sc)
+        flushSync(() => {
+          if (sc.shapes) setHistory({ past: [], present: sc.shapes as Shape[], future: [] })
+          if (sc.tool) setTool(sc.tool as ToolId)
+          if (sc.selectedShape) setSelectedId(sc.selectedShape)
+          if (sc.ocr) setOcr({ reading: false, result: sc.ocr })
+          if (sc.beautify) setBeautify({ ...(initialBeautify(p.settings) as BeautifyState), ...(sc.beautify as Partial<BeautifyState>) })
+          if (sc.editor) setEditorOpen(true)
+        })
       if (doc) {
         // No pixels step: paint the stored crop ourselves.
         void createImageBitmap(new Blob([doc.png as BlobPart], { type: 'image/png' })).then((bmp) => {

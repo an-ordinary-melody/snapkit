@@ -112,6 +112,8 @@ export interface ArmPayload {
   area?: { x: number; y: number; w: number; h: number }
   /** "Capture text": the area drawn is read right away (no editing step), then shown or copied per ocr.textButton. */
   textOnly?: boolean
+  /** Test only (e2e/scene.mjs renders scenes to compare with the native Mac app): start from this state. Main never sends it. */
+  scene?: { shapes?: unknown[]; tool?: string; selectedShape?: string; ocr?: OcrResult; beautify?: unknown; editor?: boolean }
 }
 
 export interface PixelsPayload {

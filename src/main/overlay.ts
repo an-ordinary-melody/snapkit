@@ -14,6 +14,7 @@ import { disableWindowAnimations } from './noAnimation'
 import { ipcHandle, ipcOn } from './security'
 import { createThumb, hasPins, keepPinsOnTop, linkThumbToHistory } from './pin'
 import { addToHistory } from './history'
+import { scene, sceneArm, sceneGrab } from './scene'
 
 const isMac = process.platform === 'darwin'
 
@@ -280,7 +281,7 @@ export async function startCapture(t0 = Date.now(), preset?: { display: Display;
 
   let grabs
   try {
-    grabs = await grabAllScreens()
+    grabs = scene ? sceneGrab() : await grabAllScreens()
   } catch (err) {
     log('capture failed', err)
     setActive(false)
@@ -306,6 +307,10 @@ export async function startCapture(t0 = Date.now(), preset?: { display: Display;
       const arm: ArmPayload = { session: id, displayId: g.display.id, width: g.width, height: g.height, settings }
       if (textOnly) arm.textOnly = true
       if (preset && preset.display.id === g.display.id) arm.area = { x: preset.rect.x, y: preset.rect.y, w: preset.rect.width, h: preset.rect.height }
+      if (scene) {
+        win.setBounds(g.display.bounds) // the scene's screen size, before the page measures itself
+        sceneArm(arm)
+      }
       const armed = waitFor(IPC.armed, win, id, 1000)
       win.webContents.send(IPC.arm, arm)
       if (!(await armed)) {
