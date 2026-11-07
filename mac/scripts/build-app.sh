@@ -3,7 +3,8 @@
 #   mac/scripts/build-app.sh            debug build: "Snapkit Dev.app", bundle id com.charios.snapkit.dev,
 #                                       its own data folder, test hooks on
 #   mac/scripts/build-app.sh release    release build: "Snapkit.app", com.charios.snapkit, universal (arm64 + x86_64)
-# Output: mac/build/<name>.app, ad-hoc signed (SIGN_IDENTITY picks a certificate). Sparkle keys come
+# Output: mac/build/<name>.app, signed with "Snapkit Self-Signed" when the Keychain has it, else ad-hoc
+# (SIGN_IDENTITY picks another). Sparkle keys come
 # from scripts/sparkle.env. Set DEVELOPER_DIR to pick a toolchain.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -66,6 +67,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 # Inside out, as Sparkle's docs say: its helpers, the framework, then the app.
+# The self-signed certificate when this Mac has it (same signature every build, so macOS keeps the
+# Screen Recording permission); otherwise ad-hoc ("-"). SIGN_IDENTITY overrides both.
+CERT="Snapkit Self-Signed"
+if [ -z "${SIGN_IDENTITY:-}" ] && security find-identity -p codesigning 2>/dev/null | grep -q "\"$CERT\""; then SIGN_IDENTITY="$CERT"; fi
 SIGN=${SIGN_IDENTITY:--}
 FW="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
 codesign -f -s "$SIGN" -o runtime "$FW/XPCServices/Installer.xpc"

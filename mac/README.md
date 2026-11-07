@@ -84,3 +84,12 @@ an older build finds, downloads, verifies and installs a newer one, and refuses 
 The app is signed with the hardened runtime plus `com.apple.security.cs.disable-library-validation`
 (`Snapkit.entitlements`): ad-hoc and self-signed builds have no Apple team, and without it the app
 can't load its own Sparkle.framework.
+
+## Signing
+
+`scripts/build-app.sh` signs with the self-signed certificate "Snapkit Self-Signed" when the login
+Keychain has it (made in Keychain Access → Certificate Assistant, type Code Signing), else ad-hoc. The
+certificate keeps the app's identity the same across builds, so macOS keeps its Screen Recording
+permission. `codesign` needs access to the certificate's private key without asking: add
+`/usr/bin/codesign` under the key's Access Control in Keychain Access. The certificate made on
+2026-11-08 expires 2027-11-07; renewing it means a new identity (one more Screen Recording grant).
