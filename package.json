@@ -18,7 +18,8 @@
     "test:backlog": "node e2e/backlog.mjs",
     "build:win": "npm run build && electron-builder --win --publish never",
     "build:dir": "npm run build && electron-builder --dir --publish never",
-    "e2e:smoke": "node e2e/smoke.mjs"
+    "e2e:smoke": "node e2e/smoke.mjs",
+    "fixtures": "vite-node scripts/export-fixtures.ts"
   },
   "dependencies": {
     "koffi": "3.3.2",
