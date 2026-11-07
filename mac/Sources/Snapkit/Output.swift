@@ -38,6 +38,55 @@ enum Output {
     return CGImageDestinationFinalize(dest) ? data as Data : nil
   }
 
+  /** RGBA bytes (straight alpha) of an image. */
+  static func rgba(_ img: CGImage) -> [UInt8] {
+    let w = img.width, h = img.height
+    var buf = [UInt8](repeating: 0, count: w * h * 4)
+    buf.withUnsafeMutableBytes { p in
+      let ctx = CGContext(data: p.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                          space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+      ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+    }
+    // Un-premultiply (screenshots are opaque, so this rarely changes anything).
+    for i in stride(from: 0, to: buf.count, by: 4) where buf[i + 3] != 255 && buf[i + 3] != 0 {
+      let a = Double(buf[i + 3]) / 255
+      for c in 0..<3 { buf[i + c] = UInt8(min(255, (Double(buf[i + c]) / a).rounded())) }
+    }
+    return buf
+  }
+
+  /** The image at `w`×`h`, resampled with high quality. */
+  static func resized(_ img: CGImage, _ w: Int, _ h: Int) -> CGImage? {
+    guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: img.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!,
+                              bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else { return nil }
+    ctx.interpolationQuality = .high
+    ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+    return ctx.makeImage()
+  }
+
+  /**
+   * compressPng(): at most 256 colours; "smallest" also brings HiDPI captures (`scale` > 1) back to
+   * 1×. The original when compressing doesn't make it smaller (unless it was resized).
+   */
+  static func compressed(_ img: CGImage, png: Data, scale: CGFloat, preset: String) -> Data {
+    let t0 = Date()
+    var src = img
+    let resize = preset == "smallest" && scale > 1
+    if resize, let r = resized(img, max(1, Int(jsRound(Double(img.width) / scale))), max(1, Int(jsRound(Double(img.height) / scale)))) { src = r }
+    let q = Quantizer.quantize(rgba(src))
+    let out = PNGWriter.indexed(width: src.width, height: src.height, palette: q.palette, indices: q.indices)
+    log("[compress] \(preset) (scale \(scale)) \(img.width)×\(img.height) → \(src.width)×\(src.height): \(png.count / 1024) KB → \(out.count / 1024) KB in \(ms(t0)) ms")
+    return out.count < png.count || resize ? out : png
+  }
+
+  /** The PNG to write for this output: compressed when the setting (or the editor's switch) says so. */
+  static func outputPNG(_ img: CGImage, kind: String, settings: Settings, compress: Bool? = nil, preset: String? = nil, scale: CGFloat) -> Data? {
+    guard let png = png(img) else { return nil }
+    let c = settings.compress
+    guard compressesFor(c.applyTo, compress ?? c.enabled, kind) else { return png }
+    return compressed(img, png: png, scale: scale, preset: preset ?? c.preset)
+  }
+
   /** The exact PNG bytes on the clipboard; macOS converts for apps that ask for another type. */
   static func copy(_ png: Data) {
     let pb = pasteboard

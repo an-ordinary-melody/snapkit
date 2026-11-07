@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import SnapkitCore
 
 // Unit checks for SnapkitCore: ports of the Electron vitest cases (settings, naming, layout, model)
@@ -307,6 +308,43 @@ describe("model (model.test.ts, the rest)") {
     .transformed(gx: 0, gy: 0, sx: 2, sy: 2) {
     expect([t.x, t.fontSize], [20, 40], "resizing text scales its size")
   }
+}
+
+describe("compress (UPNG port) and capture documents") {
+  // 4×2 image, three colours.
+  let colors: [[UInt8]] = [[255, 0, 0, 255], [0, 128, 255, 255], [20, 20, 20, 255]]
+  var px: [UInt8] = []
+  for i in 0..<8 { px += colors[i % 3] }
+  let q = Quantizer.quantize(px)
+  expect(q.palette.first, 0, "palette starts with the reserved transparent colour")
+  expect(q.palette.count, 4, "three colours in, three (+1) out")
+  var back: [UInt8] = []
+  for i in q.indices {
+    let c = q.palette[Int(i)]
+    back.append(contentsOf: [UInt8(c & 0xff), UInt8((c >> 8) & 0xff), UInt8((c >> 16) & 0xff), UInt8(c >> 24)])
+  }
+  expect(back, px, "each pixel maps back to its own colour")
+  let png = PNGWriter.indexed(width: 4, height: 2, palette: q.palette, indices: q.indices)
+  let src = CGImageSourceCreateWithData(png as CFData, nil)
+  let img = src.flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
+  expect(img.map { [$0.width, $0.height] }, [4, 2], "the palette PNG decodes")
+  expect(png[25], 3, "colour type 3 (palette)")
+  // Many colours: at most 256.
+  var many: [UInt8] = []
+  for i in 0..<4096 {
+    let r = UInt8(i % 256), g = UInt8((i / 16) % 256), b = UInt8((i * 7) % 256)
+    many.append(contentsOf: [r, g, b, 255])
+  }
+  expectTrue(Quantizer.quantize(many).palette.count <= 256, "at most 256 colours")
+  expect(compressesFor("both", true, "copy"), true, "compressesFor both")
+  expect(compressesFor("copy", true, "save"), false, "compressesFor copy only")
+  expect(compressesFor("both", false, "copy"), false, "compressesFor off")
+
+  let doc = CaptureDoc(png: Data([1, 2, 3]), width: 800, height: 600, scale: 2, shapes: [.step(.init(id: "s", x: 1, y: 2, size: 30, color: "#f00"))], historyId: "h1")
+  expect(CaptureDoc(json: try JSON.parse(doc.json.serialized()), png: doc.png), doc, "doc.json round trip")
+  let electronDoc = #"{"width":2341,"height":1569,"scale":2,"shapes":[],"beautify":{"on":true,"presetId":"ocean","padding":20,"radius":17,"shadow":0.05},"historyId":"mw4id9h31vxu"}"#
+  let d2 = CaptureDoc(json: try JSON.parse(electronDoc), png: Data())
+  expect(d2?.beautify["presetId"], .string("ocean"), "reads an Electron doc.json, background kept")
 }
 
 // MARK: - Shared fixtures (fixtures/*.json, written by the Electron side with `npm run fixtures`)

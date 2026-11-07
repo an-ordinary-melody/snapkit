@@ -8,8 +8,10 @@ protocol OverlayViewDelegate: AnyObject {
   func overlayCopy(_ view: OverlayView)
   func overlaySave(_ view: OverlayView)
   func overlayCancel(_ view: OverlayView)
-  /** A toolbar action the view doesn't handle itself (ocr, pin, beautify, beautifyEdit). */
+  /** A toolbar action the view doesn't handle itself (pin, beautify, beautifyEdit). */
   func overlayAction(_ view: OverlayView, _ id: String)
+  /** Copy recognized text, then close capture mode after `closeAfter` seconds (so a message can show first). */
+  func overlayCopyText(_ view: OverlayView, _ text: String, closeAfter: Double)
 }
 
 /**
@@ -36,6 +38,18 @@ final class OverlayView: NSView {
   /** Text being typed (new, or an existing text shape being edited). */
   private(set) var editing: Shape.Text?
   private var textEditor: TextEditorView?
+  /** "Capture text": the area drawn is read right away (no editing step). */
+  private(set) var textOnly = false
+  enum OcrState {
+    case reading
+    case result([TextRecognition.Line], ms: Int)
+  }
+  /** Text recognition: reading, or the lines found (shown over the selection, with the text panel). */
+  private(set) var ocr: OcrState?
+  private var ocrPanel: OcrPanelView?
+  /** A short message over the screen (e.g. "Copied 3 lines of text"). */
+  private(set) var note: String?
+  private var noteWork: DispatchWorkItem?
   /** Toolbar state other parts of capture mode set (Background on, floating preview on). */
   var lit: Set<String> = [] { didSet { if lit != oldValue { refreshToolbars() } } }
   var tips: [String: (text: String, sub: String?)] = [:]
@@ -119,9 +133,12 @@ final class OverlayView: NSView {
   // MARK: - Lifecycle (called by CaptureController)
 
   /** A new capture: dim over the live screen until the image arrives. */
-  func arm(session: Int, settings: Settings, preset: LRect? = nil) {
+  func arm(session: Int, settings: Settings, preset: LRect? = nil, textOnly: Bool = false) {
     self.session = session
     self.settings = settings
+    self.textOnly = textOnly
+    clearOcr()
+    setNote(nil)
     // New defaults from the settings window win over this session's picks.
     if OverlayView.lastStyle == nil || OverlayView.lastStyleBasis?.annotate != settings.annotate {
       OverlayView.lastStyle = Style.initial(settings)
@@ -164,6 +181,8 @@ final class OverlayView: NSView {
 
   /** Capture mode closed: drop everything so the next show can't flash this one. */
   func clear() {
+    clearOcr()
+    setNote(nil)
     finishEditing(commit: false)
     closePopovers()
     image = nil
@@ -254,7 +273,9 @@ final class OverlayView: NSView {
   }
 
   private var showToolbars: Bool {
-    guard let sel, image != nil, sel.w >= 4, sel.h >= 4 else { return false }
+    guard let sel, image != nil, sel.w >= 4, sel.h >= 4, !textOnly else { return false }
+    // The text panel takes the toolbars' place while it's open.
+    if ocrPanel != nil { return false }
     switch drag {
     case .create, .move, .resize: return false
     default: return true
@@ -477,6 +498,8 @@ final class OverlayView: NSView {
       finishEditing(commit: true)
       selectedId = nil
       if id == "undo" { history.undo() } else { history.redo() }
+    case "ocr":
+      readText()
     case "color":
       // The colour button opens the style bar's colour picker (when there's something to colour).
       if let t = styleTarget, StyleTargets.colored.contains(t), t != "highlighter" { openPicker("custom") }
@@ -658,6 +681,15 @@ final class OverlayView: NSView {
       refreshToolbars()
       chrome.needsDisplay = true
     }
+    // "Capture text" has no adjusting step: every drag reads a new area.
+    if textOnly {
+      clearOcr()
+      drag = .create(origin: p)
+      sel = LRect(x: p.x, y: p.y, w: 0, h: 0)
+      delegate?.overlaySelectionStarted(self)
+      return
+    }
+    if ocr != nil { clearOcr() }
     let nearSelected = selectedShape.map { frameBox($0).insetBy(dx: -8, dy: -8).contains(p) } ?? false
     if let sel, sel.contains(p) || nearSelected {
       // The selected shape's own handles, then its frame.
@@ -773,7 +805,8 @@ final class OverlayView: NSView {
     switch drag {
     case .create:
       if let s = sel, s.w < 4 || s.h < 4 { sel = nil }
-      if sel != nil, settings.capture.quickCopy { DispatchQueue.main.async { self.delegate?.overlayCopy(self) } }
+      if sel != nil, textOnly { DispatchQueue.main.async { self.readText() } }
+      else if sel != nil, settings.capture.quickCopy { DispatchQueue.main.async { self.delegate?.overlayCopy(self) } }
     case .draw:
       if let d = draft, Annotations.isMeaningful(d) { history.commit(shapes + [d]) }
       draft = nil
@@ -953,8 +986,11 @@ final class OverlayView: NSView {
     let key = e.charactersIgnoringModifiers?.lowercased() ?? ""
     let cmd = mods.contains(.command) || mods.contains(.control)
     switch e.keyCode {
-    case 53: // Esc steps back one level: a menu or picker, then a selected shape, then capture mode.
-      if hasPopover {
+    case 53: // Esc steps back one level: a menu or picker, the text found, a selected shape, then capture mode.
+      if ocrPanel != nil || ocr != nil, !textOnly {
+        clearOcr()
+        refreshToolbars()
+      } else if hasPopover {
         closePopovers()
         refreshToolbars()
       } else if selectedId != nil {
@@ -1018,6 +1054,7 @@ final class OverlayView: NSView {
     } else {
       ctx.fill(bounds)
     }
+    paintMessages(ctx)
     guard let sel else { return }
 
     // Drawings, clipped to the selection.
@@ -1044,7 +1081,9 @@ final class OverlayView: NSView {
       ctx.strokePath()
     }
 
-    if s.showSizeLabel {
+    paintOcr(ctx, sel: sel)
+
+    if s.showSizeLabel && !textOnly {
       let scale = imageScale
       let text = "\(Int(jsRound(sel.w * scale))) × \(Int(jsRound(sel.h * scale)))"
       let str = NSAttributedString(string: text, attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular), .foregroundColor: NSColor.white])
@@ -1058,6 +1097,133 @@ final class OverlayView: NSView {
       str.draw(at: CGPoint(x: box.minX + 6, y: box.minY + 3))
       NSGraphicsContext.restoreGraphicsState()
     }
+  }
+
+  // MARK: - Text recognition
+
+  /** Read the text in the selection (the screenshot only, not the drawings). */
+  func readText() {
+    guard let sel, image != nil, ocr == nil || textOnly else { return }
+    finishEditing(commit: true)
+    selectedId = nil
+    tool = nil
+    ocr = .reading
+    refreshToolbars()
+    chrome.needsDisplay = true
+    guard let plain = renderPlain() else { return }
+    let session = self.session
+    TextRecognition.recognize(plain) { [weak self] result, ms in
+      guard let self, self.session == session, self.sel == sel else { return }
+      switch result {
+      case let .failure(err):
+        self.ocr = nil
+        self.setNote("Couldn't read the text: \(err.localizedDescription)")
+      case let .success(lines):
+        let text = lines.map(\.text).joined(separator: "\n")
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          self.ocr = nil
+          self.setNote("No text found")
+        } else if self.settings.ocr.textButton == "panel" {
+          self.ocr = .result(lines, ms: ms)
+          self.showOcrPanel(lines, ms: ms)
+        } else {
+          self.ocr = .result(lines, ms: ms)
+          self.setNote("Copied \(lines.count) line\(lines.count == 1 ? "" : "s") of text")
+          // Copied now; capture mode closes after the message.
+          self.delegate?.overlayCopyText(self, text, closeAfter: 0.6)
+        }
+      }
+      self.refreshToolbars()
+      self.chrome.needsDisplay = true
+    }
+  }
+
+  private func showOcrPanel(_ lines: [TextRecognition.Line], ms: Int) {
+    guard let sel else { return }
+    ocrPanel?.removeFromSuperview()
+    let panel = OcrPanelView(lines: lines, ms: ms, theme: theme)
+    panel.setFrameOrigin(OcrPanelView.place(sel: sel, screen: bounds.size))
+    panel.onClose = { [weak self] in
+      guard let self else { return }
+      if self.textOnly { self.delegate?.overlayCancel(self) } else {
+        self.clearOcr()
+        self.refreshToolbars()
+      }
+    }
+    panel.onCopy = { [weak self] text in
+      guard let self else { return }
+      self.delegate?.overlayCopyText(self, text, closeAfter: 0)
+    }
+    addSubview(panel)
+    ocrPanel = panel
+    DispatchQueue.main.async { self.window?.makeFirstResponder(panel.text) }
+  }
+
+  private func clearOcr() {
+    ocr = nil
+    ocrPanel?.removeFromSuperview()
+    ocrPanel = nil
+    window?.makeFirstResponder(self)
+    chrome.needsDisplay = true
+  }
+
+  func setNote(_ text: String?) {
+    note = text
+    noteWork?.cancel()
+    if text != nil {
+      let w = DispatchWorkItem { [weak self] in self?.setNote(nil) }
+      noteWork = w
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2.2, execute: w)
+    }
+    chrome.needsDisplay = true
+  }
+
+  /** Test hooks. */
+  var ocrPanelText: String? { ocrPanel?.text.string }
+  func ocrPanelPress(_ id: String) {
+    if id == "one" { ocrPanel?.oneLine() } else if id == "copy" { ocrPanel.map { $0.onCopy($0.text.string) } } else { ocrPanel?.onClose() }
+  }
+  var toolbarsShown: Bool { !actionsBar.isHidden }
+  var ocrLineCount: Int { if case let .result(l, _) = ocr { return l.count }; return 0 }
+
+  private func pill(_ text: String, at p: CGPoint, centered: Bool, ctx: CGContext, size: CGFloat = 13, pad: (CGFloat, CGFloat) = (12, 7), radius: CGFloat = 8) {
+    let str = NSAttributedString(string: text, attributes: [.font: NSFont.systemFont(ofSize: size), .foregroundColor: NSColor.white])
+    let sz = str.size()
+    let box = CGRect(x: centered ? p.x - sz.width / 2 - pad.0 : p.x, y: p.y, width: ceil(sz.width) + pad.0 * 2, height: ceil(sz.height) + pad.1 * 2)
+    ctx.addPath(CGPath(roundedRect: box, cornerWidth: radius, cornerHeight: radius, transform: nil))
+    ctx.setFillColor(NSColor.rgba(20, 20, 22, 0.85).cgColor)
+    ctx.fillPath()
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: true)
+    str.draw(at: CGPoint(x: box.minX + pad.0, y: box.minY + pad.1))
+    NSGraphicsContext.restoreGraphicsState()
+  }
+
+  /** Lines found, "Reading text…", the Capture text hint, and short messages. */
+  private func paintOcr(_ ctx: CGContext, sel: LRect) {
+    switch ocr {
+    case .reading:
+      pill("Reading text…", at: CGPoint(x: sel.x, y: sel.y + sel.h + 6), centered: false, ctx: ctx, size: 11, pad: (6, 3), radius: 4)
+    case let .result(lines, _):
+      let blue = NSColor(hex: "#3b82f6")
+      for l in lines {
+        let r = CGRect(x: sel.x + l.x * sel.w - 2, y: sel.y + l.y * sel.h - 1, width: l.w * sel.w + 4, height: l.h * sel.h + 2)
+        let path = CGPath(roundedRect: r, cornerWidth: 3, cornerHeight: 3, transform: nil)
+        ctx.addPath(path)
+        ctx.setFillColor(blue.withAlphaComponent(0.22).cgColor)
+        ctx.fillPath()
+        ctx.addPath(path)
+        ctx.setStrokeColor(blue.withAlphaComponent(0.7).cgColor)
+        ctx.setLineWidth(1)
+        ctx.strokePath()
+      }
+    case nil: break
+    }
+  }
+
+  fileprivate func paintMessages(_ ctx: CGContext) {
+    if textOnly && sel == nil { pill("Drag over text to copy it", at: CGPoint(x: bounds.midX, y: 24), centered: true, ctx: ctx) }
+    if let note { pill(note, at: CGPoint(x: bounds.midX, y: bounds.maxY - 48 - 31), centered: true, ctx: ctx) }
   }
 
   /** The selected shape's frame and handles, line end points, and snap guides (AnnotationLayer's UI layer). */

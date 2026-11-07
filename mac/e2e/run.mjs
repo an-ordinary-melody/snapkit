@@ -63,6 +63,15 @@ async function state() {
   for (let i = 0; i < 20 && !existsSync(stateFile); i++) await wait(50)
   return JSON.parse(readFileSync(stateFile, 'utf8'))
 }
+async function waitFor(pred, ms = 8000) {
+  let s
+  for (let t = 0; t < ms; t += 200) {
+    s = await state()
+    if (pred(s)) return s
+    await wait(200)
+  }
+  return s
+}
 const logSince = (mark) => readFileSync(logFile, 'utf8').slice(mark)
 const logMark = () => (existsSync(logFile) ? readFileSync(logFile, 'utf8').length : 0)
 
@@ -311,6 +320,186 @@ const SUITES = {
     send('rightclick', 100, 100)
     s = await state()
     check(!s.capturing, 'right-click cancels the capture')
+  },
+
+  // Phase 3: ports of the Electron ocr, pin, lastarea, fullscreen and compress checks.
+  async ocr() {
+    await launch()
+    send('capture')
+    send('select', 90, 90, 640, 180)
+    send('key', 'x')
+    // The first recognition after a launch can take most of a minute while macOS loads its text models.
+    let s = await waitFor((s) => s.ocrPanel, 90000)
+    check(/Snapkit reads text/.test(s.ocrPanel ?? '') && /Xin chào thế giới/.test(s.ocrPanel ?? ''), 'Copy text reads English and Vietnamese into the text panel', JSON.stringify(s.ocrPanel))
+    check(s.ocr >= 2, 'the lines found are outlined')
+    check(!s.toolbarsShown, 'the text panel takes the toolbars\' place')
+    send('ocr-panel', 'one')
+    send('ocr-panel', 'copy')
+    s = await waitFor((s) => !s.capturing)
+    check(s.clipboardText === 'Snapkit reads text Xin chào thế giới' && !s.capturing, 'One line + Copy text copies and closes', JSON.stringify(s.clipboardText))
+
+    send('text')
+    s = await state()
+    check(s.capturing && s.textOnly && !s.toolbarsShown, 'Capture text opens with toolbars hidden (hint: Drag over text to copy it)')
+    send('select', 90, 90, 640, 180)
+    s = await waitFor((s) => s.ocrPanel)
+    check(/Snapkit reads text/.test(s.ocrPanel ?? ''), 'capture text shows the panel')
+    send('ocr-panel', 'copy')
+    s = await waitFor((s) => !s.capturing)
+    check(/Snapkit reads text\nXin chào thế giới/.test(s.clipboardText ?? '') && !s.capturing, 'capture text copies and closes')
+
+    send('setting', '{"ocr":{"textButton":"copy"}}')
+    send('text')
+    send('select', 90, 90, 640, 180)
+    s = await waitFor((s) => s.note)
+    check(/^Copied 2 lines of text$/.test(s.note ?? ''), 'copy right away, with a message', s.note)
+    s = await waitFor((s) => !s.capturing)
+    check(!s.capturing, 'and closes')
+    send('setting', '{"ocr":{"textButton":"panel"}}')
+    send('capture')
+    send('select', 800, 600, 200, 150)
+    send('key', 'x')
+    s = await waitFor((s) => s.note)
+    check(s.note === 'No text found' && s.capturing, 'an area without text says so', s.note)
+    send('key', 'esc')
+  },
+
+  async preview() {
+    await launch()
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    send('tool', 'pin')
+    let s = await state()
+    check(s.lit.includes('pin'), 'Floating preview toggle: on, with its dot')
+    send('tool', 'arrow')
+    send('drag', 350, 250, 500, 350)
+    send('key', 'c', 'cmd')
+    s = await state()
+    const thumb = s.floating.find((f) => f.kind === 'thumb')
+    check(!!thumb && thumb.frame[0] + thumb.frame[2] <= thumb.visibleFrame[0] - 15 && thumb.frame[1] + thumb.frame[3] <= thumb.visibleFrame[1] - 15, 'preview after ⌘C in the bottom-right corner', JSON.stringify(thumb))
+    send('thumb', 'copy')
+    s = await state()
+    check(JSON.stringify(s.clipboardSize) === '[800,600]' && s.floating[0].labels[0] === 'Copied', 'copy again from the preview')
+    send('thumb', 'text')
+    s = await waitFor((s) => s.floating[0]?.labels[2] !== 'Reading…')
+    check(/Copied|No text/.test(s.floating[0].labels[2]), 'the preview reads its text', s.floating[0].labels[2])
+    send('thumb', 'edit')
+    s = await state()
+    check(s.capturing && s.shapes.length === 1, 'edit restores drawings')
+    send('tool', 'rect')
+    send('drag', 0, 0, 0, 0)
+    send('key', 'esc')
+    s = await state()
+    check(!s.capturing && s.floating.length === 1, 'leaving the editor keeps the preview')
+    const before = s.floating[0].frame
+    send('pin-move', -120, -80)
+    s = await state()
+    check(s.floating[0].frame[0] - before[0] === -120 && s.floating[0].frame[1] - before[1] === -80, 'movable preview (-120, -80)', JSON.stringify([before, s.floating[0].frame]))
+    send('thumb', 'pin')
+    s = await state()
+    check(s.floating.length === 1 && s.floating[0].kind === 'pin', 'pin from the preview; preview closed')
+    send('pin-zoom', 2)
+    send('pin-opacity', 0.5)
+    s = await state()
+    check(s.floating[0].zoom === 2 && s.floating[0].opacity === 0.5 && s.floating[0].frame[2] === 800, 'pin zoom and opacity', JSON.stringify(s.floating[0]))
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    send('key', 'c', 'cmd')
+    s = await state()
+    check(s.floating.length === 1 && s.floating[0].kind === 'pin', 'no preview when off; pin still visible')
+    send('closepins')
+    s = await state()
+    check(s.floating.length === 0, 'closing pins')
+  },
+
+  async lastarea() {
+    await launch()
+    send('lastarea')
+    let s = await state()
+    check(s.capturing && !s.selection, 'Capture last area with nothing remembered: a normal capture')
+    send('select', 210, 160, 300, 200)
+    send('key', 'c', 'cmd')
+    send('lastarea')
+    s = await state()
+    check(JSON.stringify(s.selection) === '[210,160,300,200]' && s.toolbarsShown, 'reopens the last copied area, toolbar shown', JSON.stringify(s.selection))
+    send('select', 500, 400, 100, 100)
+    send('key', 'esc')
+    s = await state()
+    check(s.lastArea?.rect?.x === 210, 'a cancelled capture is not remembered')
+    send('fullscreen')
+    await wait(300)
+    send('closepins')
+    send('lastarea')
+    s = await state()
+    check(s.selection?.[0] === 0 && s.selection?.[2] === s.screen[0], 'after full screen it selects the whole screen', JSON.stringify(s.selection))
+    send('key', 'esc')
+    send('setting', '{"capture":{"lastAreaInstant":true}}')
+    send('capture')
+    send('select', 210, 160, 300, 200)
+    send('key', 'c', 'cmd')
+    send('lastarea')
+    await wait(300)
+    s = await state()
+    check(!s.capturing && JSON.stringify(s.clipboardSize) === '[600,400]', 'copy right away: no capture mode, copied the area')
+    quit()
+    spawnSync('open', ['-n', app, '--args', '-SnapkitTestScreen', screenPng, '-SnapkitProfile', profile, '-SnapkitTestOut', stateFile, '-SnapkitTestPasteboard', 'com.charios.snapkit.dev.e2e'])
+    for (let i = 0; i < 20; i++) {
+      rmSync(stateFile, { force: true })
+      send('state')
+      if (existsSync(stateFile)) break
+      await wait(200)
+    }
+    send('setting', '{"capture":{"lastAreaInstant":false}}')
+    send('lastarea')
+    s = await state()
+    check(JSON.stringify(s.selection) === '[210,160,300,200]', 'the last area survives a restart')
+    send('key', 'esc')
+  },
+
+  async fullscreen() {
+    await launch()
+    send('clearclip')
+    send('fullscreen')
+    let s = await waitFor((s) => s.floating.length)
+    check(s.floating.length === 1 && s.floating[0].kind === 'thumb' && !s.capturing, 'full-screen capture goes straight to the preview')
+    check(s.clipboardPngBytes === 0, 'not copied by default')
+    send('thumb', 'edit')
+    s = await state()
+    check(s.capturing, 'edit a full-screen capture')
+    send('key', 'esc')
+    send('closepins')
+    send('setting', '{"capture":{"fullscreenCopy":true}}')
+    send('fullscreen')
+    s = await waitFor((s) => s.clipboardPngBytes)
+    check(s.clipboardSize?.[0] === s.screen[0] * 2, 'full-screen capture can copy (Copy full-screen captures)')
+    send('closepins')
+  },
+
+  async compress() {
+    await launch()
+    const copy = async () => {
+      send('capture')
+      send('select', 100, 100, 600, 400)
+      send('key', 'c', 'cmd')
+      return state()
+    }
+    let plain = await copy()
+    send('setting', '{"compress":{"enabled":true}}')
+    let s = await copy()
+    check(s.clipboardColorType === 3 && s.clipboardPngBytes < plain.clipboardPngBytes && JSON.stringify(s.clipboardSize) === '[1200,800]',
+      'standard copy: a palette PNG on the clipboard, smaller than a plain PNG, full size', `${s.clipboardColorType} ${s.clipboardPngBytes} < ${plain.clipboardPngBytes} ${s.clipboardSize}`)
+    check(s.clipboardMatchesScreen === true, 'compressed copy keeps the colours (≤ 256, close enough)')
+    send('setting', '{"compress":{"preset":"smallest"}}')
+    s = await copy()
+    check(JSON.stringify(s.clipboardSize) === '[600,400]', 'smallest copy is 1× size')
+    send('setting', '{"compress":{"enabled":false}}')
+    s = await copy()
+    check(s.clipboardColorType !== 3 && s.clipboardPngBytes === plain.clipboardPngBytes, 'copy with Compress off is the original')
+    send('capture')
+    send('select', 100, 100, 200, 100)
+    send('key', 's', 'cmd')
+    s = await state()
+    check(s.notifications.some((n) => n.startsWith('Screenshot saved')), 'notification on save (on by default)')
   },
 
   async safety() {

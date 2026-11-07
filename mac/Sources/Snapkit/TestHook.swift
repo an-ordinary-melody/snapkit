@@ -94,6 +94,27 @@ enum TestHook {
     if args.contains("option") { flags.insert(.option) }
     switch cmd {
     case "capture": app.capture.toggle()
+    case "text": app.capture.toggle(textOnly: true)
+    case "fullscreen": app.capture.captureFullScreen()
+    case "lastarea": app.capture.captureLastArea()
+    case "ocr-panel":
+      if let id = args.first { mainView?.ocrPanelPress(id) }
+    case "thumb":
+      // thumb <copy|edit|text|pin|close> [index]: a floating preview's buttons
+      let thumbs = Floating.shared.items.filter { $0.kind == .thumb }
+      let i = nums.first.map(Int.init) ?? thumbs.count - 1
+      if let id = args.first, thumbs.indices.contains(i) { Floating.shared.thumbPress(thumbs[i], id) }
+    case "pin-zoom":
+      if let p = Floating.shared.items.last(where: { $0.kind == .pin }), let z = nums.first { Floating.shared.setZoom(p, z) }
+    case "pin-opacity":
+      if let p = Floating.shared.items.last(where: { $0.kind == .pin }), let o = nums.first { Floating.shared.setOpacity(p, o) }
+    case "pin-move":
+      if let p = Floating.shared.items.last, nums.count == 2 { Floating.shared.moveBy(p, dx: nums[0], dy: nums[1]) }
+    case "closepins": Floating.shared.closeAll()
+    case "clearclip": Output.pasteboard.clearContents()
+    case "setting":
+      // setting <json patch>
+      if let patch = try? JSON.parse(args.joined(separator: " ")) { app.store.update(patch) }
     case "select":
       guard let v = mainView, nums.count == 4 else { return }
       drag(v, from: CGPoint(x: nums[0], y: nums[1]), to: CGPoint(x: nums[0] + nums[2], y: nums[1] + nums[3]))
@@ -154,6 +175,7 @@ enum TestHook {
     case "state":
       let v = mainView
       var o = JSON.object([])
+      o = o.setting("lastArea", (try? Data(contentsOf: Paths.lastAreaFile)).flatMap { try? JSON.parse($0) } ?? .null)
       o = o.setting("capturing", .bool(app.capture.active))
       o = o.setting("panels", .number(Double(app.capture.pool.entries.count)))
       o = o.setting("visiblePanels", .number(Double(app.capture.pool.entries.values.filter { $0.panel.isVisible }.count)))
@@ -172,10 +194,34 @@ enum TestHook {
         o = o.setting("toolbar", .array(v.toolIds.map { .string($0) }))
         o = o.setting("typing", .bool(v.isTyping))
         if let s = v.sel { o = o.setting("selection", .array([s.x, s.y, s.w, s.h].map { .number($0) })) }
+        o = o.setting("lit", .array(v.lit.sorted().map { .string($0) }))
+        o = o.setting("toolbarsShown", .bool(v.toolbarsShown))
         o = o.setting("isKeyWindow", .bool(v.window?.isKeyWindow ?? false))
       }
+      o = o.setting("ocr", .number(Double(v?.ocrLineCount ?? 0)))
+      o = o.setting("ocrPanel", v?.ocrPanelText.map { .string($0) } ?? .null)
+      o = o.setting("note", v?.note.map { .string($0) } ?? .null)
+      o = o.setting("textOnly", .bool(v?.textOnly ?? false))
+      o = o.setting("clipboardText", Output.pasteboard.string(forType: .string).map { .string($0) } ?? .null)
+      o = o.setting("notifications", .array(Notifier.posted.map { .string("\($0.0): \($0.1)") }))
+      o = o.setting("floating", .array(Floating.shared.items.map { item in
+        let f = Floating.topLeftRect(item.panel.frame)
+        var j = JSON.object([])
+        j = j.setting("kind", .string(item.kind == .pin ? "pin" : "thumb"))
+        j = j.setting("frame", .array([f.minX, f.minY, f.width, f.height].map { .number(Double($0)) }))
+        j = j.setting("zoom", .number(Double(item.zoom)))
+        j = j.setting("opacity", .number(Double(item.opacity)))
+        j = j.setting("image", .array([.number(Double(item.image.width)), .number(Double(item.image.height))]))
+        j = j.setting("shapes", .number(Double(item.doc?.shapes.count ?? 0)))
+        j = j.setting("historyId", item.doc?.historyId.map { .string($0) } ?? .null)
+        j = j.setting("labels", .array(item.kind == .thumb ? Floating.shared.thumbLabels(item).map { .string($0) } : []))
+        j = j.setting("visible", .bool(item.panel.isVisible))
+        if let s = item.panel.screen { j = j.setting("visibleFrame", .array([s.visibleFrame.maxX, Floating.primaryHeight - s.visibleFrame.minY].map { .number(Double($0)) })) }
+        return j
+      }))
       let pb = Output.pasteboard.data(forType: .png)
       o = o.setting("clipboardPngBytes", .number(Double(pb?.count ?? 0)))
+      if let pb, pb.count > 25 { o = o.setting("clipboardColorType", .number(Double(pb[25]))) }
       if let pb, let rep = NSBitmapImageRep(data: pb) {
         o = o.setting("clipboardSize", .array([.number(Double(rep.pixelsWide)), .number(Double(rep.pixelsHigh))]))
       }

@@ -26,6 +26,16 @@ if args[0] == "make-screen", args.count == 2 {
     c.setFill()
     NSRect(x: 0, y: CGFloat(i * h / 5), width: CGFloat(w), height: CGFloat(h / 5) + 1).fill()
   }
+  // Known text for the text-recognition checks: a white card at (100, 100)–(700, 260) points, top-left origin.
+  let k = s.backingScaleFactor
+  let card = NSRect(x: 100 * k, y: CGFloat(h) - 260 * k, width: 600 * k, height: 160 * k)
+  NSColor.white.setFill()
+  card.fill()
+  let font = NSFont.systemFont(ofSize: 36 * k, weight: .medium)
+  for (i, line) in ["Snapkit reads text", "Xin chào thế giới"].enumerated() {
+    NSAttributedString(string: line, attributes: [.font: font, .foregroundColor: NSColor.black])
+      .draw(at: NSPoint(x: 130 * k, y: CGFloat(h) - (130 + CGFloat(i) * 60) * k - font.ascender))
+  }
   try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: args[1]))
   exit(0)
 }

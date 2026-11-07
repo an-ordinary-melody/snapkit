@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       log("note: the Electron Snapkit is running too; both react to the same hotkeys")
     }
 
+    Floating.cleanTemp()
     store = SettingsStore(file: Paths.settingsFile)
     grabber = ScreenGrabber()
     pool = OverlayPool()
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       if s.hotkeys != prev.hotkeys { self?.registerHotkeys() }
     }
     makeStatusItem()
+    TextRecognition.warmUp()
     #if DEBUG
     TestHook.install(self)
     #endif
@@ -51,10 +53,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     return NSRunningApplication.runningApplications(withBundleIdentifier: id).contains { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
   }
 
-  private func registerHotkeys() {
+  /** Actions by hotkey name (HOTKEY_ACTIONS in src/main/index.ts). */
+  private var hotkeyActions: [(String, KeyPath<Settings.Hotkeys, String>, () -> Void)] {
+    [
+      ("capture", \.capture, { [weak self] in self?.capture.toggle() }),
+      ("lastArea", \.lastArea, { [weak self] in self?.capture.captureLastArea() }),
+      ("fullscreen", \.fullscreen, { [weak self] in self?.capture.captureFullScreen() }),
+      ("ocr", \.ocr, { [weak self] in self?.capture.toggle(textOnly: true) })
+    ] + extraHotkeys
+  }
+
+  /** Hotkeys for windows added in later phases (history, settings). */
+  var extraHotkeys: [(String, KeyPath<Settings.Hotkeys, String>, () -> Void)] = []
+
+  func registerHotkeys() {
     let h = store.current.hotkeys
-    if !Hotkeys.shared.set("capture", h.capture, action: { [weak self] in self?.capture.toggle() }) {
-      log("[hotkeys] the capture hotkey \(Accelerator.display(h.capture)) can't be used yet")
+    for (name, key, action) in hotkeyActions {
+      if !Hotkeys.shared.set(name, h[keyPath: key], action: action), name == "capture" {
+        log("[hotkeys] the capture hotkey \(Accelerator.display(h.capture)) can't be used yet")
+      }
     }
   }
 
@@ -78,11 +95,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   func menuNeedsUpdate(_ menu: NSMenu) {
     menu.removeAllItems()
     let s = store.current
-    let capture = NSMenuItem(title: "Capture Area", action: #selector(captureArea), keyEquivalent: "")
-    setKey(capture, s.hotkeys.capture)
-    menu.addItem(capture)
+    for (title, sel, key) in [("Capture Area", #selector(captureArea), s.hotkeys.capture), ("Capture Last Area", #selector(captureLast), s.hotkeys.lastArea),
+                              ("Capture Full Screen", #selector(captureFull), s.hotkeys.fullscreen), ("Capture Text (OCR)", #selector(captureText), s.hotkeys.ocr)] {
+      let item = NSMenuItem(title: title, action: sel, keyEquivalent: "")
+      setKey(item, key)
+      menu.addItem(item)
+    }
     menu.addItem(.separator())
+    for item in extraMenuItems() { menu.addItem(item) }
     menu.addItem(NSMenuItem(title: "Open Screenshots Folder", action: #selector(openFolder), keyEquivalent: ""))
+    menu.addItem(NSMenuItem(title: "Close All Pins", action: #selector(closePins), keyEquivalent: ""))
     menu.addItem(NSMenuItem(title: "Show Settings File", action: #selector(showSettingsFile), keyEquivalent: ""))
     menu.addItem(.separator())
     let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
@@ -115,6 +137,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Let the menu close first so it isn't in the screenshot.
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.toggle() }
   }
+
+  /** Menu items for windows added in later phases (History…, Record History, Settings…). */
+  var extraMenuItems: () -> [NSMenuItem] = { [] }
+
+  @objc private func captureLast() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.captureLastArea() } }
+  @objc private func captureFull() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.captureFullScreen() } }
+  @objc private func captureText() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.toggle(textOnly: true) } }
+  @objc private func closePins() { Floating.shared.closeAll() }
 
   @objc private func openFolder() {
     let folder = Output.saveFolder(store.current)

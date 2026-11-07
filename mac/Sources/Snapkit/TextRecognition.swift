@@ -1,0 +1,66 @@
+import AppKit
+import Vision
+
+/**
+ * Text recognition with Apple's Vision, in-process (Electron runs the same code as a helper,
+ * native/ocr-mac/main.swift). Lines come back top to bottom with boxes as fractions of the image,
+ * top-left origin, like OcrLine in src/shared/ipc.ts.
+ */
+enum TextRecognition {
+  struct Line: Equatable {
+    var text: String
+    var x, y, w, h: Double
+  }
+
+  /** Languages to read, most likely first (LANGUAGES in src/main/ocr/index.ts, in Vision's codes). */
+  static let languages = ["vi-VT", "en-US"]
+
+  /**
+   * Load Vision's text models ahead of time: the first recognition after a restart can take most of
+   * a minute while macOS prepares them, which would otherwise land on the first Capture text.
+   */
+  static func warmUp() {
+    let size = CGSize(width: 240, height: 60)
+    let img = NSImage(size: size, flipped: false) { r in
+      NSColor.white.setFill()
+      r.fill()
+      NSAttributedString(string: "Snapkit", attributes: [.font: NSFont.systemFont(ofSize: 32), .foregroundColor: NSColor.black]).draw(at: CGPoint(x: 10, y: 10))
+      return true
+    }
+    guard let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3) {
+      recognize(cg) { _, ms in log("[ocr] warmed up in \(ms) ms") }
+    }
+  }
+
+  /** Recognize on a background queue; `done` runs on the main thread with the lines (or an error) and the time taken. */
+  static func recognize(_ image: CGImage, done: @escaping (Result<[Line], Error>, Int) -> Void) {
+    let t0 = Date()
+    DispatchQueue.global(qos: .userInitiated).async {
+      let request = VNRecognizeTextRequest()
+      request.recognitionLevel = .accurate
+      request.usesLanguageCorrection = true
+      // Keep the languages this Mac can read.
+      let supported = (try? request.supportedRecognitionLanguages()) ?? ["en-US"]
+      let langs = languages.filter { supported.contains($0) }
+      if !langs.isEmpty { request.recognitionLanguages = langs }
+      let result: Result<[Line], Error>
+      do {
+        try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+        let lines = (request.results ?? []).compactMap { o -> Line? in
+          guard let best = o.topCandidates(1).first, !best.string.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+          let b = o.boundingBox // bottom-left origin
+          return Line(text: best.string, x: b.minX, y: 1 - b.maxY, w: b.width, h: b.height)
+        }
+        result = .success(lines)
+      } catch {
+        result = .failure(error)
+      }
+      let elapsed = ms(t0)
+      DispatchQueue.main.async {
+        if case let .success(l) = result { log("[ocr] vision: \(l.count) line(s) in \(elapsed) ms") }
+        done(result, elapsed)
+      }
+    }
+  }
+}
