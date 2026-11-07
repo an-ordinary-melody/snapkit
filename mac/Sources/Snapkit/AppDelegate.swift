@@ -1,7 +1,9 @@
 import AppKit
 import SnapkitCore
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, HistoryActions {
+  private(set) var history: HistoryStore!
+  private(set) var historyPanel: HistoryPanel!
   private(set) var store: SettingsStore!
   private(set) var capture: CaptureController!
   private var pool: OverlayPool!
@@ -27,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     pool = OverlayPool()
     capture = CaptureController(store: store, pool: pool, grabber: grabber)
     capture.onModeChange = { on in Hotkeys.shared.captureMode(on) }
+    setUpHistory()
     pool.rebuild()
     grabber.refresh()
     NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -46,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   func applicationWillTerminate(_ notification: Notification) {
     store?.flush()
+    history?.saveIndex()
   }
 
   private func otherInstanceRunning() -> Bool {
@@ -63,8 +67,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     ] + extraHotkeys
   }
 
-  /** Hotkeys for windows added in later phases (history, settings). */
+  /** Hotkeys for windows added in later phases (settings). */
   var extraHotkeys: [(String, KeyPath<Settings.Hotkeys, String>, () -> Void)] = []
+
+  // MARK: - History
+
+  private func setUpHistory() {
+    history = HistoryStore(dir: Paths.dataDir.appendingPathComponent("history", isDirectory: true))
+    history.limits = { [weak self] in
+      let h = self?.store.current.history ?? SettingsRules.defaults.history
+      return (h.maxCount, h.maxMB, h.maxAgeDays, h.paused)
+    }
+    history.load()
+    // The age limit also applies while Snapkit stays open for days.
+    Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in self?.history.prune() }
+    store.onChange { [weak self] s, prev in
+      var a = s.history, b = prev.history
+      (a.panel, b.panel) = (b.panel, b.panel)
+      if a != b { self?.history.prune() } // new limits apply now
+    }
+    historyPanel = HistoryPanel(store: history, settings: store)
+    historyPanel.actions = self
+    capture.onOutput = { [weak self] r in self?.record(r) }
+    extraHotkeys.append(("history", \.history, { [weak self] in self?.historyPanel.toggle() }))
+  }
+
+  /** Keep an output in history (after the copy, so it never delays it). */
+  private func record(_ r: OutputRecord) -> String? {
+    let w = r.final.width, h = r.final.height
+    let k = min(1, 320 / CGFloat(w), 240 / CGFloat(h))
+    guard let small = Output.resized(r.final, max(1, Int((CGFloat(w) * k).rounded())), max(1, Int((CGFloat(h) * k).rounded()))),
+          let jpeg = Output.jpeg(small, quality: 0.8) else { return nil }
+    let t0 = Date()
+    let id = history.add(finalPNG: r.finalPNG, width: w, height: h, doc: r.doc, thumbJPEG: jpeg)
+    if let id { log("[history] \(r.doc.historyId == nil ? "added" : "updated") \(id) in \(ms(t0))ms") }
+    return id
+  }
+
+  func historyCopy(_ png: Data, scale: CGFloat) { capture.floatingCopy(png, scale: scale) }
+  func historySave(_ png: Data, scale: CGFloat) { capture.floatingSave(png, scale: scale) }
+  func historyCopyText(_ png: Data, done: @escaping (Int) -> Void) { capture.floatingCopyText(png, done: done) }
+  func historyEdit(_ doc: CaptureDoc) { capture.edit(doc) { _, _, _ in } }
+  func historyOpenSettings() { openSettings?() }
+  /** Pin centred on the screen with the pointer. */
+  func historyPin(_ png: Data, image: CGImage) {
+    let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.screens[0]
+    let area = Floating.topLeftRect(screen.visibleFrame)
+    let w = CGFloat(image.width) / screen.backingScaleFactor, h = CGFloat(image.height) / screen.backingScaleFactor
+    Floating.shared.pin(png: png, image: image, at: CGRect(x: (area.midX - w / 2).rounded(), y: (area.midY - h / 2).rounded(), width: w, height: h))
+  }
+
+  /** Opens the settings window (set when it exists). */
+  var openSettings: (() -> Void)?
 
   func registerHotkeys() {
     let h = store.current.hotkeys
@@ -101,6 +155,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       setKey(item, key)
       menu.addItem(item)
     }
+    menu.addItem(.separator())
+    let hist = NSMenuItem(title: "History…", action: #selector(showHistory), keyEquivalent: "")
+    setKey(hist, s.hotkeys.history)
+    menu.addItem(hist)
+    // Same as the History window's switch: checked = recording.
+    let rec = NSMenuItem(title: "Record History", action: #selector(toggleRecording), keyEquivalent: "")
+    rec.state = s.history.paused ? .off : .on
+    menu.addItem(rec)
     menu.addItem(.separator())
     for item in extraMenuItems() { menu.addItem(item) }
     menu.addItem(NSMenuItem(title: "Open Screenshots Folder", action: #selector(openFolder), keyEquivalent: ""))
@@ -145,6 +207,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   @objc private func captureFull() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.captureFullScreen() } }
   @objc private func captureText() { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { self.capture.toggle(textOnly: true) } }
   @objc private func closePins() { Floating.shared.closeAll() }
+  @objc private func showHistory() { DispatchQueue.main.async { self.historyPanel.toggle() } }
+  @objc private func toggleRecording() { store.update(.object([("history", .object([("paused", .bool(!store.current.history.paused))]))])) }
 
   @objc private func openFolder() {
     let folder = Output.saveFolder(store.current)

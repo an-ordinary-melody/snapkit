@@ -87,6 +87,13 @@ enum Output {
     return compressed(img, png: png, scale: scale, preset: preset ?? c.preset)
   }
 
+  static func jpeg(_ image: CGImage, quality: Double) -> Data? {
+    let data = NSMutableData()
+    guard let dest = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+    CGImageDestinationAddImage(dest, image, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+    return CGImageDestinationFinalize(dest) ? data as Data : nil
+  }
+
   /** The exact PNG bytes on the clipboard; macOS converts for apps that ask for another type. */
   static func copy(_ png: Data) {
     let pb = pasteboard

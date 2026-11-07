@@ -347,6 +347,65 @@ describe("compress (UPNG port) and capture documents") {
   expect(d2?.beautify["presetId"], .string("ocean"), "reads an Electron doc.json, background kept")
 }
 
+describe("beautify layout (layout.test.ts)") {
+  let l = BeautifyGeometry.layout(w: 800, h: 600, padding: 48, radius: 12, shadow: 0.3, frame: nil, scale: 2)
+  expect([l.width, l.height, l.x, l.y, l.radius], [992, 792, 96, 96, 24], "adds padding on every side, in image pixels")
+  let b = BeautifyGeometry.layout(w: 40, h: 20, padding: 10, radius: 100, shadow: 2, frame: nil, scale: 1)
+  expectTrue(b.radius == 10 && b.shadowAlpha == 1 && b.shadowBlur <= 8, "keeps corners and shadow within bounds")
+  let z = BeautifyGeometry.layout(w: 100, h: 100, padding: 0, radius: 8, shadow: 0, frame: nil, scale: 2)
+  expect([z.width, z.height, z.x, z.shadowBlur], [100, 100, 0, 0], "no shadow or padding when they are zero")
+  let r = BeautifyGeometry.layout(w: 100, h: 100, padding: 10, radius: 0, shadow: 0, frame: .ratio(w: 16, h: 9), scale: 1)
+  expect([r.height, r.width, r.x, r.y], [120, 213, jsRound((213 - 100) / 2), 10], "widens a tall capture to 16:9, centred")
+  let sq = BeautifyGeometry.layout(w: 300, h: 100, padding: 10, radius: 0, shadow: 0, frame: .ratio(w: 1, h: 1), scale: 1)
+  expect([sq.width, sq.height, sq.y], [320, 320, 110], "heightens a wide capture to 1:1")
+  let big = BeautifyGeometry.layout(w: 2000, h: 1000, padding: 10, radius: 0, shadow: 0, frame: .size(w: 1020, h: 1020), scale: 1)
+  expect([big.width, big.height, big.drawW, big.drawH], [1020, 1020, 1000, 500], "fits a large capture into an exact size")
+  let small = BeautifyGeometry.layout(w: 100, h: 50, padding: 10, radius: 0, shadow: 0, frame: .size(w: 400, h: 300), scale: 1)
+  expect([small.drawW, small.drawH, small.x, small.y], [100, 50, 150, 125], "never scaling up")
+  let g0 = BeautifyGeometry.gradientLine(w: 200, h: 100, angle: 0)
+  expect([g0.0, g0.1, g0.2, g0.3].map { jsRound($0) }, [0, 50, 200, 50], "gradient runs left to right at 0°")
+  let g90 = BeautifyGeometry.gradientLine(w: 200, h: 100, angle: 90)
+  expect([g90.0, g90.1, g90.2, g90.3].map { jsRound($0) }, [100, 0, 100, 100], "and top to bottom at 90°")
+  let electron = ##"{"on":true,"presetId":"ocean","padding":20,"radius":17,"shadow":0.05,"frame":{"kind":"ratio","w":16,"h":9},"background":{"type":"solid","color":"#18181b"}}"##
+  let st = try JSONDecoder().decode(BeautifyState.self, from: Data(electron.utf8))
+  expect(st.frame, .ratio(w: 16, h: 9), "reads Electron's background state")
+  expect(BeautifyState.initial(SettingsRules.defaults, last: nil).presetId, "ocean", "default preset")
+}
+
+describe("history pruning (history.test.ts)") {
+  let MB = 1024 * 1024
+  let day = 86_400_000.0
+  let now = 100 * day
+  func entry(_ id: String, _ age: Double, _ bytes: Int = 1024 * 1024, _ starred: Bool = false) -> HistoryEntry {
+    HistoryEntry(id: id, createdAt: now - age, updatedAt: now - age, width: 10, height: 10, bytes: bytes, starred: starred)
+  }
+  expect(HistoryRules.toPrune([entry("a", 1), entry("b", 2), entry("c", 3, MB, true), entry("d", 4), entry("e", 5)], maxCount: 2, maxMB: 999, maxAgeDays: 0, now: now), ["d", "e"], "keeps the newest N, never starred ones")
+  expect(HistoryRules.toPrune([entry("a", 1, 3 * MB), entry("b", 2, 3 * MB), entry("c", 3, 3 * MB)], maxCount: 10, maxMB: 6, maxAgeDays: 0, now: now), ["c"], "deletes the oldest until under the size limit")
+  expect(HistoryRules.toPrune([entry("a", day), entry("b", 40 * day), entry("c", 50 * day, MB, true)], maxCount: 10, maxMB: 999, maxAgeDays: 30, now: now), ["b"], "deletes entries older than the age limit")
+  expect(HistoryRules.toPrune((0..<35).map { entry("e\($0)", Double($0 + 1), 1) }, maxCount: 10_000, maxMB: 999_999, maxAgeDays: 0, now: now).count, 5, "the hard ceiling applies")
+  expect(HistoryRules.toPrune([entry("a", 1), entry("b", 2, MB, true)], maxCount: 0, maxMB: 999, maxAgeDays: 0, now: now), ["a"], "a count of 0 keeps only starred entries")
+
+  // The store on disk, with Electron's file layout.
+  let dir = FileManager.default.temporaryDirectory.appendingPathComponent("snapkit-history-\(UUID().uuidString)")
+  defer { try? FileManager.default.removeItem(at: dir) }
+  let store = HistoryStore(dir: dir)
+  store.load()
+  let doc = CaptureDoc(png: Data([1, 2, 3]), width: 4, height: 3, scale: 2, shapes: [])
+  let id = store.add(finalPNG: Data([9, 9]), width: 4, height: 3, doc: doc, thumbJPEG: Data([7]))
+  expectTrue(id != nil && FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(id!)/final.png").path), "an entry is a folder with final.png")
+  for f in ["source.png", "doc.json", "thumb.jpg"] { expectTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent("\(id!)/\(f)").path), "and \(f)") }
+  var again = doc
+  again.historyId = id
+  _ = store.add(finalPNG: Data([8]), width: 4, height: 3, doc: again, thumbJPEG: Data([7]))
+  expect(store.entries.count, 1, "re-editing updates the same entry")
+  store.saveIndex()
+  try FileManager.default.createDirectory(at: dir.appendingPathComponent("junk.tmp"), withIntermediateDirectories: true)
+  let reloaded = HistoryStore(dir: dir)
+  reloaded.load()
+  expect(reloaded.entries.map(\.id), [id!], "index.json reloads; half-written folders are removed")
+  expect(reloaded.doc(id!)?.historyId, id, "the document reopens with its id")
+}
+
 // MARK: - Shared fixtures (fixtures/*.json, written by the Electron side with `npm run fixtures`)
 
 describe("fixtures") {

@@ -42,6 +42,15 @@ struct Theme {
   var strongBackground: NSColor = .black
   var glyphFill: NSColor = .white
   var glyphLine: NSColor = .black
+  /** appearance.accent when set. */
+  var accentOverride: String?
+  /** Background editor: card, backdrop, checkerboard, dimmer text. */
+  var editorCard: NSColor = .black
+  var editorBackdrop: NSColor = .black
+  var checkA: NSColor = .black
+  var checkB: NSColor = .black
+  var foregroundDim: NSColor = .gray
+  var foregroundFaint: NSColor = .gray
 
   static func from(_ a: Settings.Appearance) -> Theme {
     let systemDark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
@@ -73,6 +82,12 @@ struct Theme {
       t.strongBackground = NSColor(hex: gray ? "#3a3a3e" : "#1e1e21")
       t.glyphFill = NSColor(hex: "#111111")
       t.glyphLine = .white
+      t.editorCard = a.glass ? .rgba(30, 30, 34, 0.82) : NSColor(hex: gray ? "#3a3a3e" : "#1e1e21")
+      t.editorBackdrop = .rgba(0, 0, 0, 0.55)
+      t.checkA = NSColor(hex: "#26262a")
+      t.checkB = NSColor(hex: "#2c2c31")
+      t.foregroundDim = NSColor(hex: "#a1a1aa")
+      t.foregroundFaint = NSColor(hex: "#8b8b93")
     } else {
       t = Theme(
         dark: false,
@@ -98,12 +113,19 @@ struct Theme {
       t.strongBackground = NSColor(hex: "#fbfbfc")
       t.glyphFill = .white
       t.glyphLine = NSColor(hex: "#1c1c1e")
+      t.editorCard = a.glass ? .rgba(246, 246, 248, 0.78) : NSColor(hex: "#f6f6f8")
+      t.editorBackdrop = .rgba(0, 0, 0, 0.35)
+      t.checkA = NSColor(hex: "#f1f1f3")
+      t.checkB = NSColor(hex: "#e7e7ea")
+      t.foregroundDim = NSColor(hex: "#5d5d66")
+      t.foregroundFaint = NSColor(hex: "#8a8a93")
     }
     if a.glass {
       t.radius = 16
       t.buttonRadius = 8
     }
     if let accent = HexColor.parse(a.accent) {
+      t.accentOverride = accent
       t.activeBackground = NSColor(hex: accent)
       t.activeForeground = NSColor(hex: HexColor.readableOn(accent))
     }

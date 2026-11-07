@@ -12,6 +12,10 @@ protocol OverlayViewDelegate: AnyObject {
   func overlayAction(_ view: OverlayView, _ id: String)
   /** Copy recognized text, then close capture mode after `closeAfter` seconds (so a message can show first). */
   func overlayCopyText(_ view: OverlayView, _ text: String, closeAfter: Double)
+  /** Leaving the editor of a stored capture (preview or history): keep the edits there. */
+  func overlayEditDone(_ view: OverlayView)
+  /** "Remember the last background used": this look becomes the default preset's. */
+  func overlayRememberBackground(_ view: OverlayView, _ state: BeautifyState, _ bg: BeautifyBackground)
 }
 
 /**
@@ -26,7 +30,24 @@ final class OverlayView: NSView {
   private(set) var settings = SettingsRules.defaults
   private(set) var image: CGImage?
   /** Image pixels per point. */
-  var imageScale: CGFloat { image.map { CGFloat($0.width) / max(1, bounds.width) } ?? (window?.backingScaleFactor ?? 2) }
+  var imageScale: CGFloat { scaleOverride ?? image.map { CGFloat($0.width) / max(1, bounds.width) } ?? (window?.backingScaleFactor ?? 2) }
+  /** Editing a stored capture: its own image px per point (the crop isn't the screen). */
+  private var scaleOverride: CGFloat?
+
+  /** Background for this capture (starts from the settings; the toolbar button and the editor change it). */
+  private(set) var beautify = BeautifyState(on: false, presetId: "", padding: 0, radius: 0, shadow: 0)
+  private static var lastBeautify: BeautifyState?
+  private static var beautifyBasis: Settings.Beautify?
+  /** Compress for this capture (the editor's switch; starts from the setting). */
+  private(set) var compressOn = false
+  private(set) var compressPreset = "standard"
+  /** Floating preview after copy for this capture (the pin button; the controller owns it). */
+  var floating = false { didSet { if floating != oldValue { refreshToolbars() } } }
+  private(set) var editorOpen = false
+  /** Editing a floating preview or a history entry: the editor is all there is. */
+  private(set) var editMode = false
+  private var editor: BackgroundEditorView?
+  private var dockBar: ToolbarView!
 
   private(set) var sel: LRect?
   private(set) var history = ShapeHistory()
@@ -50,9 +71,12 @@ final class OverlayView: NSView {
   /** A short message over the screen (e.g. "Copied 3 lines of text"). */
   private(set) var note: String?
   private var noteWork: DispatchWorkItem?
-  /** Toolbar state other parts of capture mode set (Background on, floating preview on). */
-  var lit: Set<String> = [] { didSet { if lit != oldValue { refreshToolbars() } } }
-  var tips: [String: (text: String, sub: String?)] = [:]
+  /** Buttons showing an "on" dot (and highlighted): Background on, floating preview on. */
+  var lit: Set<String> { Set([beautify.on ? "beautify" : nil, floating ? "pin" : nil].compactMap { $0 }) }
+  var tips: [String: (text: String, sub: String?)] {
+    ["pin": (floating ? "Floating preview: on" : "Floating preview: off", "Keep the result in a corner after copying"),
+     "beautify": (beautify.on ? "Background: on" : "Background: off", "Automatically add background")]
+  }
 
   /** Style and tool variant picks survive between captures until Snapkit quits (Overlay.tsx lastStyle / lastVariants). */
   private static var lastStyle: Style?
@@ -104,7 +128,8 @@ final class OverlayView: NSView {
     actionsBar = ToolbarView(vertical: false, theme: theme)
     toolsBar = ToolbarView(vertical: true, theme: theme)
     styleBar = ToolbarView(vertical: false, button: 28, theme: theme)
-    for bar in [actionsBar!, toolsBar!, styleBar!] {
+    dockBar = ToolbarView(vertical: false, theme: theme)
+    for bar in [actionsBar!, toolsBar!, styleBar!, dockBar!] {
       bar.isHidden = true
       bar.onPress = { [weak self, weak bar] id in self?.press(id, in: bar) }
       bar.onRightClick = { [weak self, weak bar] id in self?.rightClick(id, in: bar) }
@@ -147,6 +172,17 @@ final class OverlayView: NSView {
       OverlayView.lastVariants = settings.toolVariants
     }
     OverlayView.lastStyleBasis = settings
+    if OverlayView.beautifyBasis != settings.beautify {
+      OverlayView.beautifyBasis = settings.beautify
+      OverlayView.lastBeautify = nil
+    }
+    beautify = BeautifyState.initial(settings, last: OverlayView.lastBeautify)
+    compressOn = settings.compress.enabled
+    compressPreset = settings.compress.preset
+    floating = settings.pin.afterCopy
+    scaleOverride = nil
+    editMode = false
+    closeEditorView()
     style = OverlayView.lastStyle!
     variants = OverlayView.lastVariants!
     image = nil
@@ -158,12 +194,10 @@ final class OverlayView: NSView {
     tool = nil
     selectedId = nil
     guides = []
-    lit = []
-    tips = [:]
     finishEditing(commit: false)
     closePopovers()
     theme = Theme.from(settings.appearance)
-    for bar in [actionsBar!, toolsBar!, styleBar!] { bar.theme = theme }
+    for bar in [actionsBar!, toolsBar!, styleBar!, dockBar!] { bar.theme = theme }
     refreshToolbars()
     chrome.needsDisplay = true
     window?.invalidateCursorRects(for: self)
@@ -179,8 +213,26 @@ final class OverlayView: NSView {
     chrome.needsDisplay = true
   }
 
+  /**
+   * Reopen a stored capture (floating preview or history) straight into the background editor: the
+   * crop is the whole "screen", selected.
+   */
+  func armEdit(session: Int, settings: Settings, doc: CaptureDoc, crop: CGImage) {
+    arm(session: session, settings: settings)
+    scaleOverride = CGFloat(doc.scale)
+    editMode = true
+    floating = true
+    if let b = try? doc.beautify.decode(BeautifyState.self) { beautify = b }
+    setImage(crop)
+    sel = LRect(x: 0, y: 0, w: Double(doc.width) / doc.scale, h: Double(doc.height) / doc.scale)
+    history = ShapeHistory(present: doc.shapes)
+    openEditor()
+  }
+
   /** Capture mode closed: drop everything so the next show can't flash this one. */
   func clear() {
+    closeEditorView()
+    editMode = false
     clearOcr()
     setNote(nil)
     finishEditing(commit: false)
@@ -229,8 +281,15 @@ final class OverlayView: NSView {
     guard let image, let sel, sel.w >= 1, sel.h >= 1 else { return nil }
     var env = renderEnv
     env.liveBlur = nil
-    return Output.render(image: image, sel: sel, scale: imageScale, shapes: shapes, env: env)
+    guard let out = Output.render(image: image, sel: sel, scale: imageScale, shapes: shapes, env: env) else { return nil }
+    guard beautify.on, let bg = beautify.background(in: settings.beautify.presets) else { return out }
+    // "Remember the last background used": this one becomes the default.
+    if settings.beautify.rememberLast { delegate?.overlayRememberBackground(self, beautify, bg) }
+    return BeautifyRenderer.draw(out, bg: bg, state: beautify, scale: imageScale)
   }
+
+  /** The background state as stored in a capture document. */
+  var beautifyJSON: JSON { (try? JSON.encode(beautify)) ?? .null }
 
   /** The plain screenshot crop (no drawings), for text recognition and re-editing. */
   func renderPlain() -> CGImage? {
@@ -300,6 +359,11 @@ final class OverlayView: NSView {
   }
 
   func refreshToolbars() {
+    if editorOpen {
+      refreshDock()
+      return
+    }
+    dockBar.isHidden = true
     let show = showToolbars
     actionsBar.isHidden = !show
     toolsBar.isHidden = !show
@@ -314,17 +378,7 @@ final class OverlayView: NSView {
     }
     actionsBar.active = lit
     let tools = visible(.tool)
-    toolsBar.items = tools.map { f in
-      if f.id == "color" {
-        let s = shownStyle
-        let c = styleTarget == "text" ? s.textColor : styleTarget == "highlighter" ? s.highlighterColor : styleTarget == "step" ? s.stepColor : s.color
-        return .swatch(id: f.id, color: c, tip: f.label, round: false)
-      }
-      let variant = f.variants.first { $0.id == variants[f.id] } ?? f.variants.first
-      let key = f.drawing ? (settings.toolKeys[f.id]?.uppercased() ?? f.hint) : f.hint
-      let sub = [f.tipNote, f.variants.isEmpty ? nil : (f.variantsHint ?? "Right-click for more options")].compactMap { $0 }.joined(separator: " · ")
-      return .button(id: f.id, icon: variant?.id ?? f.id, tip: variant?.label ?? f.label, hint: key, sub: sub.isEmpty ? nil : sub, more: !f.variants.isEmpty)
-    }
+    toolsBar.items = toolItems(tools)
     toolsBar.isHidden = tools.isEmpty
     toolsBar.active = Set([tool].compactMap { $0 })
     toolsBar.disabled = Set([history.canUndo ? nil : "undo", history.canRedo ? nil : "redo"].compactMap { $0 })
@@ -341,6 +395,45 @@ final class OverlayView: NSView {
       styleBar.setFrameOrigin(p)
     }
     if let picker { placePicker(picker.view, kind: picker.kind) }
+  }
+
+  private func toolItems(_ tools: [Feature]) -> [ToolbarView.Item] {
+    tools.map { f in
+      if f.id == "color" {
+        let s = shownStyle
+        let c = styleTarget == "text" ? s.textColor : styleTarget == "highlighter" ? s.highlighterColor : styleTarget == "step" ? s.stepColor : s.color
+        return .swatch(id: f.id, color: c, tip: f.label, round: false)
+      }
+      let variant = f.variants.first { $0.id == variants[f.id] } ?? f.variants.first
+      let key = f.drawing ? (settings.toolKeys[f.id]?.uppercased() ?? f.hint) : f.hint
+      let sub = [f.tipNote, f.variants.isEmpty ? nil : (f.variantsHint ?? "Right-click for more options")].compactMap { $0 }.joined(separator: " · ")
+      return .button(id: f.id, icon: variant?.id ?? f.id, tip: variant?.label ?? f.label, hint: key, sub: sub.isEmpty ? nil : sub, more: !f.variants.isEmpty)
+    }
+  }
+
+  /** In the editor: the drawing tools in a row with Copy, and the style bar under it, docked above the preview. */
+  private func refreshDock() {
+    guard let editor else { return }
+    actionsBar.isHidden = true
+    toolsBar.isHidden = true
+    var items = toolItems(visible(.tool))
+    if visible(.action).contains(where: { $0.id == "copy" }) {
+      items += [.separator, .button(id: "copy", icon: "copy", tip: "Copy", hint: "⌘C")]
+    }
+    dockBar.items = items
+    dockBar.active = Set([tool].compactMap { $0 })
+    dockBar.disabled = Set([history.canUndo ? nil : "undo", history.canRedo ? nil : "redo"].compactMap { $0 })
+    dockBar.isHidden = false
+    buildStyleBar()
+    let stage = editor.stage
+    // Above the editor (and in front of it).
+    for bar in [dockBar!, styleBar!] where bar.superview === self && subviews.last !== bar { addSubview(bar) }
+    dockBar.setFrameOrigin(CGPoint(x: (stage.midX - dockBar.frame.width / 2).rounded(), y: stage.minY + 14))
+    styleBar.setFrameOrigin(CGPoint(x: (stage.midX - styleBar.frame.width / 2).rounded(), y: dockBar.frame.maxY + 8))
+    editor.dockHeight = dockBar.frame.height + (styleBar.isHidden ? 0 : styleBar.frame.height + 8)
+    if let picker { placePicker(picker.view, kind: picker.kind); addSubview(picker.view) }
+    if let t = textEditor { addSubview(t) }
+    editor.needsDisplay = true
   }
 
   private func buildStyleBar() {
@@ -500,6 +593,15 @@ final class OverlayView: NSView {
       if id == "undo" { history.undo() } else { history.redo() }
     case "ocr":
       readText()
+    case "beautify":
+      beautify.on.toggle()
+      OverlayView.lastBeautify = beautify
+    case "beautifyEdit":
+      finishEditing(commit: true)
+      selectedId = nil
+      beautify.on = true
+      OverlayView.lastBeautify = beautify
+      openEditor()
     case "color":
       // The colour button opens the style bar's colour picker (when there's something to colour).
       if let t = styleTarget, StyleTargets.colored.contains(t), t != "highlighter" { openPicker("custom") }
@@ -520,12 +622,12 @@ final class OverlayView: NSView {
   // MARK: Popovers and tooltips
 
   private func rightClick(_ id: String, in bar: ToolbarView?) {
-    guard bar === toolsBar, let f = Features.byId(id), !f.variants.isEmpty, let r = toolsBar.frame(of: id) else { return }
+    guard let bar, bar === toolsBar || bar === dockBar, let f = Features.byId(id), !f.variants.isEmpty, let r = bar.frame(of: id) else { return }
     closePopovers()
     let menu = VariantMenuView(variants: f.variants, current: variants[id] ?? f.variants[0].id, theme: theme)
     menu.onPick = { [weak self] v in self?.pickVariant(id, v) }
-    let anchor = toolsBar.convert(r, to: self)
-    menu.setFrameOrigin(popoverOrigin(anchor: anchor, vertical: true, size: menu.frame.size, screen: bounds.size))
+    let anchor = bar.convert(r, to: self)
+    menu.setFrameOrigin(popoverOrigin(anchor: anchor, vertical: bar.vertical, size: menu.frame.size, screen: bounds.size))
     addSubview(menu)
     variantMenu = (menu, id)
   }
@@ -663,9 +765,12 @@ final class OverlayView: NSView {
     }
   }
 
-  override func mouseDown(with e: NSEvent) {
+  override func mouseDown(with e: NSEvent) { pointerDown(point(e), e) }
+  override func mouseDragged(with e: NSEvent) { pointerDragged(point(e), e) }
+  override func mouseUp(with e: NSEvent) { pointerUp(point(e), e) }
+
+  private func pointerDown(_ p: CGPoint, _ e: NSEvent) {
     delegate?.overlayActivity(self)
-    let p = point(e)
     guard image != nil else { return }
     if hasPopover {
       closePopovers()
@@ -691,6 +796,13 @@ final class OverlayView: NSView {
     }
     if ocr != nil { clearOcr() }
     let nearSelected = selectedShape.map { frameBox($0).insetBy(dx: -8, dy: -8).contains(p) } ?? false
+    if editorOpen {
+      // In the editor the screenshot is all there is: drawings only, the capture area stays.
+      guard let sel, sel.contains(p) || nearSelected else {
+        selectedId = nil
+        return
+      }
+    }
     if let sel, sel.contains(p) || nearSelected {
       // The selected shape's own handles, then its frame.
       if let s = selectedShape {
@@ -729,6 +841,7 @@ final class OverlayView: NSView {
       }
     }
     selectedId = nil
+    if editorOpen { return }
     if let sel, let h = selectionHandle(at: p) {
       drag = .resize(origin: p, start: sel, handle: h)
     } else if let sel, !sel.contains(p), !shapes.isEmpty {
@@ -744,9 +857,8 @@ final class OverlayView: NSView {
     }
   }
 
-  override func mouseDragged(with e: NSEvent) {
+  private func pointerDragged(_ p: CGPoint, _ e: NSEvent) {
     delegate?.overlayActivity(self)
-    let p = point(e)
     let shift = e.modifierFlags.contains(.shift)
     switch drag {
     case let .create(origin): sel = OverlayLayout.rectFromPoints(origin, p, screen: screenSize)
@@ -793,7 +905,7 @@ final class OverlayView: NSView {
     chrome.needsDisplay = true
   }
 
-  override func mouseUp(with e: NSEvent) {
+  private func pointerUp(_ p: CGPoint, _ e: NSEvent) {
     defer {
       drag = nil
       guides = []
@@ -927,6 +1039,7 @@ final class OverlayView: NSView {
   fileprivate func textChanged(_ t: Shape.Text) {
     editing = t
     chrome.needsDisplay = true
+    editor?.needsDisplay = true
   }
 
   /** Dragging the frame around the text box while typing: snaps like any shape (⌘: free). */
@@ -948,6 +1061,7 @@ final class OverlayView: NSView {
     t.y = o.y
     editing = t
     chrome.needsDisplay = true
+    editor?.needsDisplay = true
     return o
   }
 
@@ -986,6 +1100,15 @@ final class OverlayView: NSView {
     let key = e.charactersIgnoringModifiers?.lowercased() ?? ""
     let cmd = mods.contains(.command) || mods.contains(.control)
     switch e.keyCode {
+    case 49 where editorOpen: // Space: the hand, to pan the zoomed preview
+      editor?.setHand(true)
+      return
+    case 53 where editorOpen: // Esc in the editor: a picker, a selected shape, then the editor itself; never the capture.
+      if editor?.pickerOpen == true { editor?.closePicker() }
+      else if hasPopover { closePopovers(); refreshToolbars() }
+      else if selectedId != nil { select(nil) }
+      else { closeEditor() }
+      return
     case 53: // Esc steps back one level: a menu or picker, the text found, a selected shape, then capture mode.
       if ocrPanel != nil || ocr != nil, !textOnly {
         clearOcr()
@@ -1023,6 +1146,10 @@ final class OverlayView: NSView {
       return
     default: break
     }
+    if editorOpen, cmd, ["0", "=", "+", "-"].contains(key) {
+      if key == "0" { editor?.zoomTo(1) } else { editor?.zoomTo((editor?.zoomLevel ?? 1) * (key == "-" ? 0.8 : 1.25)) }
+      return
+    }
     if cmd && key == "z" { run(mods.contains(.shift) ? "redo" : "undo"); return }
     if cmd && key == "y" { run("redo"); return }
     if cmd && key == "c" { delegate?.overlayCopy(self); return }
@@ -1032,6 +1159,10 @@ final class OverlayView: NSView {
       return
     }
     if !cmd && !mods.contains(.option), sel != nil, let id = toolForKey(key) { run(id); return }
+  }
+
+  override func keyUp(with e: NSEvent) {
+    if e.keyCode == 49 { editor?.setHand(false) }
   }
 
   /** Letter → drawing tool, for the tools switched on (custom letters from Settings → Shortcuts first). */
@@ -1044,6 +1175,12 @@ final class OverlayView: NSView {
 
   fileprivate func paint(_ ctx: CGContext) {
     let s = settings.capture
+    if editorOpen {
+      // The editor's backdrop goes over the dimmed screen.
+      ctx.setFillColor(NSColor(hex: s.dimColor, alpha: s.dimOpacity).cgColor)
+      ctx.fill(bounds)
+      return
+    }
     ctx.setFillColor(NSColor(hex: s.dimColor, alpha: s.dimOpacity).cgColor)
     if let sel, sel.w > 0 || sel.h > 0 {
       let path = CGMutablePath()
@@ -1226,6 +1363,59 @@ final class OverlayView: NSView {
     if let note { pill(note, at: CGPoint(x: bounds.midX, y: bounds.maxY - 48 - 31), centered: true, ctx: ctx) }
   }
 
+  // MARK: - Background editor
+
+  func openEditor() {
+    guard editor == nil, sel != nil else { return }
+    closePopovers()
+    let ed = BackgroundEditorView(owner: self, theme: theme)
+    ed.frame = bounds
+    ed.autoresizingMask = [.width, .height]
+    addSubview(ed)
+    editor = ed
+    editorOpen = true
+    chrome.needsDisplay = true
+    ed.refresh()
+    refreshToolbars()
+    window?.makeFirstResponder(self)
+  }
+
+  /** Done / close / Esc: back to capture mode, or (editing a stored capture) keep the edits and finish. */
+  func closeEditor() {
+    finishEditing(commit: true)
+    if editMode {
+      delegate?.overlayEditDone(self)
+      return
+    }
+    closeEditorView()
+    refreshToolbars()
+    chrome.needsDisplay = true
+  }
+
+  private func closeEditorView() {
+    guard let ed = editor else { return }
+    ed.closePicker()
+    ed.removeFromSuperview()
+    editor = nil
+    editorOpen = false
+    dockBar.isHidden = true
+  }
+
+  /** The preview moved (zoom, pan): the text box and docked bars follow. */
+  func editorMoved() {
+    if let e = editing { textEditor?.update(e) }
+  }
+
+  /** Selection coordinates → this view, and points per selection point (the editor previews at another size). */
+  fileprivate var viewTransform: (origin: CGPoint, k: CGFloat) {
+    guard let editor, let sel else { return (.zero, 1) }
+    let t = editor.transform
+    return (CGPoint(x: t.origin.x - sel.x * t.k, y: t.origin.y - sel.y * t.k), t.k)
+  }
+
+  /** Test hooks. */
+  var editorView: BackgroundEditorView? { editor }
+
   /** The selected shape's frame and handles, line end points, and snap guides (AnnotationLayer's UI layer). */
   private func paintShapeUI(_ ctx: CGContext) {
     let blue = NSColor(hex: "#3b82f6").cgColor
@@ -1371,8 +1561,11 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
   /** New style or position: match the font, line height and padding the drawing uses. */
   func update(_ s: Shape.Text) {
     shape = s
-    let font = ShapeDrawing.font(size: s.fontSize, family: s.fontFamily)
-    let lh = s.fontSize * ShapeDrawing.lineHeight
+    // In the background editor the text is shown at the preview's scale.
+    let t = owner?.viewTransform ?? (.zero, 1)
+    let k = t.k
+    let font = ShapeDrawing.font(size: s.fontSize * k, family: s.fontFamily)
+    let lh = s.fontSize * k * ShapeDrawing.lineHeight
     let para = NSMutableParagraphStyle()
     para.minimumLineHeight = lh
     para.maximumLineHeight = lh
@@ -1384,13 +1577,13 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
     text.typingAttributes = attrs
     text.textStorage?.setAttributes(attrs, range: NSRange(location: 0, length: (text.string as NSString).length))
     text.insertionPointColor = NSColor(hex: s.color)
-    let pad = ShapeDrawing.pad(s)
+    let pad = ShapeDrawing.pad(s) * k
     text.textContainerInset = CGSize(width: pad, height: pad)
     let box = ShapeDrawing.textBox(s)
-    let w = max(box.width, s.fontSize * 0.6 + pad * 2) + 2
+    let w = max(box.width, s.fontSize * 0.6 + ShapeDrawing.pad(s) * 2) * k + 2
     let f = TextEditorView.frameWidth
-    text.frame = CGRect(x: f, y: f, width: w, height: box.height)
-    frame = CGRect(x: s.x - f, y: s.y - f, width: w + f * 2, height: box.height + f * 2)
+    text.frame = CGRect(x: f, y: f, width: w, height: box.height * k)
+    frame = CGRect(x: t.origin.x + s.x * k - f, y: t.origin.y + s.y * k - f, width: w + f * 2, height: box.height * k + f * 2)
   }
 
   func textDidChange(_ notification: Notification) {
@@ -1407,7 +1600,8 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
   override func mouseDragged(with e: NSEvent) {
     guard let start = dragStart, let owner else { return }
     let m = NSEvent.mouseLocation
-    let target = CGPoint(x: start.origin.x + m.x - start.mouse.x, y: start.origin.y - (m.y - start.mouse.y))
+    let k = owner.viewTransform.k
+    let target = CGPoint(x: start.origin.x + (m.x - start.mouse.x) / k, y: start.origin.y - (m.y - start.mouse.y) / k)
     let o = owner.textMoved(to: target, free: e.modifierFlags.contains(.command))
     shape.x = o.x
     shape.y = o.y
@@ -1476,4 +1670,46 @@ enum Cursors {
 
 extension LSize {
   init(_ s: CGSize) { self.init(w: s.width, h: s.height) }
+}
+
+extension OverlayView: BackgroundEditorOwner {
+  func plainCrop() -> CGImage? { renderPlain() }
+
+  func setBeautify(_ s: BeautifyState) {
+    beautify = s
+    OverlayView.lastBeautify = s
+    editor?.refresh()
+    refreshToolbars()
+  }
+
+  func setCompress(on: Bool, preset: String) {
+    compressOn = on
+    compressPreset = preset
+    editor?.compressChanged()
+  }
+
+  func paintDrawings(_ ctx: CGContext, pixelScale: CGFloat) {
+    var env = renderEnv
+    env.pixelScale = pixelScale
+    ShapeDrawing.draw(visibleShapes, in: ctx, env: env)
+    paintShapeUI(ctx)
+  }
+
+  func editorPointer(_ phase: Int, _ p: CGPoint, _ e: NSEvent) {
+    switch phase {
+    case 0: pointerDown(p, e)
+    case 1: pointerDragged(p, e)
+    default: pointerUp(p, e)
+    }
+    editor?.needsDisplay = true
+  }
+
+  func editorCopy() { delegate?.overlayCopy(self) }
+  func editorSave() { delegate?.overlaySave(self) }
+  func editorClose() { closeEditor() }
+
+  func compressedSizes(preset: String) -> (before: Int, after: Int)? {
+    guard let out = renderOutput(), let png = Output.png(out) else { return nil }
+    return (png.count, Output.compressed(out, png: png, scale: imageScale, preset: preset).count)
+  }
 }

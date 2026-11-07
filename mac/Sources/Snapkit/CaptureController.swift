@@ -111,30 +111,15 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
    * centred on the display under the pointer. Copy updates the preview and copies; Esc keeps the edits.
    */
   func edit(_ doc: CaptureDoc, onDone: @escaping (Data, CGImage, CaptureDoc) -> Void) {
-    if active { end(reason: "editing a preview") }
+    if active { end(reason: "editing a stored capture") }
     guard let crop = NSBitmapImageRep(data: doc.png)?.cgImage,
           let screen = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }) ?? NSScreen.screens.first else { return }
     begin()
     floatingOn = true
     editTarget = onDone
-    let scale = screen.backingScaleFactor
-    let size = screen.frame.size
-    // The crop at its own size (fitted if it's larger than the screen), on a dark backdrop.
-    let w = CGFloat(doc.width) / CGFloat(doc.scale), h = CGFloat(doc.height) / CGFloat(doc.scale)
-    let k = min(1, (size.width - 80) / w, (size.height - 160) / h)
-    let sel = LRect(x: ((size.width - w * k) / 2).rounded(), y: ((size.height - h * k) / 2).rounded(), w: w * k, h: h * k)
-    editOrigin = (sel, doc.historyId)
-    let canvas = CGContext(data: nil, width: Int(size.width * scale), height: Int(size.height * scale), bitsPerComponent: 8, bytesPerRow: 0,
-                           space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)!
-    canvas.setFillColor(NSColor(hex: "#1e1e21").cgColor)
-    canvas.fill(CGRect(x: 0, y: 0, width: size.width * scale, height: size.height * scale))
-    canvas.interpolationQuality = .high
-    canvas.draw(crop, in: CGRect(x: sel.x * scale, y: (size.height - sel.y - sel.h) * scale, width: sel.w * scale, height: sel.h * scale))
+    editOrigin = (LRect(x: 0, y: 0, w: 0, h: 0), doc.historyId)
     let e = pool.entry(for: screen)
-    e.view.arm(session: session, settings: store.current, preset: sel)
-    e.view.setShapes(doc.shapes.map { $0.moved(sel.x, sel.y) })
-    e.view.setImage(canvas.makeImage())
-    updatePinButton(e.view)
+    e.view.armEdit(session: session, settings: store.current, doc: doc, crop: crop)
     show(e.panel, on: screen)
     focus(screen)
     touchIdle()
@@ -216,11 +201,7 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
   }
 
   private func updatePinButton(_ view: OverlayView) {
-    view.tips["pin"] = (floatingOn ? "Floating preview: on" : "Floating preview: off", "Keep the result in a corner after copying")
-    var lit = view.lit
-    if floatingOn { lit.insert("pin") } else { lit.remove("pin") }
-    view.lit = lit
-    view.refreshToolbars()
+    view.floating = floatingOn
   }
 
   // MARK: - Full screen and last area (fullscreen.ts)
@@ -265,17 +246,23 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
             let plainPNG = Output.png(crop) else { return }
       self.remember(screen: screen, area)
       let settings = self.store.current
-      let doc = CaptureDoc(png: plainPNG, width: crop.width, height: crop.height, scale: Double(scale), shapes: [])
+      // "Background on by default" applies here too. The plain screenshot and the background stay in the
+      // document, so Edit can still change it.
+      let b = BeautifyState.initial(settings, last: nil)
+      var final = crop
+      if b.on, let bg = b.background(in: settings.beautify.presets), let d = BeautifyRenderer.draw(crop, bg: bg, state: b, scale: scale) { final = d }
+      let finalPNG = final === crop ? plainPNG : (Output.png(final) ?? plainPNG)
+      let doc = CaptureDoc(png: plainPNG, width: crop.width, height: crop.height, scale: Double(scale), shapes: [], beautify: b.on ? ((try? JSON.encode(b)) ?? .null) : .null)
       let global = self.globalRect(screen, area)
-      if rect != nil || settings.capture.fullscreenCopy, let out = Output.outputPNG(crop, kind: "copy", settings: settings, scale: scale) {
+      if rect != nil || settings.capture.fullscreenCopy, let out = Output.outputPNG(final, kind: "copy", settings: settings, scale: scale) {
         Output.copy(out)
         self.notifyCopied()
       }
       if rect == nil || settings.pin.afterCopy {
-        Floating.shared.preview(png: plainPNG, image: crop, doc: doc, rect: global, session: id)
+        Floating.shared.preview(png: finalPNG, image: final, doc: doc, rect: global, session: id)
       }
       log("[\(kind)] \(crop.width)x\(crop.height) in \(ms(t0))ms")
-      if let historyId = self.onOutput(OutputRecord(final: crop, finalPNG: plainPNG, doc: doc, session: id)) {
+      if let historyId = self.onOutput(OutputRecord(final: final, finalPNG: finalPNG, doc: doc, session: id)) {
         Floating.shared.link(session: id, historyId: historyId)
       }
     }
@@ -299,9 +286,7 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
 
   func overlayCancel(_ view: OverlayView) {
     // Leaving the editor of a floating preview keeps the edits there.
-    if editTarget != nil, let r = snapshot(view) {
-      editTarget?(r.png, r.image, r.doc)
-    }
+    if editTarget != nil { return overlayEditDone(view) }
     end(reason: "closed")
   }
 
@@ -314,6 +299,26 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
     DispatchQueue.main.asyncAfter(deadline: .now() + closeAfter) { [weak self] in
       if self?.session == session { self?.end(reason: "text copied") }
     }
+  }
+
+  func overlayEditDone(_ view: OverlayView) {
+    guard let snap = snapshot(view) else { return end(reason: "editor closed") }
+    editTarget?(snap.png, snap.image, snap.doc)
+    let session = self.session
+    end(reason: "editor closed, edits kept")
+    _ = onOutput(OutputRecord(final: snap.image, finalPNG: snap.png, doc: snap.doc, session: session))
+  }
+
+  func overlayRememberBackground(_ view: OverlayView, _ state: BeautifyState, _ bg: BeautifyBackground) {
+    let set = store.current.beautify
+    let presets = set.presets.map { p -> BeautifyPreset in
+      guard p.id == set.preset else { return p }
+      var q = p
+      (q.background, q.padding, q.radius, q.shadow) = (bg, state.padding, state.radius, state.shadow)
+      return q
+    }
+    guard presets != set.presets, let json = try? JSON.encode(presets) else { return }
+    store.update(.object([("beautify", .object([("presets", json)]))]))
   }
 
   func overlayAction(_ view: OverlayView, _ id: String) {
@@ -330,14 +335,14 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
   private func snapshot(_ view: OverlayView) -> (png: Data, image: CGImage, doc: CaptureDoc, sel: LRect)? {
     guard let sel = view.sel, let plain = view.renderPlain(), let plainPNG = Output.png(plain), let out = view.renderOutput(), let png = Output.png(out) else { return nil }
     let doc = CaptureDoc(png: plainPNG, width: plain.width, height: plain.height, scale: Double(view.imageScale),
-                         shapes: view.shapes.map { $0.moved(-sel.x, -sel.y) }, historyId: editOrigin?.historyId)
+                         shapes: view.shapes.map { $0.moved(-sel.x, -sel.y) }, beautify: view.beautifyJSON, historyId: editOrigin?.historyId)
     return (png, out, doc, sel)
   }
 
   func overlayCopy(_ view: OverlayView) {
     guard let snap = snapshot(view), let screen = view.window?.screen else { return }
     let settings = store.current
-    guard let out = Output.outputPNG(snap.image, kind: "copy", settings: settings, scale: view.imageScale) else { return }
+    guard let out = Output.outputPNG(snap.image, kind: "copy", settings: settings, compress: view.compressOn, preset: view.compressPreset, scale: view.imageScale) else { return }
     Output.copy(out)
     log("[copy] \(snap.image.width)×\(snap.image.height), \(out.count / 1024) KB")
     notifyCopied()
@@ -359,7 +364,7 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
   func overlaySave(_ view: OverlayView) {
     guard let snap = snapshot(view), let screen = view.window?.screen else { return }
     let settings = store.current
-    guard let out = Output.outputPNG(snap.image, kind: "save", settings: settings, scale: view.imageScale) else { return }
+    guard let out = Output.outputPNG(snap.image, kind: "save", settings: settings, compress: view.compressOn, preset: view.compressPreset, scale: view.imageScale) else { return }
     if editTarget == nil { remember(screen: screen, snap.sel) } else { editTarget?(snap.png, snap.image, snap.doc) }
     let session = self.session
     // Out of the way first: the save dialog must not sit behind the capture windows.

@@ -67,8 +67,8 @@ public enum Features {
     Feature(id: "redo", label: "Redo", kind: .tool, hint: "⇧⌘Z", defaultEnabled: false, native: true),
 
     // Actions (horizontal bar)
-    Feature(id: "beautify", label: "Background", kind: .action, defaultEnabled: true),
-    Feature(id: "beautifyEdit", label: "Edit background", kind: .action, defaultEnabled: true),
+    Feature(id: "beautify", label: "Background", kind: .action, defaultEnabled: true, native: true),
+    Feature(id: "beautifyEdit", label: "Edit background", kind: .action, defaultEnabled: true, native: true),
     Feature(id: "ocr", label: "Capture Text (OCR)", kind: .action, hint: "X", defaultEnabled: true, native: true),
     Feature(id: "pin", label: "Floating preview", kind: .action, defaultEnabled: true, native: true),
     Feature(id: "save", label: "Save", kind: .action, hint: "⌘S", defaultEnabled: true, native: true),

@@ -112,6 +112,59 @@ enum TestHook {
       if let p = Floating.shared.items.last, nums.count == 2 { Floating.shared.moveBy(p, dx: nums[0], dy: nums[1]) }
     case "closepins": Floating.shared.closeAll()
     case "clearclip": Output.pasteboard.clearContents()
+    case "history": app.historyPanel.toggle()
+    case "hist":
+      // hist <copy|edit|pin|save|delete|star|unstar|text> [index]
+      let entries = app.history.entries
+      let i = nums.first.map(Int.init) ?? 0
+      guard let a = args.first, entries.indices.contains(i) else { return }
+      if a == "text" { app.historyPanel.testView?.copyText(entries[i].id) } else { app.historyPanel.act(entries[i].id, a) }
+    case "hist-key":
+      if let k = args.first, let v = app.historyPanel.testView { key(v, k, flags) }
+    case "snapshot-view":
+      // snapshot-view <history|pin|thumb> <png>: a window's content as it draws itself
+      guard args.count >= 2 else { return }
+      let v: NSView? = args[0] == "history" ? app.historyPanel.testView
+        : Floating.shared.items.last(where: { ($0.kind == .pin) == (args[0] == "pin") })?.panel.contentView
+      guard let v, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return }
+      v.cacheDisplay(in: v.bounds, to: rep)
+      try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[1]))
+    case "hist-resize":
+      if nums.count == 2, let w = app.historyPanel.testView?.window {
+        var f = w.frame
+        f.size = CGSize(width: nums[0], height: nums[1])
+        w.setFrame(f, display: true)
+        app.historyPanel.testView?.layoutSubtreeIfNeeded()
+      }
+    case "hist-dragfile":
+      if let e = app.history.entries.first, let url = app.historyPanel.dragFile(e) {
+        let n = (try? Data(contentsOf: url))?.count ?? 0
+        reply(.object([("dragFile", .string(url.lastPathComponent)), ("bytes", .number(Double(n)))]))
+      }
+    case "hist-clear":
+      if let w = args.first { app.historyPanel.testView?.pressClear(w) }
+    case "editor":
+      // editor press <id> | chip <group> <id> | swatch <i> | slider <id> <v> | zoom <z>
+      guard let ed = mainView?.editorView, args.count >= 2 else { return }
+      switch args[0] {
+      case "press": ed.press(args[1])
+      case "chip" where args.count >= 3: ed.pickChip(args[1], args[2...].joined(separator: " "))
+      case "swatch": ed.pickSwatch(Int(args[1]) ?? 0)
+      case "slider" where args.count >= 3: ed.setSlider(args[1], Double(args[2]) ?? 0)
+      case "zoom": ed.zoomTo(CGFloat(Double(args[1]) ?? 1), at: nums.count >= 3 ? CGPoint(x: nums[1], y: nums[2]) : nil)
+      case "space": ed.setHand(args[1] == "down")
+      case "drag" where nums.count >= 4:
+        // editor drag x1 y1 x2 y2: in the editor's own coordinates (stage), through its mouse handlers
+        let a = CGPoint(x: nums[0], y: nums[1]), b = CGPoint(x: nums[2], y: nums[3])
+        func ev(_ t: NSEvent.EventType, _ p: CGPoint) -> NSEvent? {
+          NSEvent.mouseEvent(with: t, location: ed.convert(p, to: nil), modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
+                             windowNumber: ed.window?.windowNumber ?? 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1)
+        }
+        if let e = ev(.leftMouseDown, a) { ed.mouseDown(with: e) }
+        for k in 1...6 { if let e = ev(.leftMouseDragged, CGPoint(x: a.x + (b.x - a.x) * CGFloat(k) / 6, y: a.y + (b.y - a.y) * CGFloat(k) / 6)) { ed.mouseDragged(with: e) } }
+        if let e = ev(.leftMouseUp, b) { ed.mouseUp(with: e) }
+      default: break
+      }
     case "setting":
       // setting <json patch>
       if let patch = try? JSON.parse(args.joined(separator: " ")) { app.store.update(patch) }
@@ -194,6 +247,18 @@ enum TestHook {
         o = o.setting("toolbar", .array(v.toolIds.map { .string($0) }))
         o = o.setting("typing", .bool(v.isTyping))
         if let s = v.sel { o = o.setting("selection", .array([s.x, s.y, s.w, s.h].map { .number($0) })) }
+        o = o.setting("editorOpen", .bool(v.editorOpen))
+        o = o.setting("beautify", v.beautifyJSON)
+        if let ed = v.editorView {
+          let r = ed.previewRect
+          o = o.setting("editorPreview", .array([r.minX, r.minY, r.width, r.height].map { .number(Double($0)) }))
+          let st = ed.stage
+          o = o.setting("editorStage", .array([st.minX, st.minY, st.width, st.height].map { .number(Double($0)) }))
+          o = o.setting("editorHand", .bool(ed.hand))
+          o = o.setting("editorOutput", .string(ed.outputLabel))
+          o = o.setting("editorTab", .string(ed.currentTab))
+          o = o.setting("editorZoom", .number(Double(ed.zoomLevel)))
+        }
         o = o.setting("lit", .array(v.lit.sorted().map { .string($0) }))
         o = o.setting("toolbarsShown", .bool(v.toolbarsShown))
         o = o.setting("isKeyWindow", .bool(v.window?.isKeyWindow ?? false))
@@ -219,6 +284,21 @@ enum TestHook {
         if let s = item.panel.screen { j = j.setting("visibleFrame", .array([s.visibleFrame.maxX, Floating.primaryHeight - s.visibleFrame.minY].map { .number(Double($0)) })) }
         return j
       }))
+      let entries = app.history.entries
+      o = o.setting("history", .array(entries.map { e in
+        var j = JSON.object([])
+        j = j.setting("id", .string(e.id))
+        j = j.setting("starred", .bool(e.starred))
+        j = j.setting("size", .array([.number(Double(e.width)), .number(Double(e.height))]))
+        return j
+      }))
+      o = o.setting("historyFolders", .number(Double(((try? FileManager.default.contentsOfDirectory(atPath: app.history.dir.path)) ?? []).filter { $0 != "index.json" && !$0.hasSuffix(".tmp") }.count)))
+      o = o.setting("historyVisible", .bool(app.historyPanel.isVisible))
+      o = o.setting("historyClearAll", .string(app.historyPanel.testView?.clearAllLabel ?? ""))
+      o = o.setting("historyNote", app.historyPanel.testView?.note.map { .string($0) } ?? .null)
+      o = o.setting("historySelected", .number(Double(app.historyPanel.testView?.selected ?? 0)))
+      if let f = app.historyPanel.frame { o = o.setting("historyFrame", .array([f.width, f.height].map { .number(Double($0)) })) }
+      o = o.setting("historyColumns", .number(Double(app.historyPanel.testView?.columns ?? 0)))
       let pb = Output.pasteboard.data(forType: .png)
       o = o.setting("clipboardPngBytes", .number(Double(pb?.count ?? 0)))
       if let pb, pb.count > 25 { o = o.setting("clipboardColorType", .number(Double(pb[25]))) }
