@@ -385,21 +385,25 @@ after Phase 1.
 
 ## 8. Testing
 
-Playwright drives Chromium pages and won't work on AppKit. Layers:
+Full plan: **[native-mac-testing.md](native-mac-testing.md)**. In short:
 
-1. **Unit (Swift Testing / XCTest) on `SnapkitCore`**, with fixtures shared with vitest.
-2. **Render tests:** draw a fixed `CaptureDoc` to PNG and compare with reference
-   images (covers `annotate`, `ruler`, `fullscreen` visual checks).
-3. **Test mode:** a debug launch argument that injects a fixed image instead of
-   grabbing the screen, plus a small command channel to drive capture and read
-   outputs. Snapzy has a local-socket CLI protocol that could serve as a model.
-4. **XCUITest** for flows: capture → draw → copy, Settings, history keys, pins.
-5. **Manual checklist** for Spaces, full-screen apps, displays, sleep/wake,
-   permission prompts. Snapzy's overlay tests (coordinate spaces, pool
-   presentation) are worth reading for what can be automated.
+- **Layers:** Swift unit tests on `SnapkitCore`; image-output tests (exact sizes,
+  padding/shadow probes, compression, clipboard bytes); XCUITest flows in a
+  Debug-only test mode that uses a fixed screen image instead of a real grab;
+  visual parity against Electron; timing and a 24 h soak; a manual checklist.
+- **Parity:** every one of the ~150 checks in `e2e/run-all.mjs` is mapped to a
+  native test or marked N/A with a reason; `scripts/parity-coverage.mjs` fails if
+  one is missing. Shared JSON fixtures in `fixtures/` are run by both vitest and
+  the Swift tests.
+- **UI/UX:** both apps render the same scenes (overlay, every tool, editor,
+  preview, pins, History, Settings, in each theme), diffed with thresholds and a
+  reviewed baseline; layout tokens extracted from Electron's CSS into
+  `fixtures/ui-tokens.json`, which native builds from and tests against.
+- **Workflow:** the same three tiers as Electron (`mac:test` + area suites per
+  change, backlog, full run before release), CI on macOS runners without needing
+  Screen Recording, real capture locally, and a release gate tied to parity.
 
-Port each e2e suite's checks to an equivalent, `safety` and `regressions` first.
-CI has no Screen Recording permission, so real capture runs locally.
+Testing adds roughly 6–7 weeks across the phases.
 
 ## 9. Risks and open questions
 
