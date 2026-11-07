@@ -1,0 +1,223 @@
+[
+  {
+    "id": "pen",
+    "drawing": true,
+    "label": "Pencil",
+    "kind": "tool",
+    "hint": "P",
+    "implemented": true,
+    "defaultEnabled": true,
+    "tipNote": "Hold Shift for a straight line"
+  },
+  {
+    "id": "arrow",
+    "drawing": true,
+    "label": "Arrow",
+    "kind": "tool",
+    "hint": "A",
+    "implemented": true,
+    "defaultEnabled": true,
+    "variants": [
+      {
+        "id": "arrow",
+        "label": "Arrow"
+      },
+      {
+        "id": "arrow-both",
+        "label": "Two-way arrow"
+      }
+    ],
+    "groupLabel": "Arrows",
+    "variantsHint": "Right-click for a two-way arrow",
+    "tipNote": "Hold Shift to snap to 45°"
+  },
+  {
+    "id": "rect",
+    "drawing": true,
+    "label": "Rectangle",
+    "kind": "tool",
+    "hint": "R",
+    "implemented": true,
+    "defaultEnabled": true,
+    "variants": [
+      {
+        "id": "rect",
+        "label": "Rectangle"
+      },
+      {
+        "id": "rect-filled",
+        "label": "Filled rectangle"
+      },
+      {
+        "id": "ellipse",
+        "label": "Ellipse"
+      },
+      {
+        "id": "ellipse-filled",
+        "label": "Filled ellipse"
+      },
+      {
+        "id": "line",
+        "label": "Line"
+      }
+    ],
+    "groupLabel": "Shapes",
+    "variantsHint": "Right-click for more shapes",
+    "tipNote": "Hold Shift for a square"
+  },
+  {
+    "id": "line",
+    "drawing": true,
+    "label": "Line",
+    "kind": "tool",
+    "hint": "L",
+    "implemented": true,
+    "defaultEnabled": false,
+    "inGroup": true
+  },
+  {
+    "id": "ellipse",
+    "drawing": true,
+    "label": "Ellipse",
+    "kind": "tool",
+    "hint": "E",
+    "implemented": true,
+    "defaultEnabled": false,
+    "inGroup": true,
+    "variants": [
+      {
+        "id": "ellipse",
+        "label": "Ellipse"
+      },
+      {
+        "id": "ellipse-filled",
+        "label": "Filled ellipse"
+      }
+    ],
+    "groupLabel": "Ellipses",
+    "variantsHint": "Right-click for more shapes"
+  },
+  {
+    "id": "highlighter",
+    "drawing": true,
+    "label": "Highlighter",
+    "kind": "tool",
+    "hint": "H",
+    "implemented": true,
+    "defaultEnabled": true,
+    "tipNote": "Hold Shift for a straight line"
+  },
+  {
+    "id": "text",
+    "drawing": true,
+    "label": "Text",
+    "kind": "tool",
+    "hint": "T",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "step",
+    "drawing": true,
+    "label": "Numbered step",
+    "kind": "tool",
+    "hint": "N",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "blur",
+    "drawing": true,
+    "label": "Blur",
+    "kind": "tool",
+    "hint": "B",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "ruler",
+    "drawing": true,
+    "label": "Ruler",
+    "kind": "tool",
+    "hint": "M",
+    "implemented": true,
+    "defaultEnabled": false,
+    "tipNote": "Measures in pixels. Hold Shift for 45°"
+  },
+  {
+    "id": "color",
+    "label": "Color",
+    "kind": "tool",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "undo",
+    "label": "Undo",
+    "kind": "tool",
+    "hint": "⌘Z",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "redo",
+    "label": "Redo",
+    "kind": "tool",
+    "hint": "⇧⌘Z",
+    "implemented": true,
+    "defaultEnabled": false
+  },
+  {
+    "id": "beautify",
+    "label": "Background",
+    "kind": "action",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "beautifyEdit",
+    "label": "Edit background",
+    "kind": "action",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "ocr",
+    "label": "Capture Text (OCR)",
+    "kind": "action",
+    "hint": "X",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "pin",
+    "label": "Floating preview",
+    "kind": "action",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "save",
+    "label": "Save",
+    "kind": "action",
+    "hint": "⌘S",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "copy",
+    "label": "Copy",
+    "kind": "action",
+    "hint": "⌘C",
+    "implemented": true,
+    "defaultEnabled": true
+  },
+  {
+    "id": "close",
+    "label": "Close",
+    "kind": "action",
+    "hint": "Esc",
+    "implemented": true,
+    "defaultEnabled": true
+  }
+]
