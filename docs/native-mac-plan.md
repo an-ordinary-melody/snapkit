@@ -5,20 +5,26 @@ marked **Open** are for Son.
 
 A Swift app for macOS (AppKit + some SwiftUI, ScreenCaptureKit, Vision) that
 matches what the Electron app does today (v0.2.0-beta.14) and reads its data.
-It ships **next to** the Electron app as a beta; Electron stays the stable Mac
-version and the only Windows version.
+If it works well, it **replaces** the Electron app on Mac; Electron stays the
+Windows version. Release details come later: the focus now is the app itself.
 
 ## 0. Decisions
 
 | Question | Decision |
 |---|---|
-| Native or keep fixing Electron | Both: keep the Electron Mac app, build native alongside it |
-| Minimum macOS | 14 (Sonoma) |
-| Apple Developer ID signing / notarization | No. Unsigned for Gatekeeper; see §6 for a self-signed certificate that keeps Screen Recording permission across updates |
-| Intel Macs | Yes, universal binary (arm64 + x86_64) |
-| How it ships | Landing page Mac download: Electron is "stable", native is "beta" once released |
+| Native or keep fixing Electron | Keep Electron while native is built; native replaces Electron on Mac once it works well |
 | Windows | Stays Electron; no native Windows plan |
-| Update mechanism | Open, explained in §6 |
+| Minimum macOS | 14 (Sonoma) |
+| Intel Macs | Yes, universal binary (arm64 + x86_64) |
+| Apple Developer ID signing / notarization | No. Self-signed certificate recommended instead (§6) |
+| Update mechanism | Sparkle 2 |
+| Bundle id | Same as Electron, `com.charios.snapkit`, so the native app replaces it in place (Debug builds use `com.charios.snapkit.dev`, §5) |
+| Release tags, site download, beta channel | Later, once the app works |
+| Compression | MIT-compatible library or our own: port UPNG.js's quantizer (MIT, what Electron uses today) |
+| Appearance | Same options as Electron: System / Light / Dark / Gray, Liquid Glass switch, accent (§3) |
+| Tool list (`features.ts`) | Hand-written Swift list, checked against a JSON export of `features.ts` by a test (§5) |
+| Electron's Chromium caches | Removed once, after the first successful native launch, when the Electron app is gone (§5) |
+| Reusing Snapzy code | Yes where it fits, with credits in the repo, the app and the site FAQ (§2) |
 
 ## 1. Why native
 
@@ -106,6 +112,36 @@ What they do that we should copy (as ideas; code only from Snapzy):
 Things they have that Snapkit doesn't (not in scope, possible later): scrolling
 capture, screen recording/GIF, window capture with snapping, cloud upload, CLI,
 PII auto-redaction, translation.
+
+### Reusing Snapzy code, and credits
+
+Decision: reuse Snapzy code where it fits. Likely candidates: the overlay pool and
+its presentation watchdog, Space-churn rebuild, the Carbon hotkey wrapper,
+coordinate-space helpers for capture rects, `SMAppService` login item wrapper.
+Never macshot code (GPL).
+
+BSD-3-Clause asks for three things, and the plan covers each:
+
+1. **Keep the copyright notice in source:** reused files keep Snapzy's notice at
+   the top plus a line saying what we changed (`// Based on Snapzy's
+   AreaSelectionWindow.swift, BSD-3-Clause, see THIRD_PARTY_NOTICES.md`).
+2. **Reproduce it with the binary:** `THIRD_PARTY_NOTICES.md` in the repo with
+   Snapzy's full licence text, bundled into the app and shown from Settings →
+   About → Acknowledgements.
+3. **No endorsement:** we don't use the Snapzy name to promote Snapkit; we only
+   credit it.
+
+The same notices file lists the other open-source parts: Sparkle (MIT), UPNG.js
+(MIT, compression), and any others added later.
+
+Credits beyond what the licence requires:
+
+- **GitHub:** a "Credits" section in the README naming Snapzy (with link) and what
+  was based on it, and the notices file linked from there.
+- **Landing page FAQ:** a Q&A such as "Is Snapkit built on other open-source
+  apps?", answering that the Mac app reuses parts of Snapzy (BSD-3) and learned from
+  other open-source screenshot tools, with links. Added to the site when the first
+  native release ships (release work comes later).
 
 ## 3. Architecture
 
@@ -199,8 +235,12 @@ Vision `VNRecognizeTextRequest` in-process, same options as
 
 - Clipboard: exact PNG bytes as `public.png` (as `clipboardPng.ts`) plus TIFF.
 - Save: `NSSavePanel` or straight to folder, same naming rule and `nextNumber`.
-- Compress: 256-colour quantization. libimagequant is GPL; **Open:** small MIT
-  quantizer of our own, or another approach.
+- Compress: Electron uses UPNG.js (MIT) in a worker: quantize to at most 256
+  colours, then encode an indexed PNG. Native ports UPNG's quantizer to Swift
+  (same algorithm, so outputs match Electron closely, and its MIT licence fits),
+  runs it off the main thread, and encodes the indexed PNG with ImageIO.
+  `smallest` first resizes HiDPI captures to 1× with Core Graphics. libimagequant
+  and pngquant are GPL, so they're out.
 - Notifications: `UNUserNotificationCenter`.
 
 ### Floating preview and pins
@@ -220,6 +260,42 @@ rules, SwiftUI panel with the same keys.
 `Codable` struct with the same field names as `settings.ts`; only changed values
 written, deep-merge on read, atomic and debounced writes. SwiftUI window with the
 same sections. Launch at login via `SMAppService.mainApp`.
+
+### Appearance (same options as Electron)
+
+Electron today (`theme.ts`, `settingsWindow.ts`): `appearance.mode` is System,
+Light, Dark or Gray; `glass` turns Liquid Glass panels on or off; `accent` is a
+colour for the selected tool, switches and main buttons ('' = the theme's own:
+white in glass, gray in dark). System follows macOS's light/dark live. Gray is
+Snapkit's own: the dark theme with lighter surfaces. Native windows and menus
+(Settings window material, dialogs, context menus) follow light/dark, with Gray
+treated as dark.
+
+Native keeps exactly these options and maps them like this:
+
+| Setting | Native |
+|---|---|
+| System | Windows get no fixed appearance (`appearance = nil`), so they follow macOS live, including Auto (light by day, dark at night). Our own colours come from tokens with light and dark values, resolved per appearance (`NSColor(name:dynamicProvider:)`), so they switch at the same moment as system controls. |
+| Light / Dark | `NSAppearance(named: .aqua / .darkAqua)` on every Snapkit window, panel and menu. |
+| Gray | `.darkAqua` for system parts (menus, dialogs, pop-ups), plus our lighter gray surface tokens on Snapkit's own panels, as in Electron. |
+| Liquid Glass on | macOS 26: `NSGlassEffectView` / SwiftUI `.glassEffect()`, the real system glass. macOS 14–15: `NSVisualEffectView` with a HUD/popover material (frosted blur, no refraction). So glass looks somewhat different by macOS version. |
+| Liquid Glass off | Solid panel colours from the tokens. |
+| Accent | Our own controls use it. System controls (switches, sliders, buttons in Settings) get it as their tint. '' keeps the theme's own, as in Electron. |
+
+Things "system theme" brings on Mac that Electron mostly ignores, and which
+native should respect:
+
+- **Reduce Transparency** (Accessibility): glass and blur become solid
+  automatically for system materials; our own glass falls back to solid too.
+- **Increase Contrast:** stronger borders on system controls; our tokens get
+  high-contrast variants for separators and outlines.
+- **System accent colour** (System Settings → Appearance): affects system
+  controls when our accent is ''. Electron ignores it. To look the same as
+  Electron, '' maps to the theme's own accent, not the system one. (Offering
+  "System accent" as an extra choice could come later.)
+
+The annotation colours and the dim are never themed: drawings must look the same
+in every theme.
 
 ## 4. Feature parity
 
@@ -278,36 +354,47 @@ and files**, so users switch with nothing lost and can switch back:
   `scale` = image px per point; the Swift decoder reads and writes that shape.
 - `last-area.json`: Electron's Mac display id is the `CGDirectDisplayID`; bounds
   as fallback.
-- Electron's Chromium caches in that folder are left alone. **Open:** clean up.
+- **Electron's leftover caches.** The Electron app leaves Chromium folders next
+  to our data (`Cache`, `Code Cache`, `GPUCache`, `DawnGraphiteCache`,
+  `DawnWebGPUCache`, `Local Storage`, `Session Storage`, `blob_storage`, …,
+  often tens of MB). Native removes exactly that list, once, after its first
+  successful launch and only when no Electron Snapkit is installed or running.
+  It never touches `settings.json`, `last-area.json` or `history/`, and logs
+  what it removed.
 
-### Running both
+### Replacing Electron on Mac
 
-Since both are offered for download, people will have both installed. Points to settle:
-
-- **Bundle id and name.** Same id (`com.charios.snapkit`) means one app replaces
-  the other, and Login Items, notifications and (with the same signature)
-  Screen Recording carry over. A separate id (e.g. `com.charios.snapkit.beta`,
-  "Snapkit Beta.app") lets both sit in Applications but needs its own Screen
-  Recording grant. **Open.**
-- **Only one should run.** Both grab the same hotkeys and write the same files.
-  Native checks at launch for the Electron app and offers to quit it (and turn off
-  its launch at login).
-- **Updates must not cross over.** Electron's checker (`pickRelease` in
-  `src/shared/version.ts`) takes the highest version among all releases,
-  prereleases included while on a beta, and downloads the first `.dmg`. A native
-  release in the same repo would be offered to Electron users. Before the first
-  native release: tag native releases differently (e.g. `mac-v0.1.0-beta.1`) and
-  make Electron's checker and the site's `release.ts` ignore those tags. Ship that
-  Electron change first.
+- **Same bundle id and name** (`com.charios.snapkit`, `Snapkit.app`): the native
+  app installs over the Electron one, and Login Items, notifications and the data
+  folder carry over. Screen Recording carries over only if the signing identity
+  stays the same, which it won't on the first switch from ad-hoc (§6), so
+  expect one re-grant then.
+- **During development:** Debug builds use `com.charios.snapkit.dev` and their own
+  data folder (`Snapkit Dev`) so they never clash with the installed Electron app,
+  with a launch option to read a copy of the real folder for migration testing.
+  Only one should run at a time anyway (both grab the same hotkeys); the dev build
+  warns if Electron Snapkit is running.
+- **Release mechanics (later):** how the first native build reaches Electron
+  users. Electron's update checker (`pickRelease` in `src/shared/version.ts`)
+  takes the highest version and the first `.dmg`, so the switch can be a normal
+  release: an Electron user gets the native DMG as their next update. The
+  version numbering, beta period and site wording are decided when the app is
+  ready.
 
 ### What can be shared
 
 No shared runtime, so sharing is by **format and tests**: JSON fixtures in
 `fixtures/` loaded by both vitest and Swift tests for `mergeSettings`,
 `applyPatch`, `toolbarOrder`, `toPrune`, `fileName`/`uniqueName`, annotation
-geometry and beautify layout. `features.ts`: generate the Swift list from it, or
-keep two with a test that compares ids (**Open**). Plus icon assets, presets,
-palettes, the website and the release flow.
+geometry and beautify layout. Since Windows stays on Electron, `features.ts`,
+`settings.ts` and the fixtures remain shared for good, so a feature added to one
+app is visible to the other's tests.
+
+`features.ts` → Swift: a hand-written Swift list (labels, letters, variants,
+defaults), plus `npm run fixtures:export` writing `fixtures/features.json` and
+`fixtures/default-settings.json` from the TypeScript. A Swift test compares ids,
+order, defaults, variants and hints with those files. This avoids a code
+generator in the Xcode build, and a mismatch fails the tests instead of drifting.
 
 ## 6. Build, signing, updates, distribution
 
@@ -330,11 +417,29 @@ build's designated requirement with the previous release to catch an accidental
 identity change.
 
 Recommendation: self-signed certificate for native from its first release. (The
-same would help the Electron Mac build; that is a separate change.)
+same would help the Electron Mac build; that is a separate change.) **Open.**
 
-### Updates (Open)
+How it would work:
 
-Two options:
+1. Once, on a Mac: create a code signing certificate in Keychain Access
+   (Certificate Assistant → Create a Certificate, type Code Signing, valid 10 years)
+   named e.g. "Snapkit Self-Signed". Export it with its private key as a `.p12`
+   with a password.
+2. Store the `.p12` (base64) and its password as GitHub Actions secrets, and a
+   backup somewhere safe offline. Losing it means a new identity, so one more
+   Screen Recording re-grant for everyone.
+3. CI imports it into a temporary keychain and signs the app with it (hardened
+   runtime on). A check compares the build's designated requirement with the last
+   release's and fails if it changed.
+4. Users: first install still shows Gatekeeper's warning (the certificate isn't
+   from Apple). After that, Sparkle updates install without warnings, and Screen
+   Recording keeps working.
+
+Local Debug builds keep Xcode's own signing; only releases use the certificate.
+
+### Updates: Sparkle 2 (decided)
+
+The two options that were compared:
 
 1. **Notify and download (today's Electron behaviour).** Snapkit checks GitHub
    releases, shows a notification, and opens the download. The user opens the
@@ -352,19 +457,22 @@ Two options:
    the first install. With the self-signed certificate, Screen Recording also
    survives the update.
 
-Sparkle is the better experience; notify-and-download is less to maintain.
+Decision: Sparkle. Built into the app in Phase 5 (update check UI, EdDSA public
+key in `Info.plist`, "Check for Updates…" in the menu, the existing
+`updates.autoCheck` setting mapped to Sparkle's automatic checks). Where the feed
+is hosted, the beta/stable channels, and the CI signing step are release work and
+come later.
 
 ### Packaging and CI
 
-- Universal `.app`, zipped (Sparkle prefers zip) and/or in a DMG for the site.
-- GitHub Actions `macos-15` or newer (`macos-26` for the macOS 26 SDK, needed
-  for `NSGlassEffectView`): `xcodebuild test` on `SnapkitCore`, archive, sign
-  with the self-signed certificate, Sparkle signature if chosen, upload on
-  `mac-v*` tags. Secrets only in GitHub Actions secrets.
-- `scripts/update-mac.sh --local` gets a native variant.
-- Site: the Mac download shows Electron as stable and native as beta once the
-  first native beta is out (site change in `site/src/components/Download.astro`
-  and `site/src/lib/release.ts`).
+- Universal `.app`, zipped for Sparkle, plus a DMG for the site (later).
+- Now: GitHub Actions on a `macos-15` or newer runner (`macos-26` for the macOS 26
+  SDK, needed for `NSGlassEffectView`) runs `xcodebuild test` and builds the app
+  on every PR touching `mac/`, uploading the unsigned build as an artifact.
+- Later (release work): sign with the self-signed certificate, Sparkle signature,
+  appcast update, attach to the GitHub release, site download. Secrets only in
+  GitHub Actions secrets.
+- `scripts/update-mac.sh --local` gets a native variant for daily use.
 
 ## 7. Milestones
 
@@ -372,13 +480,13 @@ Rough effort, one developer with an AI assistant.
 
 | Phase | Scope | Effort |
 |---|---|---|
-| 0. Baseline | Measure Electron (launch, hotkey→dim, memory, size); `mac/` project; CI builds an empty universal menu-bar app with the self-signed cert; shared fixtures; Electron update checker and site ignore `mac-v*` tags | 3–4 days |
+| 0. Baseline | Measure Electron (launch, hotkey→dim, memory, size); `mac/` project; CI builds an empty universal menu-bar app with the self-signed cert; shared fixtures | 3–4 days |
 | 1. MVP | Menu bar, capture hotkey, pooled overlay with rebuild + watchdog, all displays/Spaces/full screen, select + handles, copy (exact PNG) and save (naming rule), Esc, pencil/arrow/rect/text basics, undo, reads `settings.json` | 2–3 weeks |
 | 2. Editor parity | All tools and variants, select/move/resize/restyle, snap, steps, blur, ruler, highlighter, text styles, style bar, toolbar order, tool keys | 3–4 weeks |
 | 3. Around the capture | Full-screen and last-area, quick copy, floating preview, pins, notifications, compress, OCR | 2–3 weeks |
 | 4. Background + history | Background editor, history store + panel, edit from history/preview | 2–3 weeks |
 | 5. Settings + polish | Settings window, themes, launch at login, permission onboarding, updates, logging, accessibility | 2–3 weeks |
-| 6. Beta release | First `mac-v` beta, site shows it as beta, migration check on real data | 1 week |
+| 6. Ready to replace Electron | Migration check on real data, full parity run, daily use as the only Mac Snapkit. Release work (signing, feed, site) planned then | 1 week + daily use |
 
 Total: roughly 3–4 months part-time to parity. The MVP is usable for dogfooding
 after Phase 1.
@@ -409,7 +517,9 @@ Testing adds roughly 6–7 weeks across the phases.
 
 ### Risks
 
-- **Two Mac apps.** Each Mac feature lands in Electron and native while both ship.
+- **Two Mac apps for a while.** Until native replaces Electron, a Mac feature
+  added to Electron must be added to native too. Keeping new Mac features small
+  in that period limits it.
 - **Overlay bugs move, not vanish.** Snapzy's code shows the same invisible-overlay
   and lost-Spaces problems in native apps; plan for the pool rebuild and watchdog
   from Phase 1, not as later fixes.
@@ -419,18 +529,16 @@ Testing adds roughly 6–7 weeks across the phases.
 - **`doc.json` rendering differences** between Konva and Core Graphics (text
   metrics) may shift reopened entries by a pixel or two.
 - **Deprecated CG capture** may be removed in a future macOS; it's only a fallback.
-- **Release crossover** if native releases aren't filtered out of Electron's
-  update check before the first native release.
-- **Compression licence** (libimagequant is GPL).
+- **Ported quantizer quality.** UPNG's quantizer is simpler than libimagequant;
+  it's what Electron ships today, so parity is the bar, not "best possible".
+- **Reused Snapzy code** is written for Snapzy's architecture (larger, with
+  recording and a CLI); taking parts may pull in more than wanted. Take small,
+  self-contained pieces and adapt them.
 
 ### Open questions
 
-1. Updates: notify-and-download or Sparkle? (§6)
-2. Self-signed certificate for native releases (and later for Electron)?
-3. Same bundle id as Electron (one replaces the other) or a separate "Snapkit Beta"?
-4. Release tags for native, e.g. `mac-v0.1.0-beta.1`, in this repo?
-5. Compression: our own small MIT quantizer, or another approach?
-6. Keep the custom themes (Gray, accent, Liquid Glass switch) or follow the system?
-7. `features.ts`: generate the Swift list, or two lists plus a test?
-8. Clean up Electron's Chromium caches when someone moves to native?
-9. Reuse Snapzy code (BSD-3, with attribution) where it fits, or write everything ourselves?
+1. Self-signed certificate for releases (§6, how it works)? Needed only when
+   release work starts, but deciding early keeps Screen Recording grants stable
+   from the first native build people install.
+2. Later, with release work: version numbers, beta period, feed hosting, site
+   wording for the switch from Electron.

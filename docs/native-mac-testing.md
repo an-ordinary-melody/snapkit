@@ -29,7 +29,7 @@ so Electron's vitest suite and the Swift suite assert the same results:
 | Accelerator parse/format (`Alt+Shift+Z` ↔ key code + modifiers) | `main/hotkeys.ts` | `AcceleratorTests` |
 | File naming, unique names, numbering | `shared/naming.ts` (`naming.test.ts`) | `NamingTests` |
 | History prune rules, startup tidy-up, atomic writes | `shared/history.ts`, `main/history.ts` (`history.test.ts`) | `HistoryStoreTests` (temp folder) |
-| Version compare, release picking, ignore `mac-v*` tags | `shared/version.ts` (`version.test.ts`) | `VersionTests` |
+| Version compare, release picking | `shared/version.ts` (`version.test.ts`) | `VersionTests` |
 | Engine order | `main/capture/order.ts` (`order.test.ts`) | `CaptureEngineOrderTests` |
 | Toolbar / style bar placement, rect from points, resize, move | `overlay/layout.ts` (`layout.test.ts`) | `OverlayLayoutTests` |
 | Annotation model: shapes, arrow heads, ruler label/ticks, snap45, snapBox, step numbers, undo | `annotate/model.ts` (`model.test.ts`) | `AnnotationModelTests` |
@@ -326,7 +326,7 @@ Layer codes as in §1. "Same" = the native test asserts the same result.
 
 New native-only checks (no Electron equivalent): pool rebuild on Space change and
 wake, panel ignores the mouse while idle, signing identity unchanged between
-releases, `mac-v*` tags ignored by Electron's update check.
+releases (once release work starts).
 
 A script, `scripts/parity-coverage.mjs`, reads `SUITES` from `e2e/run-all.mjs`
 and the native test list (`xcodebuild test -enumerate-tests` output), and fails
@@ -429,7 +429,7 @@ native app must follow.
 
 ### Manual UX checklist
 
-Run on a real Mac before each native beta, with the Electron app open beside it.
+Run on a real Mac before native replaces Electron and before each later release, with the Electron app open beside it (for as long as it still runs on Mac).
 Kept in `docs/native-mac-checklist.md` (to write in Phase 1), ticked per release:
 
 - Feel: drag smoothness, handle grab size, text caret and selection, scroll/pinch zoom.
@@ -500,21 +500,23 @@ npm scripts in the root `package.json`, wrapping `xcodebuild` with test plans
   stable, a nightly CI job on a fixed runner image, with the report as an artifact.
 - Artifacts on failure: xcresult bundle, logs, failing scene PNGs.
 
-### Release gate for a native beta
+### Gate for replacing Electron on Mac
 
-A `mac-v*` tag only ships when all of these are true:
+Native replaces the Electron Mac app only when all of these are true:
 
-1. `mac:all` passes on the release commit (U, R, UI, parity with no unapproved diffs).
+1. `mac:all` passes (U, R, UI, parity with no unapproved diffs).
 2. `parity-coverage` reports every Electron check ported or N/A with a reason.
 3. `mac:real` passes on a real Mac (macOS 14 and the newest).
-4. The latest soak run (≤ 7 days old, same overlay code) passed.
-5. Manual checklist ticked for this version.
-6. Signing identity matches the previous release (designated requirement check).
-7. Electron's update check ignores the new tag (unit test in Electron).
+4. A 24 h soak passed on the current overlay code.
+5. The manual checklist is ticked.
+6. Migration check: a copy of real `~/Library/Application Support/Snapkit`
+   (settings, history with drawings and backgrounds, last area) opens in native
+   with nothing lost, and Electron can still read it afterwards.
+7. A period of daily use as the only Mac Snapkit with no overlay failures in the
+   logs (length decided later).
 
-For native to move from beta to stable later: everything above, plus no open
-"parity" issues and a period of beta use with no overlay failures in logs
-(length **Open**).
+Later releases add the release checks (signing identity unchanged, Sparkle
+signature valid) when release work is planned.
 
 ## 7. Effort and order, by milestone
 
@@ -528,7 +530,7 @@ Phases as in [native-mac-plan.md §7](native-mac-plan.md).
 | 3. Around the capture | UI: `pin`, `lastarea`, `fullscreen` (capture parts), `ocr`, `compress`. R: compression, clipboard bytes. Scenes: preview, pins, OCR panel | ~1 week |
 | 4. Background + history | U: history store, `CaptureDoc` round trip (both directions with Electron entries). UI: `history`, rest of `fullscreen`, background parts of `annotate`/`regressions`. Scenes: background editor, history | ~1 week |
 | 5. Settings + polish | UI: `settings` (all 32). `PermissionTests`, `UpdateTests`. Scenes: all Settings sections. Token tests for every view. Manual checklist written. First soak | ~1 week |
-| 6. Beta release | Release gate in CI, `mac:real` on macOS 14/15/26, Intel check, full manual pass | 2–3 days |
+| 6. Ready to replace Electron | Replacement gate, `mac:real` on macOS 14/15/26, Intel check, full manual pass, migration check | 2–3 days |
 
 Testing adds roughly 6–7 weeks to the 3–4 months of the plan, spread across the
 phases, not at the end. Parity coverage starts at 0 of ~150 checks and should reach
@@ -541,5 +543,5 @@ all of them by the end of Phase 5.
 2. Pixel-diff dependency: pixelmatch (ISC) as a dev dependency, or write our own?
 3. Should Electron's CSS later read the shared `ui-tokens.json` too (one source),
    or stay the source the JSON is extracted from?
-4. How long must the native beta run without overlay failures before it can be called stable?
+4. How long must native be used daily without overlay failures before it replaces Electron? (Later.)
 5. Is a 24 h soak per release realistic, or once per change to the overlay code?
