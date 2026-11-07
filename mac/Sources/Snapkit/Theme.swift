@@ -136,7 +136,9 @@ struct Theme {
     }
     t.gray = gray
     if a.glass {
-      t.radius = 16
+      // Electron uses 16; 12 sits closer to the solid panels' 10, and with the 4 pt padding the
+      // buttons' 8 runs parallel to it.
+      t.radius = 12
       t.buttonRadius = 8
       t.glass = true
       if gray {

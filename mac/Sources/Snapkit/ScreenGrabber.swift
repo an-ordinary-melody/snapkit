@@ -48,7 +48,8 @@ final class ScreenGrabber {
    * Grab every screen; `deliver` is called on the main thread once per screen as its image lands.
    * `belowWindow`: the capture window on that screen (the CoreGraphics engine takes what's under it).
    */
-  func grab(_ screens: [NSScreen], engine: String, belowWindow: @escaping (CGDirectDisplayID) -> CGWindowID?, deliver: @escaping (CGDirectDisplayID, CGImage?) -> Void) {
+  func grab(_ screens: [NSScreen], engine: String, exclude: [CGWindowID], belowWindow: @escaping (CGDirectDisplayID) -> CGWindowID?,
+            deliver: @escaping (CGDirectDisplayID, CGImage?) -> Void) {
     if let testImage {
       for s in screens { deliver(s.displayID, testImage) }
       return
@@ -61,19 +62,21 @@ final class ScreenGrabber {
     }
     let specs = screens.map { (id: $0.displayID, size: $0.frame.size, scale: $0.backingScaleFactor) }
     Task {
+      // Only the capture windows are left out (as Electron's overlay): Snapkit's own Settings, History,
+      // pins and previews are captured like any other window. The list has to hold those windows, or
+      // the capture window's dim lands in the frozen image; one taken before they existed is fetched again.
       var cached = await MainActor.run { self.content }
-      // Snapkit has to be in the list to be left out of the grab: a list without it (taken before its
-      // first window existed) is fetched again, or the capture window's dim lands in the frozen image.
-      if (cached.map(ScreenGrabber.ownApp) ?? []).isEmpty { cached = await ScreenGrabber.shareableContent() }
+      if !ScreenGrabber.has(cached, exclude) { cached = await ScreenGrabber.shareableContent() }
       let content = cached
-      let me = content.map(ScreenGrabber.ownApp) ?? []
-      if content != nil && me.isEmpty { log("[capture] Snapkit isn't in ScreenCaptureKit's app list; its windows may show in the capture") }
+      let mine = content?.windows.filter { exclude.contains($0.windowID) } ?? []
+      let missing = content != nil && mine.count < exclude.count
+      if missing { log("[capture] \(exclude.count - mine.count) capture window(s) not in ScreenCaptureKit's list; they may show in the capture") }
       await withTaskGroup(of: Void.self) { group in
         for spec in specs {
           group.addTask {
             let image: CGImage? = await {
             if let display = content?.displays.first(where: { $0.displayID == spec.id }) {
-              let filter = SCContentFilter(display: display, excludingApplications: me, exceptingWindows: [])
+              let filter = SCContentFilter(display: display, excludingWindows: mine)
               let config = SCStreamConfiguration()
               config.width = Int(spec.size.width * spec.scale)
               config.height = Int(spec.size.height * spec.scale)
@@ -94,21 +97,24 @@ final class ScreenGrabber {
           }
         }
       }
-      log("[capture] screencapturekit: \(specs.count) display(s) in \(ms(t0)) ms\(me.isEmpty ? " (Snapkit not excluded)" : "")")
+      log("[capture] screencapturekit: \(specs.count) display(s) in \(ms(t0)) ms\(missing ? " (capture windows not all excluded)" : "")")
       await MainActor.run { self.content = content }
     }
   }
 
   /**
-   * Displays and apps for ScreenCaptureKit. All windows, not only on-screen ones: between captures
-   * Snapkit has no window on screen, and an app without one isn't listed, so it couldn't be excluded.
+   * Displays and windows for ScreenCaptureKit. All windows, not only on-screen ones: between captures
+   * the capture windows aren't on screen, and a window that isn't listed can't be left out.
    */
   static func shareableContent() async -> SCShareableContent? {
     try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
   }
 
-  static func ownApp(_ c: SCShareableContent) -> [SCRunningApplication] {
-    c.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
+  /** Whether `c` lists every one of these windows. */
+  static func has(_ c: SCShareableContent?, _ ids: [CGWindowID]) -> Bool {
+    guard let c else { return false }
+    let listed = Set(c.windows.map(\.windowID))
+    return ids.allSatisfy(listed.contains)
   }
 
   /** CoreGraphics: everything on this screen below `below` (Snapkit's capture window), at full resolution. */

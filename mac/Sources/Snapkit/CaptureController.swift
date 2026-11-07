@@ -56,6 +56,9 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
     Floating.shared.settings = { [weak store] in store?.current ?? SettingsRules.defaults }
   }
 
+  /** The capture windows on every display: the only windows left out of a screen grab. */
+  private var captureWindowIds: [CGWindowID] { pool.entries.values.map { CGWindowID($0.panel.windowNumber) } }
+
   private var hasPermission: Bool { grabber.testImage != nil || CGPreflightScreenCaptureAccess() }
 
   /** The capture hotkey / menu item: open capture mode, or close it if it's open. */
@@ -94,7 +97,7 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
     }
     focus(screens.first { $0.displayID == preset?.0 } ?? screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? screens.first)
     let session = self.session
-    grabber.grab(screens, engine: engineId(settings.capture.engine), belowWindow: { [weak self] id in
+    grabber.grab(screens, engine: engineId(settings.capture.engine), exclude: captureWindowIds, belowWindow: { [weak self] id in
       self?.pool.entries[id].map { CGWindowID($0.panel.windowNumber) }
     }) { [weak self] id, image in
       guard let self, self.active, self.session == session, let e = self.pool.entries[id] else { return }
@@ -237,7 +240,7 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
     let kind = rect == nil ? "fullscreen" : "last area"
     let id = nextFullscreenId
     nextFullscreenId -= 1
-    grabber.grab([screen], engine: engineId(store.current.capture.engine), belowWindow: { _ in nil }) { [weak self] _, image in
+    grabber.grab([screen], engine: engineId(store.current.capture.engine), exclude: captureWindowIds, belowWindow: { _ in nil }) { [weak self] _, image in
       guard let self, let image else { return log("[\(kind)] capture failed") }
       let scale = CGFloat(image.width) / screen.frame.width
       let area = rect ?? LRect(x: 0, y: 0, w: screen.frame.width, h: screen.frame.height)
