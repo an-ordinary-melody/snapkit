@@ -21,8 +21,10 @@ try {
   await wait(2500)
   // As if the overlay sent it (IPC is only accepted from Snapkit's own pages).
   await app.evaluate(({ ipcMain }) => ipcMain.emit('settings:open', { senderFrame: { url: 'file:///app/out/renderer/index.html#overlay' } }))
-  await wait(1500)
-  const st = windowFor('settings')
+  // Wait for the window rather than a fixed time: slow when the machine is busy.
+  let st
+  for (let i = 0; i < 100 && !(st = windowFor('settings')); i++) await wait(100)
+  await wait(500)
   const errors = []
   st.on('pageerror', (e) => errors.push(String(e)))
   st.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
@@ -144,6 +146,15 @@ try {
   })
   await wait(200)
   console.log('step outline/shadow: defaults', outlineDefault, shadowDefault, '| saved', JSON.stringify(saved().annotate?.stepStroke), saved().annotate?.stepShadow)
+  // Text starting style: Light and Dark background (as in the style bar); leave it on Dark.
+  const textSeg = '.st-seg[aria-label="Starting text style"]'
+  const textLooks = []
+  for (const look of ['Dark', 'Light', 'Dark']) {
+    await st.click(`${textSeg} button:has-text("${look}")`)
+    await wait(150)
+    textLooks.push(`${look} ${saved().annotate?.text?.style} ${saved().annotate?.text?.background} ${await st.$eval(`${textSeg} button.active`, (b) => b.textContent).catch(() => '?')}`)
+  }
+  console.log('text starting style:', textLooks.join(' | '))
 
   // Background: pick a library gradient as the default; turn off remember-last (on by default).
   await section('Background')
@@ -185,6 +196,10 @@ try {
     const c = window.Konva.stages[0].find('Circle').at(-1)
     return c ? `${c.strokeWidth()}px ${c.stroke()} shadow ${c.shadowEnabled() ? c.shadowOpacity() : 'off'}` : 'none'
   }))
+  // Text starts on the dark background, in white.
+  await ov.click('.toolbar button[data-id="text"]')
+  await wait(150)
+  console.log('text starts as:', await ov.$eval('.style-bar button.active:has(.glyph)', (b) => b.dataset.tip).catch(() => 'none'))
   writeFileSync(join(out, 'capture-after-settings.png'), await ov.screenshot())
   // Two saves name the files Bug 001, Bug 002.
   await ov.keyboard.press(MOD + '+s')

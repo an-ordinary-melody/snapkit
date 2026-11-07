@@ -6,7 +6,7 @@ import { visibleFeatures, type CompressPreset, type Settings } from '@shared/set
 import { AnnotationLayer, handledEvents, type AnnotationLayerHandle } from './annotate/AnnotationLayer'
 import { commit, emptyHistory, moveShape, redo, remove, undo, upsert, type History, type Shape, type Style, type ToolId } from './annotate/model'
 import { hasStyleOptions, StyleBar, type StyleTarget } from './annotate/StyleBar'
-import { withAlpha } from './annotate/color'
+import { readableOn, withAlpha } from './annotate/color'
 import { BackgroundEditor, type CompressState } from './beautify/BackgroundEditor'
 import { backgroundOf, stateFromPreset, type BeautifyState } from './beautify/layout'
 import { renderBeautified } from './beautify/render'
@@ -96,7 +96,8 @@ function initialStyle(s: Settings): Style {
   const a = s.annotate
   return {
     color: a.palette[0] ?? '#ef4444',
-    textColor: a.palette[0] ?? '#ef4444',
+    // Black or white text on a background start, as when Light or Dark is picked in the style bar.
+    textColor: a.text.style === 'background' ? readableOn(a.text.background || '#ffffff') : (a.palette[0] ?? '#ef4444'),
     highlighterColor: a.highlighterColor,
     stepColor: a.stepColor,
     widthIndex: a.strokeWidth,

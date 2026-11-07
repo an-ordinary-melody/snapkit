@@ -148,7 +148,7 @@ export interface Settings {
     text: {
       fontFamily: string
       fontSize: number
-      /** Starting style: 'plain', 'stroke' (outline), or 'background'. */
+      /** Starting style: 'plain', 'stroke' (outline), or 'background' (Light or Dark in Settings, from the background color). */
       style: 'plain' | 'stroke' | 'background'
       /** Outline around the letters. */
       strokeColor: string
