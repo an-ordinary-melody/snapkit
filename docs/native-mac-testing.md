@@ -361,41 +361,37 @@ fixtures/
 
 ### Visual parity: same scene, both apps
 
-A **scene** is a JSON file: test screen, selection rect, settings overrides, shapes,
-open tool/menu, window to capture. Both apps load a scene in test mode and save a
-PNG of the named window:
+A **scene** (`fixtures/scenes/*.json`, format in `e2e/scene.mjs`) names a window, a test
+screen, a selection, shapes, settings and what's open. Both apps render it to a PNG at
+the display's scale, without the OS window frame:
 
-- Electron: `SNAPKIT_SCENE=<file>` env var read in test builds; Playwright
-  `page.screenshot()` of the window.
-- Native: `-SnapkitScene <file>`; the window's content view rendered with
-  `cacheDisplay(in:to:)`, or `XCUIScreenshot` of the element.
+- Electron: `node e2e/scene.mjs fixtures/scenes <dir>` (test-only `SNAPKIT_SCENE` hook).
+- Native: `node mac/e2e/scene.mjs fixtures/scenes <dir> --compare <electron-dir>` drives the
+  debug app through the test hook and draws each window with `cacheDisplay(in:to:)`. With
+  `--compare` it writes Electron | native | differences side by side and `report.md`, the
+  share of pixels that differ by more than 24/255 in any channel.
 
-Scenes (first set, each in light, dark, gray, and glass where it applies):
+The app and the fixtures are copied to a temp folder first, so the debug app never reads
+from `~/Desktop` (macOS would ask for folder access again after each ad-hoc signed build).
 
-- Overlay: dim only; selection with size label; toolbars below/above/inside/side
-  of the selection (one per `placeToolbars` case); each tool active with its style
-  bar; arrow variants menu; colour picker open (and near a screen edge); text
-  being typed in each text style; a step badge set; blur and pixelate; ruler.
-- Background editor: each preset, gradient/solid/image, each frame, zoom 2×.
-- OCR text panel with lines outlined.
-- Floating preview stack (1 and 3), pin at 100% and 50% opacity, pin menu.
-- History panel (empty, 5 entries, a starred one, clear confirm).
-- Settings: each of the 7 sections.
+Latest run (2026-11-08, MacBook Air display, dark theme):
 
-**Diff:** `scripts/parity-diff.mjs` compares the two PNGs per scene with a
-perceptual metric (pixelmatch with anti-aliasing detection, plus SSIM) and writes
-an HTML report with Electron | native | diff side by side. Thresholds per kind:
+| Scene | Differ | What differs |
+|---|---|---|
+| overlay-dim | 0.00% | — |
+| overlay-selection | 0.13% | text anti-aliasing of the size label |
+| overlay-shapes-arrow | 0.31% | anti-aliasing of arrow, rectangle and text edges |
+| overlay-variants-rect | 0.30% | menu text anti-aliasing |
+| overlay-color-picker | 0.37% | picker text and field edges |
+| preview | 0.21% | edge anti-aliasing |
+| pin | 0.00% | — |
+| editor-default | 1.41% | text anti-aliasing in the sidebar; a thin divider before Copy in the dock |
+| history-basic, history-empty | 1.0–1.1% | text anti-aliasing; the selected card's size label is white, not dimmed |
+| settings-general, settings-background | 5–7% | Core Text vs Chromium text rendering on every label (the main part); 1–2 pt row offsets; no visible scrollbar (macOS overlay scrollers) |
 
-| Region | Threshold |
-|---|---|
-| Rendered output (the image you copy) | ≤ 0.5% pixels differ, SSIM ≥ 0.99 |
-| Overlay chrome (toolbars, style bar, dim, selection) | ≤ 2%, SSIM ≥ 0.97 |
-| Settings, History (system controls, fonts differ slightly) | ≤ 5%, SSIM ≥ 0.93, plus layout tokens (below) |
-
-**Reviewed baselines:** an intentional difference (e.g. native pop-up menus) is
-approved once: the native PNG goes to `fixtures/scenes/baseline/` with a note in
-`fixtures/scenes/approved.md`, and later runs compare native against that baseline
-instead of Electron. Unapproved differences fail.
+**Approving differences:** a difference stays a failure until the user approves it.
+Approved ones are listed here with the date; anything new in a later run is
+unapproved. None approved yet; the table above is what's waiting for review.
 
 ### Layout tokens
 

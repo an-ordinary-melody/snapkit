@@ -4,7 +4,7 @@
 // Usage: node mac/e2e/run.mjs [suite …]      (builds first; suites: capture annotate output safety hotkeys)
 // Note: capture mode really opens on screen while this runs (about 30 s).
 import { execFileSync, spawn, spawnSync } from 'child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 
@@ -17,9 +17,11 @@ console.log('building…')
 run('scripts/build-app.sh', [])
 run('swift', ['build', '--product', 'snapkitctl'])
 const ctl = join(run('swift', ['build', '--show-bin-path']).trim(), 'snapkitctl')
-const app = join(mac, 'build', 'Snapkit Dev.app')
-
 const root = mkdtempSync(join(tmpdir(), 'snapkit-native-e2e-'))
+// Run a copy from the temp folder: the app then never touches ~/Desktop (where the repo may live),
+// so macOS doesn't ask for folder access again after every (ad-hoc signed) build.
+const app = join(root, 'Snapkit Dev.app')
+cpSync(join(mac, 'build', 'Snapkit Dev.app'), app, { recursive: true, verbatimSymlinks: true })
 const screenPng = join(root, 'screen.png')
 const stateFile = join(root, 'state.json')
 const logFile = join(process.env.HOME, 'Library/Logs/Snapkit Dev/main.log')

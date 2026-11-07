@@ -27,7 +27,12 @@ console.log('building…')
 run('scripts/build-app.sh', [])
 run('swift', ['build', '--product', 'snapkitctl'])
 const ctl = join(run('swift', ['build', '--show-bin-path']).trim(), 'snapkitctl')
-const app = join(mac, 'build', 'Snapkit Dev.app')
+// The app and every file it reads live in a temp folder, never under ~/Desktop (where the repo may
+// be), so macOS doesn't ask for folder access after every (ad-hoc signed) build.
+const work = mkdtempSync(join(tmpdir(), 'snapkit-native-scenes-'))
+const app = join(work, 'Snapkit Dev.app')
+cpSync(join(mac, 'build', 'Snapkit Dev.app'), app, { recursive: true, verbatimSymlinks: true })
+cpSync(fixtures, join(work, 'fixtures'), { recursive: true })
 const send = (...args) => run(ctl, [...args.map(String), '--wait', '300'])
 const quit = () => {
   spawnSync('pkill', ['-f', 'Snapkit Dev.app/Contents/MacOS/Snapkit'])
@@ -51,8 +56,8 @@ async function render(scenePath, outPath) {
     ...(kind === 'preview' || kind === 'pin' ? { pin: { ...scene.settings?.pin, afterCopy: true } } : {})
   }
   writeFileSync(join(profile, 'settings.json'), JSON.stringify(settings))
-  if (scene.historyDir) cpSync(join(fixtures, scene.historyDir), join(profile, 'history'), { recursive: true })
-  const screen = join(fixtures, scene.screen ?? 'screens/bands-1470x956@2.png')
+  if (scene.historyDir) cpSync(join(work, 'fixtures', scene.historyDir), join(profile, 'history'), { recursive: true })
+  const screen = join(work, 'fixtures', scene.screen ?? 'screens/bands-1470x956@2.png')
   quit()
   spawnSync('open', ['-n', app, '--args', '-SnapkitTestScreen', screen, '-SnapkitProfile', profile, '-SnapkitTestOut', stateFile,
     '-SnapkitTestPasteboard', 'com.charios.snapkit.dev.scene'])
@@ -124,3 +129,5 @@ if (electronDir) {
   }
   writeFileSync(join(dir, 'report.md'), `# Electron vs native renders\n\nShare of pixels that differ noticeably (any channel by more than 24 of 255). Each image in this folder: Electron | native | differences in red.\n\n| Scene | Differ | Sizes |\n|---|---|---|\n${rows.join('\n')}\n`)
 }
+
+rmSync(work, { recursive: true, force: true })

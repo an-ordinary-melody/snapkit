@@ -281,7 +281,11 @@ struct SliderRep: NSViewRepresentable {
   let step: Double
   let theme: Theme
   let onChange: (Double) -> Void
-  func makeNSView(context: Context) -> SliderView { SliderView(min: min, max: max, step: step, value: value, theme: theme) }
+  func makeNSView(context: Context) -> SliderView {
+    let v = SliderView(min: min, max: max, step: step, value: value, theme: theme)
+    v.fullTrack = true
+    return v
+  }
   func updateNSView(_ v: SliderView, context: Context) {
     v.min = min
     v.max = max

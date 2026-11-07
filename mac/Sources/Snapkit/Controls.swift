@@ -12,6 +12,8 @@ final class SliderView: NSView {
   var value: Double { didSet { needsDisplay = true } }
   var theme: Theme { didSet { needsDisplay = true } }
   var rainbow = false
+  /** The track runs the full width and the knob stays inside it, as a browser range input (settings.css). */
+  var fullTrack = false
   /** `continuous`: part of a drag (one undo step). */
   var onChange: (Double) -> Void = { _ in }
   var onEnd: () -> Void = {}
@@ -36,7 +38,8 @@ final class SliderView: NSView {
   override func draw(_ dirtyRect: NSRect) {
     let pct = max > min ? (value - min) / (max - min) : 0
     let trackH: CGFloat = rainbow ? 8 : 3
-    let track = CGRect(x: inset, y: bounds.midY - trackH / 2, width: bounds.width - inset * 2, height: trackH)
+    let travel = CGRect(x: inset, y: bounds.midY - trackH / 2, width: bounds.width - inset * 2, height: trackH)
+    let track = fullTrack ? CGRect(x: 0, y: travel.minY, width: bounds.width, height: trackH) : travel
     if rainbow {
       let g = NSGradient(colors: ["#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#ff00ff", "#ff0000"].map { NSColor(hex: $0) })!
       g.draw(in: NSBezierPath(roundedRect: track, xRadius: 4, yRadius: 4), angle: 0)
@@ -44,11 +47,11 @@ final class SliderView: NSView {
       theme.track.setFill()
       NSBezierPath(roundedRect: track, xRadius: 1.5, yRadius: 1.5).fill()
       theme.trackFill.setFill()
-      NSBezierPath(roundedRect: CGRect(x: track.minX, y: track.minY, width: track.width * pct, height: trackH), xRadius: 1.5, yRadius: 1.5).fill()
+      NSBezierPath(roundedRect: CGRect(x: track.minX, y: track.minY, width: travel.minX + travel.width * pct - track.minX, height: trackH), xRadius: 1.5, yRadius: 1.5).fill()
     }
     let k = held ? 1.35 : 1
     let kw = knob.width * k, kh = knob.height * k
-    let kr = CGRect(x: track.minX + track.width * pct - kw / 2, y: bounds.midY - kh / 2, width: kw, height: kh)
+    let kr = CGRect(x: travel.minX + travel.width * pct - kw / 2, y: bounds.midY - kh / 2, width: kw, height: kh)
     let shadow = NSShadow()
     shadow.shadowColor = NSColor.black.withAlphaComponent(0.3)
     shadow.shadowBlurRadius = 4
