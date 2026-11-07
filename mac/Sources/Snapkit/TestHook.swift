@@ -347,6 +347,10 @@ enum TestHook {
           o = o.setting("editorZoom", .number(Double(ed.zoomLevel)))
           o = o.setting("editorControls", .array(ed.controlIds.map { .string($0) }))
           o = o.setting("editorControlsInside", .bool(ed.controlsInside))
+          let pr = ed.previewRect
+          o = o.setting("editorCursor", .object([("preview", .string(ed.testCursorName(CGPoint(x: pr.midX, y: pr.midY)))),
+                                                ("sidebar", .string(ed.testCursorName(CGPoint(x: ed.side.midX, y: ed.side.midY)))),
+                                                ("backdrop", .string(ed.testCursorName(CGPoint(x: 4, y: 4))))]))
           let vt = v.testViewTransform
           o = o.setting("editorTransform", .array([vt.origin.x, vt.origin.y, vt.k].map { .number(Double($0)) }))
           o = o.setting("editorBounds", .array([ed.bounds.width, ed.bounds.height].map { .number(Double($0)) }))

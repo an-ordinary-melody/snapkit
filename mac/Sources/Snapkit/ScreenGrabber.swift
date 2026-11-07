@@ -36,7 +36,7 @@ final class ScreenGrabber {
     guard testImage == nil, !refreshing, CGPreflightScreenCaptureAccess() else { return }
     refreshing = true
     Task {
-      let c = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+      let c = await ScreenGrabber.shareableContent()
       await MainActor.run {
         self.content = c
         self.refreshing = false
@@ -62,9 +62,12 @@ final class ScreenGrabber {
     let specs = screens.map { (id: $0.displayID, size: $0.frame.size, scale: $0.backingScaleFactor) }
     Task {
       var cached = await MainActor.run { self.content }
-      if cached == nil { cached = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true) }
+      // Snapkit has to be in the list to be left out of the grab: a list without it (taken before its
+      // first window existed) is fetched again, or the capture window's dim lands in the frozen image.
+      if (cached.map(ScreenGrabber.ownApp) ?? []).isEmpty { cached = await ScreenGrabber.shareableContent() }
       let content = cached
-      let me = content?.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier } ?? []
+      let me = content.map(ScreenGrabber.ownApp) ?? []
+      if content != nil && me.isEmpty { log("[capture] Snapkit isn't in ScreenCaptureKit's app list; its windows may show in the capture") }
       await withTaskGroup(of: Void.self) { group in
         for spec in specs {
           group.addTask {
@@ -91,9 +94,21 @@ final class ScreenGrabber {
           }
         }
       }
-      log("[capture] screencapturekit: \(specs.count) display(s) in \(ms(t0)) ms")
+      log("[capture] screencapturekit: \(specs.count) display(s) in \(ms(t0)) ms\(me.isEmpty ? " (Snapkit not excluded)" : "")")
       await MainActor.run { self.content = content }
     }
+  }
+
+  /**
+   * Displays and apps for ScreenCaptureKit. All windows, not only on-screen ones: between captures
+   * Snapkit has no window on screen, and an app without one isn't listed, so it couldn't be excluded.
+   */
+  static func shareableContent() async -> SCShareableContent? {
+    try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+  }
+
+  static func ownApp(_ c: SCShareableContent) -> [SCRunningApplication] {
+    c.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
   }
 
   /** CoreGraphics: everything on this screen below `below` (Snapkit's capture window), at full resolution. */

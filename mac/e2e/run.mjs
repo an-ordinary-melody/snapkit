@@ -920,6 +920,13 @@ const SUITES = {
     send('editor', 'press', 'compress')
     s = await state()
     check(!s.editorControls.includes('compressPreset'), 'Compress switch turns off, chips hidden')
+    // Cursors over the editor: the tool's over the preview, the arrow elsewhere (not capture mode's).
+    send('tool', 'arrow')
+    s = await state()
+    check(s.editorCursor?.preview === 'crosshair' && s.editorCursor.sidebar === 'arrow' && s.editorCursor.backdrop === 'arrow', 'Editor cursors: the tool\'s over the preview, the arrow over the sidebar and backdrop', JSON.stringify(s.editorCursor))
+    send('tool', 'arrow')
+    s = await state()
+    check(s.editorCursor?.preview === 'arrow', 'Editor cursors: no tool, the arrow over the preview', JSON.stringify(s.editorCursor))
     send('overlay-size', 1280, 720)
     await wait(300)
     s = await state()

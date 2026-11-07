@@ -9,6 +9,8 @@ protocol BackgroundEditorOwner: AnyObject {
   var compressPreset: String { get }
   var sel: LRect? { get }
   var imageScale: CGFloat { get }
+  /** The drawing tool on, if any (for the cursor over the preview). */
+  var tool: String? { get }
   /** The selection without drawings, at the output's resolution. */
   func plainCrop() -> CGImage?
   func setBeautify(_ s: BeautifyState)
@@ -66,7 +68,7 @@ final class BackgroundEditorView: NSView {
   }
 
   var stage: CGRect { CGRect(x: card.minX, y: card.minY, width: card.width - BackgroundEditorView.sidebar, height: card.height) }
-  private var side: CGRect { CGRect(x: stage.maxX, y: card.minY, width: BackgroundEditorView.sidebar, height: card.height) }
+  var side: CGRect { CGRect(x: stage.maxX, y: card.minY, width: BackgroundEditorView.sidebar, height: card.height) }
   private var room: CGFloat { max(112, dockHeight + 30) }
 
   /** The output's full layout at export scale (image px). */
@@ -146,6 +148,7 @@ final class BackgroundEditorView: NSView {
     }
     let k = sidebarStructureKey
     if k != sidebarKey { rebuildSidebar() } else { updateSidebarValues() }
+    window?.invalidateCursorRects(for: self) // the tool or the preview may have changed
     needsDisplay = true
   }
 
@@ -283,10 +286,25 @@ final class BackgroundEditorView: NSView {
   func setHand(_ on: Bool) {
     hand = on
     (on ? NSCursor.openHand : NSCursor.arrow).set()
+    window?.invalidateCursorRects(for: self)
   }
 
+  /** The arrow over the backdrop and sidebar; over the preview, the tool's cursor (or the hand). */
   override func resetCursorRects() {
-    if hand { addCursorRect(stage, cursor: .openHand) }
+    addCursorRect(bounds, cursor: .arrow)
+    if hand { return addCursorRect(stage, cursor: .openHand) }
+    guard let tool = owner?.tool else { return }
+    let c: NSCursor = tool == "text" ? .iBeam : tool == "step" ? Cursors.step : .crosshair
+    addCursorRect(previewRect.intersection(stage), cursor: c)
+  }
+
+  /** Which cursor shows at a point (tests). */
+  var testCursorName: (CGPoint) -> String {
+    { p in
+      if self.hand && self.stage.contains(p) { return "hand" }
+      guard let tool = self.owner?.tool, self.previewRect.intersection(self.stage).contains(p) else { return "arrow" }
+      return tool == "text" ? "ibeam" : tool == "step" ? "step" : "crosshair"
+    }
   }
 
   // MARK: Sidebar

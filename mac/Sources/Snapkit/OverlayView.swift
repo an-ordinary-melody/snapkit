@@ -202,7 +202,7 @@ final class OverlayView: NSView {
     for bar in [actionsBar!, toolsBar!, styleBar!, dockBar!] { bar.theme = theme }
     refreshToolbars()
     chrome.needsDisplay = true
-    window?.invalidateCursorRects(for: self)
+    invalidateCursors()
   }
 
   func setImage(_ img: CGImage?) {
@@ -618,7 +618,7 @@ final class OverlayView: NSView {
     }
     refreshToolbars()
     chrome.needsDisplay = true
-    window?.invalidateCursorRects(for: self)
+    invalidateCursors()
   }
 
   // MARK: Popovers and tooltips
@@ -643,7 +643,7 @@ final class OverlayView: NSView {
     variants[feature] = variant
     OverlayView.lastVariants = variants
     refreshToolbars()
-    window?.invalidateCursorRects(for: self)
+    invalidateCursors()
   }
 
   private func openPicker(_ kind: String) {
@@ -914,7 +914,7 @@ final class OverlayView: NSView {
       liveBlur = nil
       refreshToolbars()
       chrome.needsDisplay = true
-      window?.invalidateCursorRects(for: self)
+      invalidateCursors()
     }
     switch drag {
     case .create:
@@ -940,7 +940,15 @@ final class OverlayView: NSView {
     delegate?.overlayCancel(self)
   }
 
+  /** New cursors for capture mode and, when it's open, the background editor. */
+  func invalidateCursors() {
+    window?.invalidateCursorRects(for: self)
+    if let editor { window?.invalidateCursorRects(for: editor) }
+  }
+
   override func resetCursorRects() {
+    // The background editor covers capture mode and sets its own cursors.
+    if editorOpen { return }
     addCursorRect(bounds, cursor: .crosshair)
     guard let sel, image != nil else { return }
     let inside: NSCursor = tool == "text" ? .iBeam : tool == "step" ? Cursors.step : tool != nil ? .crosshair : .openHand
@@ -1377,6 +1385,7 @@ final class OverlayView: NSView {
     addSubview(ed)
     editor = ed
     editorOpen = true
+    invalidateCursors()
     chrome.needsDisplay = true
     ed.refresh()
     refreshToolbars()
@@ -1401,6 +1410,7 @@ final class OverlayView: NSView {
     ed.removeFromSuperview()
     editor = nil
     editorOpen = false
+    invalidateCursors()
     dockBar.isHidden = true
   }
 
