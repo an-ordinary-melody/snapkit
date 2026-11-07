@@ -217,16 +217,14 @@ func popoverOrigin(anchor r: CGRect, vertical: Bool, size: CGSize, screen: CGSiz
 class PopoverView: NSView {
   var theme: Theme { didSet { needsDisplay = true } }
   var radius: CGFloat = 9
+  /** Liquid Glass: what's under the popover, blurred (set by capture mode). */
+  var backdrop: GlassBackdrop?
 
   init(theme: Theme) {
     self.theme = theme
     super.init(frame: .zero)
     wantsLayer = true
-    let s = NSShadow()
-    s.shadowColor = theme.shadow
-    s.shadowBlurRadius = 24
-    s.shadowOffset = NSSize(width: 0, height: -6)
-    shadow = s
+    shadow = theme.panelShadow
   }
 
   required init?(coder: NSCoder) { fatalError() }
@@ -237,12 +235,8 @@ class PopoverView: NSView {
   override func rightMouseDown(with event: NSEvent) {}
 
   override func draw(_ dirtyRect: NSRect) {
-    theme.strongBackground.setFill()
-    NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius).fill()
-    let rim = NSBezierPath(roundedRect: bounds.insetBy(dx: theme.rimWidth / 2, dy: theme.rimWidth / 2), xRadius: radius, yRadius: radius)
-    rim.lineWidth = theme.rimWidth
-    theme.rim.setStroke()
-    rim.stroke()
+    guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+    theme.drawPanel(bounds, radius: radius, strong: true, backdrop: theme.glass ? backdrop?(self) : nil, in: ctx)
   }
 }
 
@@ -257,7 +251,9 @@ final class VariantMenuView: PopoverView {
     self.variants = variants
     self.current = current
     super.init(theme: theme)
-    setFrameSize(CGSize(width: 190, height: CGFloat(variants.count) * 31 - 1 + 8))
+    // min-width: 180px, wider when a label needs it (icon and padding 40, check and padding 36).
+    let label = variants.map { NSAttributedString(string: $0.label, attributes: [.font: NSFont.systemFont(ofSize: 12.5)]).size().width }.max() ?? 0
+    setFrameSize(CGSize(width: max(180, ceil(40 + label + 8 + 36)), height: CGFloat(variants.count) * 31 - 1 + 8))
   }
 
   required init?(coder: NSCoder) { fatalError() }

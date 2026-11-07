@@ -353,8 +353,8 @@ private final class PinView: NSView {
   }
 
   override func mouseEntered(with e: NSEvent) { hover = true; layoutSlider(); needsDisplay = true }
-  /** Test hook: as if the pointer left. */
-  func testUnhover() { hover = false; layoutSlider(); needsDisplay = true }
+  /** Test hook: as if the pointer left (or came in). */
+  func testUnhover(_ on: Bool = false) { hover = on; layoutSlider(); needsDisplay = true }
   override func mouseExited(with e: NSEvent) { hover = false; layoutSlider(); needsDisplay = true }
   override func mouseMoved(with e: NSEvent) {
     (e.modifierFlags.contains(.option) ? NSCursor.dragCopy : NSCursor.openHand).set()
@@ -452,6 +452,18 @@ private final class PinView: NSView {
     else { super.keyDown(with: e) }
   }
 
+  /** Liquid Glass: the pinned image under a control, blurred (cached per size). */
+  private var glassCache: [String: CGImage] = [:]
+  private func glassUnder(_ r: CGRect) -> CGImage? {
+    guard theme.glass else { return nil }
+    let key = "\(r)|\(bounds.size)"
+    if let c = glassCache[key] { return c }
+    let img = Glass.backdrop(r, scale: window?.backingScaleFactor ?? 2) { ctx in ShapeDrawing.drawImage(self.item.image, in: self.bounds, ctx: ctx) }
+    if glassCache.count > 12 { glassCache = [:] }
+    glassCache[key] = img
+    return img
+  }
+
   override func draw(_ dirtyRect: NSRect) {
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
     ShapeDrawing.drawImage(item.image, in: bounds, ctx: ctx)
@@ -467,8 +479,7 @@ private final class PinView: NSView {
       s.draw(at: CGPoint(x: box.minX + 12, y: box.minY + 6))
     }
     if showClose {
-      theme.strongBackground.setFill()
-      NSBezierPath(ovalIn: closeRect).fill()
+      theme.drawPanel(closeRect, radius: closeRect.width / 2, strong: true, backdrop: glassUnder(closeRect), in: ctx)
       Icons.draw("close", in: closeRect, size: 13, color: theme.foreground, ctx: ctx)
     }
     if showBar {
@@ -481,6 +492,7 @@ private final class PinView: NSView {
       theme.strongBackground.setFill()
       NSBezierPath(roundedRect: barRect, xRadius: theme.radius, yRadius: theme.radius).fill()
       NSGraphicsContext.restoreGraphicsState()
+      if theme.glass { theme.drawPanel(barRect, radius: theme.radius, strong: true, backdrop: glassUnder(barRect), in: ctx) }
       Icons.draw("grip", in: barFrame("grip"), size: 15, color: theme.foreground.withAlphaComponent(0.6), ctx: ctx)
       Icons.draw("minus", in: barFrame("out"), size: 14, color: theme.foreground, ctx: ctx)
       Icons.draw("plus", in: barFrame("in"), size: 14, color: theme.foreground, ctx: ctx)
@@ -552,8 +564,8 @@ private final class ThumbView: NSView {
   }
 
   override func mouseEntered(with e: NSEvent) { hover = true; needsDisplay = true }
-  /** Test hook: as if the pointer left. */
-  func testUnhover() { hover = false; needsDisplay = true }
+  /** Test hook: as if the pointer left (or came in). */
+  func testUnhover(_ on: Bool = false) { hover = on; needsDisplay = true }
   override func mouseExited(with e: NSEvent) { hover = false; needsDisplay = true }
 
   override func mouseDown(with e: NSEvent) {
@@ -616,14 +628,37 @@ private final class ThumbView: NSView {
     if e.keyCode == 53 { owner?.close(item) } else { super.keyDown(with: e) }
   }
 
+  /** The preview's image as drawn (object-fit: cover). */
+  private var imageRect: CGRect {
+    let iw = CGFloat(item.image.width), ih = CGFloat(item.image.height)
+    let k = max(bounds.width / iw, bounds.height / ih)
+    return CGRect(x: bounds.midX - iw * k / 2, y: bounds.midY - ih * k / 2, width: iw * k, height: ih * k)
+  }
+
+  /** Liquid Glass: the hovered preview (image and shade) under a button, blurred (cached per size). */
+  private var glassCache: [String: CGImage] = [:]
+  private func glassUnder(_ r: CGRect) -> CGImage? {
+    guard theme.glass else { return nil }
+    let key = "\(r)|\(bounds.size)"
+    if let c = glassCache[key] { return c }
+    let img = Glass.backdrop(r, scale: window?.backingScaleFactor ?? 2) { ctx in
+      NSColor(hex: "#111111").setFill()
+      self.bounds.fill()
+      ShapeDrawing.drawImage(self.item.image, in: self.imageRect, ctx: ctx)
+      NSColor.black.withAlphaComponent(0.42).setFill()
+      self.bounds.fill()
+    }
+    if glassCache.count > 12 { glassCache = [:] }
+    glassCache[key] = img
+    return img
+  }
+
   override func draw(_ dirtyRect: NSRect) {
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
     NSColor(hex: "#111111").setFill()
     bounds.fill()
     // object-fit: cover
-    let iw = CGFloat(item.image.width), ih = CGFloat(item.image.height)
-    let k = max(bounds.width / iw, bounds.height / ih)
-    let r = CGRect(x: bounds.midX - iw * k / 2, y: bounds.midY - ih * k / 2, width: iw * k, height: ih * k)
+    let r = imageRect
     ShapeDrawing.drawImage(item.image, in: r, ctx: ctx)
     NSColor.white.withAlphaComponent(0.18).setStroke()
     NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10).stroke()
@@ -632,15 +667,13 @@ private final class ThumbView: NSView {
     bounds.fill()
     for (i, r) in buttonRects().enumerated() {
       let b = buttons[i]
-      theme.strongBackground.setFill()
-      NSBezierPath(roundedRect: r, xRadius: 15, yRadius: 15).fill()
+      theme.drawPanel(r, radius: 15, strong: true, backdrop: glassUnder(r), in: ctx)
       Icons.draw(b.icon, in: CGRect(x: r.minX + 12, y: r.minY, width: 14, height: r.height), size: 14, color: theme.foreground, ctx: ctx)
       let s = NSAttributedString(string: b.label, attributes: [.font: buttonFont, .foregroundColor: theme.foreground])
       s.draw(at: CGPoint(x: r.minX + 32, y: r.midY - s.size().height / 2))
     }
     for (rect, icon) in [(pinRect, "pin"), (moveRect, "move"), (closeRect, "close")] {
-      theme.strongBackground.setFill()
-      NSBezierPath(ovalIn: rect).fill()
+      theme.drawPanel(rect, radius: rect.width / 2, strong: true, backdrop: glassUnder(rect), in: ctx)
       Icons.draw(icon, in: rect, size: 13, color: theme.foreground, ctx: ctx)
     }
   }
@@ -662,10 +695,10 @@ extension Floating {
 
 extension Floating {
   /** Test hook: no floating window shows its hover controls. */
-  func testUnhoverAll() {
+  func testUnhoverAll(hover: Bool = false) {
     for i in items {
-      (i.panel.contentView as? PinView)?.testUnhover()
-      (i.panel.contentView as? ThumbView)?.testUnhover()
+      (i.panel.contentView as? PinView)?.testUnhover(hover)
+      (i.panel.contentView as? ThumbView)?.testUnhover(hover)
     }
   }
 }

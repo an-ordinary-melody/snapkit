@@ -263,7 +263,7 @@ builds no accessibility tree until an assistive app attaches.
 | ⌘⇧Z registered again after capture | hotkeys › it comes back after capture |
 | Gray theme in every window | settings › Gray is a dark theme with lighter surfaces, in every open window |
 | No glass knob with Liquid Glass off (22 px solid) | N/A for automation: a held SwiftUI switch can't be driven without an assistive app; checked by hand (§4 manual list). The knob stretches to 22 pt, solid |
-| Glass knob with Liquid Glass on | Same as above; with Liquid Glass on the held knob is a white-to-clear gradient (Liquid Glass is drawn solid everywhere else, see the plan) |
+| Glass knob with Liquid Glass on | Same as above; with Liquid Glass on the held knob is a white-to-clear gradient |
 | Takes a shortcut back once the app holding it quits | parity › Takes a shortcut back once the app holding it quits |
 | Windows: notices a shortcut another app holds | N/A: Windows only; macOS lets two apps register the same shortcut |
 

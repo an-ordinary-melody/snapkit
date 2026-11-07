@@ -113,6 +113,7 @@ enum TestHook {
       if let p = Floating.shared.items.last, nums.count == 2 { Floating.shared.moveBy(p, dx: nums[0], dy: nums[1]) }
     case "closepins": Floating.shared.closeAll()
     case "unhover": Floating.shared.testUnhoverAll()
+    case "hover": Floating.shared.testUnhoverAll(hover: true)
     case "clearclip": Output.pasteboard.clearContents()
     case "history": app.historyPanel.toggle()
     case "hist":

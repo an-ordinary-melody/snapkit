@@ -91,10 +91,17 @@ struct SettingsTheme {
   var ring: Color { Color(t.ring) }
   var switchOn: Color { Color(t.switchOn) }
   var track: Color { Color(t.track) }
-  var main: Color { Color(gray ? NSColor(hex: "#3a3a3e") : dark ? NSColor(hex: "#232326") : .white) }
-  var card: Color { Color(gray ? NSColor(hex: "#46464b") : dark ? NSColor(hex: "#2c2c30") : NSColor(hex: "#f6f6f8")) }
+  // settings.css: with Liquid Glass the window is frosted (vibrancy "sidebar") and these are translucent.
+  var main: Color {
+    if glass { return Color(gray ? NSColor.rgba(62, 62, 68, 0.6) : dark ? NSColor.rgba(34, 34, 38, 0.55) : NSColor.rgba(255, 255, 255, 0.55)) }
+    return Color(gray ? NSColor(hex: "#3a3a3e") : dark ? NSColor(hex: "#232326") : .white)
+  }
+  var card: Color {
+    if glass { return Color(gray ? NSColor.rgba(255, 255, 255, 0.09) : dark ? NSColor.rgba(255, 255, 255, 0.07) : NSColor.rgba(255, 255, 255, 0.78)) }
+    return Color(gray ? NSColor(hex: "#46464b") : dark ? NSColor(hex: "#2c2c30") : NSColor(hex: "#f6f6f8"))
+  }
   var cardEdge: Color { Color(dark ? NSColor.white.withAlphaComponent(gray ? 0.08 : 0.06) : NSColor.black.withAlphaComponent(0.08)) }
-  var sidebar: Color { Color(gray ? NSColor(hex: "#323236") : dark ? NSColor(hex: "#1c1c1f") : NSColor(hex: "#ececef")) }
+  var sidebar: Color { glass ? .clear : Color(gray ? NSColor(hex: "#323236") : dark ? NSColor(hex: "#1c1c1f") : NSColor(hex: "#ececef")) }
   static let danger = Color(NSColor(hex: "#e5484d"))
 
   init(_ a: SnapkitCore.Settings.Appearance) {

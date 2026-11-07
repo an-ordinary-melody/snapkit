@@ -53,8 +53,18 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
     w.delegate = self
     w.isMovableByWindowBackground = true
     let v = HistoryView(panel: self)
-    v.frame = w.contentRect(forFrameRect: w.frame)
-    w.contentView = v
+    // Liquid Glass: the window is frosted (vibrancy "popover", as Electron's) under a translucent
+    // background; without it the view's own solid background covers the material.
+    let frost = NSVisualEffectView(frame: w.contentRect(forFrameRect: w.frame))
+    frost.material = .popover
+    frost.blendingMode = .behindWindow
+    frost.state = .active
+    v.frame = frost.bounds
+    v.autoresizingMask = [.width, .height]
+    frost.addSubview(v)
+    w.contentView = frost
+    w.isOpaque = false
+    w.backgroundColor = .clear
     window = w
     view = v
   }
@@ -616,5 +626,9 @@ final class HistoryGrid: NSView {
 
 extension Theme {
   /** --hist-bg */
-  var historyBackground: NSColor { dark ? (strongBackground == NSColor(hex: "#3a3a3e") ? NSColor(hex: "#38383c") : NSColor(hex: "#1e1e21")) : NSColor(hex: "#f6f6f8") }
+  /** --hist-bg: translucent over the window's frosted material with Liquid Glass, else solid. */
+  var historyBackground: NSColor {
+    if glass { return gray ? .rgba(64, 64, 70, 0.45) : dark ? .rgba(30, 30, 34, 0.4) : .rgba(250, 250, 252, 0.35) }
+    return gray ? NSColor(hex: "#38383c") : dark ? NSColor(hex: "#1e1e21") : NSColor(hex: "#f6f6f8")
+  }
 }

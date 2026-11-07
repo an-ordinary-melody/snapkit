@@ -27,7 +27,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       w.minSize = CGSize(width: 720, height: 480)
       w.isReleasedWhenClosed = false
       w.delegate = self
-      w.contentView = NSHostingView(rootView: SettingsRoot(model: model))
+      // Liquid Glass: a frosted window (vibrancy "sidebar", as Electron's) under translucent colours;
+      // without it the SwiftUI backgrounds are solid and cover the material.
+      let frost = NSVisualEffectView(frame: w.contentRect(forFrameRect: w.frame))
+      frost.material = .sidebar
+      frost.blendingMode = .behindWindow
+      frost.state = .active
+      let host = NSHostingView(rootView: SettingsRoot(model: model))
+      host.frame = frost.bounds
+      host.autoresizingMask = [.width, .height]
+      frost.addSubview(host)
+      w.contentView = frost
+      w.isOpaque = false
+      w.backgroundColor = .clear
       w.center()
       window = w
     }

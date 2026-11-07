@@ -3,6 +3,8 @@ import SnapkitCore
 
 /** OcrPanel.tsx: the recognized text, editable, to check before copying ("Show text first"). */
 final class OcrPanelView: NSView, NSTextViewDelegate {
+  /** Liquid Glass: what's under the panel, blurred (set by capture mode). */
+  var backdrop: GlassBackdrop?
   static let size = CGSize(width: 300, height: 200)
   private let theme: Theme
   private let scroll = NSScrollView()
@@ -103,12 +105,7 @@ final class OcrPanelView: NSView, NSTextViewDelegate {
 
   override func draw(_ dirtyRect: NSRect) {
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-    theme.background.setFill()
-    NSBezierPath(roundedRect: bounds, xRadius: theme.radius, yRadius: theme.radius).fill()
-    let rim = NSBezierPath(roundedRect: bounds.insetBy(dx: theme.rimWidth / 2, dy: theme.rimWidth / 2), xRadius: theme.radius, yRadius: theme.radius)
-    rim.lineWidth = theme.rimWidth
-    theme.rim.setStroke()
-    rim.stroke()
+    theme.drawPanel(bounds, radius: theme.radius, backdrop: theme.glass ? backdrop?(self) : nil, in: ctx)
     let n = lineCount
     let head = NSAttributedString(string: "\(n) line\(n == 1 ? "" : "s") · \(String(format: "%.1f", Double(ms) / 1000)) s",
                                   attributes: [.font: NSFont.systemFont(ofSize: 12), .foregroundColor: theme.foreground.withAlphaComponent(0.65)])

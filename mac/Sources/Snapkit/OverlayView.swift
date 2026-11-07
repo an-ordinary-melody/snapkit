@@ -134,6 +134,7 @@ final class OverlayView: NSView {
       bar.onPress = { [weak self, weak bar] id in self?.press(id, in: bar) }
       bar.onRightClick = { [weak self, weak bar] id in self?.rightClick(id, in: bar) }
       bar.onHover = { [weak self, weak bar] id in self?.hover(id, in: bar) }
+      bar.backdrop = { [weak self] v in self?.glassBackdrop(for: v) }
       addSubview(bar)
     }
   }
@@ -628,6 +629,7 @@ final class OverlayView: NSView {
     closePopovers()
     let menu = VariantMenuView(variants: f.variants, current: variants[id] ?? f.variants[0].id, theme: theme)
     menu.onPick = { [weak self] v in self?.pickVariant(id, v) }
+    menu.backdrop = { [weak self] v in self?.glassBackdrop(for: v) }
     let anchor = bar.convert(r, to: self)
     menu.setFrameOrigin(popoverOrigin(anchor: anchor, vertical: bar.vertical, size: menu.frame.size, screen: bounds.size))
     addSubview(menu)
@@ -652,6 +654,7 @@ final class OverlayView: NSView {
     let target = styleTarget ?? ""
     let color = kind == "textExtra" ? (TextLook.of(s) == .stroke ? s.textStroke : s.textBackground) : colorOf(target, s)
     let p = ColorPickerView(color: color, theme: theme)
+    p.backdrop = { [weak self] v in self?.glassBackdrop(for: v) }
     p.onChange = { [weak self] c in
       guard let self else { return }
       if kind == "textExtra" {
@@ -1290,6 +1293,7 @@ final class OverlayView: NSView {
     guard let sel else { return }
     ocrPanel?.removeFromSuperview()
     let panel = OcrPanelView(lines: lines, ms: ms, theme: theme)
+    panel.backdrop = { [weak self] v in self?.glassBackdrop(for: v) }
     panel.setFrameOrigin(OcrPanelView.place(sel: sel, screen: bounds.size))
     panel.onClose = { [weak self] in
       guard let self else { return }
@@ -1424,6 +1428,47 @@ final class OverlayView: NSView {
     guard let editor, let sel else { return (.zero, 1) }
     let t = editor.transform
     return (CGPoint(x: t.origin.x - sel.x * t.k, y: t.origin.y - sel.y * t.k), t.k)
+  }
+
+  // MARK: - Liquid Glass
+
+  private var glassCache: [String: CGImage] = [:]
+
+  /**
+   * What's under a panel, as --ui-blur shows it: the frozen screen and the dim (with the selection
+   * clear) in the panel's area, bent outward near the edges (#liquid-glass), blurred 10 pt,
+   * saturation ×1.9, brightness ×1.06, at the screen's pixel scale. Nil in the background editor (the
+   * panel then shows the editor through its translucent gradient).
+   */
+  func glassBackdrop(for v: NSView) -> CGImage? {
+    guard !editorOpen, let image, bounds.width > 0 else { return nil }
+    let r = v.convert(v.bounds, to: self)
+    let s = settings.capture
+    let key = "\(r)|\(sel.map { "\($0)" } ?? "")|\(s.dimColor)|\(s.dimOpacity)|\(image.width)"
+    if let c = glassCache[key] { return c }
+    let k = CGFloat(image.width) / bounds.width
+    // backdrop-filter sees only the panel's own area.
+    let area = r.intersection(bounds)
+    guard !area.isEmpty, let crop = image.cropping(to: CGRect(x: area.minX * k, y: area.minY * k, width: area.width * k, height: area.height * k)) else { return nil }
+    let w = crop.width, h = crop.height
+    let space = CGColorSpace(name: CGColorSpace.sRGB)!
+    guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space,
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+    ctx.draw(crop, in: CGRect(x: 0, y: 0, width: w, height: h))
+    // The dim, with the selection clear: top-left points to bottom-left pixels.
+    ctx.setFillColor(NSColor(hex: s.dimColor, alpha: s.dimOpacity).cgColor)
+    let dim = CGMutablePath()
+    dim.addRect(CGRect(x: 0, y: 0, width: w, height: h))
+    if let sel, sel.w > 0 || sel.h > 0 {
+      let q = sel.cg
+      dim.addRect(CGRect(x: (q.minX - area.minX) * k, y: CGFloat(h) - (q.maxY - area.minY) * k, width: q.width * k, height: q.height * k))
+    }
+    ctx.addPath(dim)
+    ctx.fillPath(using: .evenOdd)
+    guard let out = Glass.filter(ctx, w, h, scale: k) else { return nil }
+    if glassCache.count > 24 { glassCache = [:] } // old positions and selections
+    glassCache[key] = out
+    return out
   }
 
   /** Test hooks. */

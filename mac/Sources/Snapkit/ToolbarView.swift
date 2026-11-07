@@ -60,6 +60,8 @@ final class ToolbarView: NSView {
   var active: Set<String> = [] { didSet { if active != oldValue { needsDisplay = true } } }
   var disabled: Set<String> = [] { didSet { if disabled != oldValue { needsDisplay = true } } }
   var theme: Theme { didSet { needsDisplay = true; updateShadow() } }
+  /** Liquid Glass: what's under the bar, blurred (set by capture mode). */
+  var backdrop: GlassBackdrop?
   var onPress: (String) -> Void = { _ in }
   var onRightClick: (String) -> Void = { _ in }
   /** Hovering a button (for the tooltip); nil when the pointer leaves. */
@@ -82,13 +84,7 @@ final class ToolbarView: NSView {
 
   override var isFlipped: Bool { true }
 
-  private func updateShadow() {
-    let s = NSShadow()
-    s.shadowColor = theme.shadow
-    s.shadowBlurRadius = 24
-    s.shadowOffset = NSSize(width: 0, height: -6)
-    shadow = s
-  }
+  private func updateShadow() { shadow = theme.panelShadow }
 
   private func length(_ item: Item) -> CGFloat {
     switch item {
@@ -183,15 +179,29 @@ final class ToolbarView: NSView {
     }
   }
 
+  /** A moved bar shows a different part of the screen through its glass. */
+  override func setFrameOrigin(_ p: NSPoint) {
+    super.setFrameOrigin(p)
+    if theme.glass { needsDisplay = true }
+  }
+
+  /**
+   * A button's background: rounded like the bar where it meets the bar's ends (the bar's radius minus
+   * its padding, so the two curves run parallel), the usual button radius elsewhere.
+   */
+  func buttonShape(_ r: CGRect, first: Bool, last: Bool) -> NSBezierPath {
+    let inner = theme.buttonRadius, outer = max(inner, theme.radius - Self.padding)
+    // Corners in the view's (flipped) coordinates: top-left, top-right, bottom-right, bottom-left.
+    var c = [inner, inner, inner, inner]
+    if first { if vertical { c[0] = outer; c[1] = outer } else { c[0] = outer; c[3] = outer } }
+    if last { if vertical { c[2] = outer; c[3] = outer } else { c[1] = outer; c[2] = outer } }
+    return NSBezierPath.rounded(r, corners: c)
+  }
+
   override func draw(_ dirtyRect: NSRect) {
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-    let panel = NSBezierPath(roundedRect: bounds, xRadius: theme.radius, yRadius: theme.radius)
-    theme.background.setFill()
-    panel.fill()
-    let rim = NSBezierPath(roundedRect: bounds.insetBy(dx: theme.rimWidth / 2, dy: theme.rimWidth / 2), xRadius: theme.radius, yRadius: theme.radius)
-    rim.lineWidth = theme.rimWidth
-    theme.rim.setStroke()
-    rim.stroke()
+    theme.drawPanel(bounds, radius: theme.radius, backdrop: theme.glass ? backdrop?(self) : nil, in: ctx)
+    let ends = (frames.firstIndex { $0.0.id != nil }, frames.lastIndex { $0.0.id != nil })
 
     for (k, (item, r)) in frames.enumerated() {
       guard let id = item.id else {
@@ -203,7 +213,7 @@ final class ToolbarView: NSView {
       if case .view = item { continue }
       let off = disabled.contains(id)
       let isActive = active.contains(id)
-      let shape = NSBezierPath(roundedRect: r, xRadius: theme.buttonRadius, yRadius: theme.buttonRadius)
+      let shape = buttonShape(r, first: k == ends.0, last: k == ends.1)
       let swatchLike: Bool = {
         switch item {
         case let .swatch(_, _, _, round): return round
