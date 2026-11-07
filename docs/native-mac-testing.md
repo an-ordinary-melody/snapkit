@@ -322,6 +322,24 @@ builds no accessibility tree until an assistive app attaches.
 | Reset one section | settings › Reset section puts Appearance back to defaults; settings › resetting one section keeps the others |
 | No page errors | all › no errors in the log |
 
+### states (9)
+
+Bad states Electron fixed in 1a00d6f (docs/state-machines.md). Native already passed most by design: outputs run in order on the main thread, and every text read checks the capture session and area it started on.
+
+| Electron check | Native check |
+|---|---|
+| A text read finishing after capture mode closed froze the next capture | states › late read: no note, no copy, tools still work; states › Esc during a read drops its result |
+| Two text reads at once: only the newest one is copied | states › two reads: only the second area is copied |
+| Capture text has no drawing and doesn't copy the image | states › capture text: no drawing, ⌘C and Enter copy no image |
+| An area moved to another display left its drawings and editor behind | states › area moved away: editor, drawings and tool go with it; states › a new area there: nothing to undo, no editor |
+| "Remember last background" reset the color picked | states › colour picked kept after the background default changed |
+| Esc right after ⌘C still added the capture to history | states › Esc right after ⌘C: history and clipboard agree |
+| Double-clicking a preview button opened the editor | states › preview Copy double-clicked: no editor; states › preview image double-clicked: the editor opens |
+| A pin saved twice at once wrote two files | states › pin: a held ⌘S saves once; a second press saves a second file |
+| No page errors | all › no errors in the log |
+
+Pin saves: native saves are instant, so two separate ⌘S presses rightly make two files (with different names); the case left is a held key. Also from 1a00d6f, outside the e2e suites: the latest copy wins the clipboard and saves never overwrite each other (`output.test.ts`) hold natively because copies and saves run one after another on the main thread and the name is picked right before writing; one permission dialog at a time (`permissions.test.ts`) is a guard in `Permissions.ask`, not testable without revoking Screen Recording; an undecodable edit image is states › undecodable edit image: no editor left open.
+
 ### Not in `run-all.mjs`
 
 | Electron script | Native |

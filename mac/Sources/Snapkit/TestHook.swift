@@ -281,6 +281,34 @@ enum TestHook {
       reply(.object([("sparkle", .bool(true))]))
     case "quit":
       NSApp.terminate(nil)
+    case "read-delays":
+      // read-delays <ms> [<ms>…]: the next text reads answer that much later
+      TextRecognition.testDelays = nums.map { $0 / 1000 }
+    case "area-taken":
+      // As if the area was started on another display
+      mainView?.clearSelection()
+    case "edit-bad":
+      // Edit a document whose image can't be decoded
+      app.capture.edit(CaptureDoc(png: Data([1, 2, 3]), width: 10, height: 10, scale: 1, shapes: [])) { _, _, _ in }
+    case "pin-key":
+      // pin-key <key> [cmd] [repeat]: a key on the last pin (repeat: as when held)
+      guard let p = Floating.shared.items.last(where: { $0.kind == .pin }), let v = p.panel.contentView, let k = args.first,
+            let e = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0, windowNumber: p.panel.windowNumber, context: nil,
+                                     characters: k, charactersIgnoringModifiers: k, isARepeat: args.contains("repeat"), keyCode: k == "s" ? 1 : k == "c" ? 8 : 0) else { return }
+      v.keyDown(with: e)
+    case "thumb-dblclick":
+      // thumb-dblclick <button index|image>: double-click on a preview's button or its image
+      guard let t = Floating.shared.items.last(where: { $0.kind == .thumb }), let v = t.panel.contentView else { return }
+      Floating.shared.testUnhoverAll(hover: true)
+      let p = Floating.shared.testThumbPoint(t, args.first ?? "image")
+      for n in 1...2 {
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+          if let e = NSEvent.mouseEvent(with: type, location: v.convert(p, to: nil), modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                        windowNumber: t.panel.windowNumber, context: nil, eventNumber: 0, clickCount: n, pressure: 1) {
+            if type == .leftMouseDown { v.mouseDown(with: e) } else { v.mouseUp(with: e) }
+          }
+        }
+      }
     case "screen-change":
       // As if a display was added or removed
       NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: NSApp)

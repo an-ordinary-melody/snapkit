@@ -252,15 +252,23 @@ final class OverlayView: NSView {
   }
 
   /** Another display started a selection. */
+  /** Another display took the area: everything that belonged to it here goes (drawings, undo, tool, text read, editor). */
   func clearSelection() {
     guard sel != nil else { return }
     finishEditing(commit: false)
     closePopovers()
+    closeEditorView()
+    clearOcr()
+    setNote(nil)
     sel = nil
     history = ShapeHistory()
     selectedId = nil
+    tool = nil
+    draft = nil
+    drag = nil
     refreshToolbars()
     chrome.needsDisplay = true
+    invalidateCursors()
   }
 
   /** Select an area programmatically (Capture last area, tests). */
@@ -1141,8 +1149,8 @@ final class OverlayView: NSView {
         commit(shapes.filter { $0.id != id })
       }
       return
-    case 36, 76: // Return / Enter
-      delegate?.overlayCopy(self)
+    case 36, 76: // Return / Enter (Capture text reads text only: nothing copies the image)
+      if !textOnly { delegate?.overlayCopy(self) }
       return
     case 123, 124, 125, 126:
       let step: Double = mods.contains(.shift) ? 10 : 1
@@ -1166,8 +1174,10 @@ final class OverlayView: NSView {
     if cmd && key == "z" { run(mods.contains(.shift) ? "redo" : "undo"); return }
     if cmd && key == "y" { run("redo"); return }
     if cmd && key == "," { delegate?.overlayAction(self, "settings"); return }
-    if cmd && key == "c" { delegate?.overlayCopy(self); return }
-    if cmd && key == "s" { delegate?.overlaySave(self); return }
+    // Capture text reads text only: no image copy or save, no drawing tools. A held key repeats: one output per press.
+    if textOnly { return }
+    if cmd && key == "c" { if !e.isARepeat { delegate?.overlayCopy(self) }; return }
+    if cmd && key == "s" { if !e.isARepeat { delegate?.overlaySave(self) }; return }
     if !cmd && !mods.contains(.option), sel != nil, key == "x", visible(.action).contains(where: { $0.id == "ocr" }) {
       run("ocr")
       return
@@ -1253,6 +1263,9 @@ final class OverlayView: NSView {
   // MARK: - Text recognition
 
   /** Read the text in the selection (the screenshot only, not the drawings). */
+  /** Bumped by every read and by anything that drops a read's result (Esc, a new capture or area): only the newest read counts. */
+  private var readId = 0
+
   func readText() {
     guard let sel, image != nil, ocr == nil || textOnly else { return }
     finishEditing(commit: true)
@@ -1262,9 +1275,10 @@ final class OverlayView: NSView {
     refreshToolbars()
     chrome.needsDisplay = true
     guard let plain = renderPlain() else { return }
-    let session = self.session
+    readId += 1
+    let session = self.session, read = readId
     TextRecognition.recognize(plain) { [weak self] result, ms in
-      guard let self, self.session == session, self.sel == sel else { return }
+      guard let self, self.session == session, self.readId == read, self.sel == sel else { return }
       switch result {
       case let .failure(err):
         self.ocr = nil
@@ -1312,6 +1326,7 @@ final class OverlayView: NSView {
   }
 
   private func clearOcr() {
+    readId += 1 // a read still running is dropped
     ocr = nil
     ocrPanel?.removeFromSuperview()
     ocrPanel = nil

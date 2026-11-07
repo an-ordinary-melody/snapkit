@@ -220,7 +220,15 @@ final class Floating {
   }
 
   func copy(_ item: Item) { delegate?.floatingCopy(item.png, scale: CGFloat(item.doc?.scale ?? Double(item.panel.backingScaleFactor))) }
-  func save(_ item: Item) { delegate?.floatingSave(item.png, scale: CGFloat(item.doc?.scale ?? Double(item.panel.backingScaleFactor))) }
+  /** One save at a time per window (a second ⌘S or menu Save while one runs does nothing). */
+  private var saving: Set<ObjectIdentifier> = []
+  func save(_ item: Item) {
+    let id = ObjectIdentifier(item.panel)
+    guard !saving.contains(id) else { return }
+    saving.insert(id)
+    defer { saving.remove(id) }
+    delegate?.floatingSave(item.png, scale: CGFloat(item.doc?.scale ?? Double(item.panel.backingScaleFactor)))
+  }
   func copyText(_ item: Item, done: @escaping (Int) -> Void) { delegate?.floatingCopyText(item.png, done: done) }
   func edit(_ item: Item) { delegate?.floatingEdit(item) }
 
@@ -444,8 +452,9 @@ private final class PinView: NSView {
     let cmd = e.modifierFlags.contains(.command)
     let k = e.charactersIgnoringModifiers?.lowercased() ?? ""
     if e.keyCode == 53 { owner?.close(item) }
-    else if cmd && k == "c" { owner?.copy(item) }
-    else if cmd && k == "s" { owner?.save(item) }
+    // A held ⌘C / ⌘S repeats: one copy or save per press.
+    else if cmd && k == "c" { if !e.isARepeat { owner?.copy(item) } }
+    else if cmd && k == "s" { if !e.isARepeat { owner?.save(item) } }
     else if cmd && (k == "=" || k == "+") { zoomTo(item.zoom * 1.25) }
     else if cmd && k == "-" { zoomTo(item.zoom / 1.25) }
     else if cmd && k == "0" { zoomTo(1) }
@@ -572,7 +581,9 @@ private final class ThumbView: NSView {
     window?.makeKey()
     window?.makeFirstResponder(self)
     let p = convert(e.locationInWindow, from: nil)
-    if e.clickCount == 2 { owner?.edit(item); return }
+    // Only a double-click on the image edits; on a button it's just two clicks.
+    let onControl = hover && (closeRect.contains(p) || pinRect.contains(p) || moveRect.contains(p) || buttonRects().contains { $0.contains(p) })
+    if e.clickCount == 2 && !onControl { owner?.edit(item); return }
     if closeRect.contains(p) { owner?.close(item); return }
     if pinRect.contains(p) { owner?.pinFromThumb(item); return }
     if moveRect.contains(p) { moveFrom = NSEvent.mouseLocation; return }
@@ -627,6 +638,8 @@ private final class ThumbView: NSView {
   override func keyDown(with e: NSEvent) {
     if e.keyCode == 53 { owner?.close(item) } else { super.keyDown(with: e) }
   }
+
+  var testButtonRects: [CGRect] { buttonRects() }
 
   /** The preview's image as drawn (object-fit: cover). */
   private var imageRect: CGRect {
@@ -694,6 +707,13 @@ extension Floating {
 }
 
 extension Floating {
+  /** Test hook: the middle of a preview's button (by index) or of its image. */
+  func testThumbPoint(_ item: Item, _ which: String) -> CGPoint {
+    guard let v = item.panel.contentView as? ThumbView else { return .zero }
+    if let i = Int(which), v.testButtonRects.indices.contains(i) { let r = v.testButtonRects[i]; return CGPoint(x: r.midX, y: r.midY) }
+    return CGPoint(x: v.bounds.midX, y: v.bounds.maxY - 12)
+  }
+
   /** Test hook: no floating window shows its hover controls. */
   func testUnhoverAll(hover: Bool = false) {
     for i in items {

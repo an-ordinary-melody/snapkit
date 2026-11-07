@@ -545,3 +545,24 @@ Testing adds roughly 6–7 weeks across the phases.
 
 1. Later, with release work: version numbers, beta period, feed hosting, site
    wording for the switch from Electron.
+
+### To do: the native section of docs/state-machines.md
+
+The user wants the native app's state machines in `docs/state-machines.md`, as its own section
+after Electron's (asked 2026-11-08, for later). Outline, mirroring Electron's sections:
+
+- **Capture session** (`CaptureController`): `active`, `session`, `editTarget`, `touched`, idle timer;
+  states Idle → Shown (dim, instant) → Live (image painted; keyboard taken only after the grab) →
+  Idle / Editing. The presentation watchdog (`checkPresented`) and window replacement.
+- **Overlay view** (`OverlayView`, one per display): `session` plus `readId` (only the newest text
+  read counts; Esc, a new capture and the area moving away drop it). Area, drawings and undo
+  (`ShapeHistory`), tool, editor; what `arm` and `clearSelection` clear. Capture text: no drawing,
+  no image output.
+- **Outputs**: copy and save run in order on the main thread (the latest copy wins, names picked
+  right before writing), so no counter is needed; History records only outputs that ran.
+- **Floating previews and pins**: one save per window at a time; held keys don't repeat outputs;
+  double-click edits only on the image.
+- **Screen grab**: only the capture windows are left out; the window list is fetched again when they
+  aren't in it. **Hotkeys**: ours / taken (retried) / stepped aside. **Permission dialog**: one at a time.
+- Findings in the same format (✅ fixed with test · 🟡 plausible · ⚪ holds), with the native checks in
+  `mac/e2e/run.mjs` (`states` suite) as tests.

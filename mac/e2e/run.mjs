@@ -1012,6 +1012,136 @@ const SUITES = {
     check(held === 'holding' && s.captureHotkeyRegistered, 'Takes a shortcut back once the app holding it quits', `holder: ${held} | while held: ${whileHeld} | after: ${s.captureHotkeyRegistered}`)
   },
 
+  // Bad states Electron fixed in 1a00d6f (docs/state-machines.md, e2e/states.mjs), checked here.
+  async states() {
+    const saves = await launch({ ocr: { textButton: 'copy' } })
+    // 1. A read still going when capture mode closes doesn't land in the next capture.
+    send('clearclip')
+    send('read-delays', 1500)
+    send('capture')
+    send('select', 110, 120, 580, 60)
+    send('key', 'x')
+    send('key', 'esc')
+    send('key', 'esc')
+    send('capture')
+    send('select', 110, 120, 580, 60)
+    await wait(2200) // the late answer arrives meanwhile
+    let s = await state()
+    send('key', 'r')
+    const tool = (await state()).tool
+    check(s.capturing && !s.note && !s.clipboardText && tool === 'rect', 'late read: no note, no copy, tools still work', `note ${s.note} | clipboard ${s.clipboardText} | tool ${tool}`)
+    // Esc during a read in the same capture drops it too.
+    send('read-delays', 800)
+    send('key', 'x')
+    send('key', 'esc')
+    await wait(1300)
+    s = await state()
+    check(s.capturing && !s.note && !s.clipboardText, 'Esc during a read drops its result', `note ${s.note} | clipboard ${s.clipboardText}`)
+    send('key', 'esc')
+    send('key', 'esc')
+
+    // 2. Two reads at once in Capture text: only the second one is copied.
+    send('clearclip')
+    send('read-delays', 900, 100)
+    send('text')
+    send('select', 110, 120, 580, 60)
+    send('select', 110, 180, 580, 60)
+    s = await waitFor((x) => !x.capturing, 5000)
+    await wait(1200) // the first read answers after the second
+    s = await state()
+    check(/Xin/.test(s.clipboardText ?? '') && !/Snapkit/.test(s.clipboardText ?? ''), 'two reads: only the second area is copied', s.clipboardText)
+
+    // 3. Capture text has no drawing; Enter, ⌘C and ⌘S don't output the image.
+    send('clearclip')
+    send('read-delays', 5000)
+    send('text')
+    send('select', 110, 120, 580, 60)
+    send('key', 'r')
+    send('drag', 300, 300, 400, 380)
+    send('key', 'c', 'cmd')
+    send('key', 'return')
+    s = await state()
+    check(s.capturing && s.tool === null && s.shapes.length === 0 && !s.clipboardPngBytes, 'capture text: no drawing, ⌘C and Enter copy no image', `tool ${s.tool} shapes ${s.shapes.length} png ${s.clipboardPngBytes}`)
+    send('key', 'esc')
+
+    // 4. The area moving to another display takes its drawings, tool and editor with it.
+    send('capture')
+    send('select', 200, 150, 500, 350)
+    send('tool', 'rect')
+    send('drag', 300, 200, 450, 320)
+    send('tool', 'beautifyEdit')
+    const before = (await state()).editorOpen
+    send('area-taken')
+    s = await state()
+    check(before && !s.editorOpen && !s.selection && s.shapes.length === 0 && s.tool === null, 'area moved away: editor, drawings and tool go with it', `editor ${before} -> ${s.editorOpen} | shapes ${s.shapes.length} | tool ${s.tool}`)
+    send('select', 250, 200, 400, 250)
+    send('key', 'z', 'cmd')
+    s = await state()
+    check(s.shapes.length === 0 && !s.editorOpen, 'a new area there: nothing to undo, no editor', `shapes ${s.shapes.length} editor ${s.editorOpen}`)
+    send('key', 'esc')
+
+    // 5. A changed background default (as "Remember last background" makes) keeps the colour picked.
+    send('capture')
+    send('select', 200, 150, 400, 250)
+    send('tool', 'rect')
+    send('style', 'color:#3b82f6')
+    send('key', 'esc')
+    send('key', 'esc')
+    send('setting', JSON.stringify({ beautify: { presets: [{ id: 'ocean', name: 'Blossom', background: { type: 'solid', color: '#123456' }, padding: 30, radius: 8, shadow: 0 }] } }))
+    send('capture')
+    send('select', 200, 150, 400, 250)
+    send('tool', 'rect')
+    s = await state()
+    check(s.styleActive.includes('color:#3b82f6'), 'colour picked kept after the background default changed', JSON.stringify(s.styleActive))
+    send('key', 'esc')
+
+    // 6. Esc right after ⌘C: history gets the capture only if it was copied.
+    send('clearclip')
+    const n0 = (await state()).history.length
+    send('capture')
+    send('select', 5, 5, 1400, 900)
+    send('key', 'c', 'cmd')
+    send('key', 'esc')
+    await wait(500)
+    s = await state()
+    const added = s.history.length - n0
+    check(added === (s.clipboardPngBytes > 0 ? 1 : 0), 'Esc right after ⌘C: history and clipboard agree', `copied ${s.clipboardPngBytes > 0} | added ${added}`)
+
+    // 7. Double-clicking a preview's Copy button copies; only a double-click on the image edits.
+    send('setting', '{"pin":{"afterCopy":true}}')
+    send('capture')
+    send('select', 200, 150, 400, 250)
+    send('key', 'c', 'cmd')
+    await wait(400)
+    send('thumb-dblclick', 0)
+    s = await state()
+    check(!s.capturing, 'preview Copy double-clicked: no editor', `capturing ${s.capturing}`)
+    send('thumb-dblclick', 'image')
+    s = await state()
+    check(s.capturing && s.editorOpen, 'preview image double-clicked: the editor opens')
+    send('key', 'esc')
+    send('key', 'esc')
+
+    // 8. Pin: a held ⌘S saves once; two presses save two files, never the same name.
+    send('thumb', 'pin')
+    await wait(300)
+    send('pin-key', 's', 'cmd')
+    send('pin-key', 's', 'cmd', 'repeat')
+    send('pin-key', 's', 'cmd', 'repeat')
+    await wait(300)
+    const one = existsSync(saves) ? readdirSync(saves).filter((f) => f.endsWith('.png')).length : 0
+    send('pin-key', 's', 'cmd')
+    await wait(300)
+    const two = existsSync(saves) ? readdirSync(saves).filter((f) => f.endsWith('.png')).length : 0
+    check(one === 1 && two === 2, 'pin: a held ⌘S saves once; a second press saves a second file', `${one} then ${two}`)
+    send('closepins')
+
+    // 11. An edit image that can't be decoded doesn't open (or leave) an editor waiting.
+    send('edit-bad')
+    s = await state()
+    check(!s.capturing, 'undecodable edit image: no editor left open')
+  },
+
   async hotkeys() {
     await launch({ hotkeys: { capture: 'CommandOrControl+Shift+Z' } })
     let s = await state()

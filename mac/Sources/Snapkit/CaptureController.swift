@@ -449,7 +449,13 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
 
 /** Screen Recording permission: without it captures show only the wallpaper, so explain instead. */
 enum Permissions {
+  /** The explanation is up: further capture presses do nothing (no stacked dialogs). */
+  private static var asking = false
+
   static func ask() {
+    guard !asking else { return }
+    asking = true
+    defer { asking = false }
     // The first time, this shows macOS's own prompt and lists Snapkit in System Settings.
     let asked = CGRequestScreenCaptureAccess()
     if asked { return }

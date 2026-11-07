@@ -34,8 +34,17 @@ enum TextRecognition {
   }
 
   /** Recognize on a background queue; `done` runs on the main thread with the lines (or an error) and the time taken. */
+  #if DEBUG
+  /** Tests: extra time before each answer (one per read, in order), to make reads overlap or arrive late. */
+  static var testDelays: [Double] = []
+  #endif
+
   static func recognize(_ image: CGImage, done: @escaping (Result<[Line], Error>, Int) -> Void) {
     let t0 = Date()
+    var delay = 0.0
+    #if DEBUG
+    if !testDelays.isEmpty { delay = testDelays.removeFirst() }
+    #endif
     DispatchQueue.global(qos: .userInitiated).async {
       let request = VNRecognizeTextRequest()
       request.recognitionLevel = .accurate
@@ -57,7 +66,7 @@ enum TextRecognition {
         result = .failure(error)
       }
       let elapsed = ms(t0)
-      DispatchQueue.main.async {
+      DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
         if case let .success(l) = result { log("[ocr] vision: \(l.count) line(s) in \(elapsed) ms") }
         done(result, elapsed)
       }
