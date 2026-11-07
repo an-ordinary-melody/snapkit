@@ -9,7 +9,7 @@ import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 
 const mac = resolve(import.meta.dirname, '..')
-const env = { ...process.env, DEVELOPER_DIR: process.env.DEVELOPER_DIR ?? '/Library/Developer/CommandLineTools' }
+const env = process.env
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: mac, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts })
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
