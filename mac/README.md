@@ -66,19 +66,19 @@ Release builds update through [Sparkle 2](https://sparkle-project.org). A build 
 `scripts/sparkle.env` (or the environment) has both `SPARKLE_PUBLIC_KEY` and `SPARKLE_FEED_URL`;
 otherwise it keeps the GitHub-releases check (notify and download). Debug builds have neither.
 
-One-time setup (yours; the private key never goes in the repo):
+One-time setup (done 2026-11-08; the private key never goes in the repo):
 
-1. Download Sparkle's tools (`Sparkle-<version>.tar.xz` from its GitHub releases) and run
-   `bin/generate_keys`. It keeps the private key in your login keychain and prints the public key.
-2. Put the public key in `scripts/sparkle.env` as `SPARKLE_PUBLIC_KEY` (not a secret).
-3. Export the private key (`bin/generate_keys -x private-key.txt`), save it as the GitHub Actions
-   secret `SPARKLE_PRIVATE_KEY`, keep an offline backup, then delete the file. Losing it means
-   existing installs can't verify updates any more.
-4. Decide where `appcast.xml` and the zips live and set `SPARKLE_FEED_URL` (release work).
+1. Sparkle's `bin/generate_keys` (from `Sparkle-<version>.tar.xz` on its GitHub releases) made the
+   key pair: the private key is in your login Keychain, the public key is in `scripts/sparkle.env`.
+2. Recommended: an offline backup (`bin/generate_keys -x private-key.txt`, copy the line into a
+   password manager, delete the file). Losing the key means installed copies can't update any more.
+3. Later, when releases run in CI: the same line as the GitHub Actions secret `SPARKLE_PRIVATE_KEY`.
+4. Release work: decide where `appcast.xml` and the zips live and set `SPARKLE_FEED_URL`.
 
 Per release: `scripts/build-app.sh release`, then
-`SPARKLE_PRIVATE_KEY=… scripts/sparkle-release.sh build/Snapkit.app <out> <download-base-url>` writes the
-signed zip and `appcast.xml`. `node mac/e2e/sparkle-update.mjs` tests the whole path with a throwaway key:
+`scripts/sparkle-release.sh build/Snapkit.app <out> <download-base-url>` writes the signed zip and
+`appcast.xml`. It signs with the Keychain key on this Mac (macOS may ask to allow access), or with
+`SPARKLE_PRIVATE_KEY` when that's set (CI). `node mac/e2e/sparkle-update.mjs` tests the whole path with a throwaway key:
 an older build finds, downloads, verifies and installs a newer one, and refuses one signed with another key.
 
 The app is signed with the hardened runtime plus `com.apple.security.cs.disable-library-validation`

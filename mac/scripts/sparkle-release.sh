@@ -1,13 +1,13 @@
 #!/bin/bash
 # Package a release build for Sparkle: zip it, sign the zip with the EdDSA private key, and write a
 # one-item appcast.xml. Where the zip and appcast are hosted is release work (not decided yet).
-#   SPARKLE_PRIVATE_KEY=<base64> mac/scripts/sparkle-release.sh <Snapkit.app> <out-dir> <download-base-url> [notes-url]
-# The private key comes from the environment only (a GitHub Actions secret); it is written to a
+#   mac/scripts/sparkle-release.sh <Snapkit.app> <out-dir> <download-base-url> [notes-url]
+# The private key: your login Keychain on this Mac (where generate_keys put it; macOS may ask to
+# allow access), or SPARKLE_PRIVATE_KEY (base64, e.g. a GitHub Actions secret), which is written to a
 # temporary file for sign_update and deleted after. Sparkle's tools are downloaded from its release.
 # Versions with a "-" (0.3.0-beta.1) go to the "beta" channel, which only beta users see.
 set -euo pipefail
 APP=${1:?app}; OUT=${2:?out dir}; BASE=${3:?download base url}; NOTES=${4:-}
-[ -n "${SPARKLE_PRIVATE_KEY:-}" ] || { echo "SPARKLE_PRIVATE_KEY is not set"; exit 1; }
 cd "$(dirname "$0")/.."
 SPARKLE_VERSION=$(sed -n 's/.*sparkle-project\/Sparkle.*from: "\([0-9.]*\)".*/\1/p' Package.swift)
 
@@ -25,10 +25,14 @@ MIN=$(/usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$INFO")
 mkdir -p "$OUT"
 ZIP="Snapkit-$SHORT.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/$ZIP"
-( umask 077; printf '%s' "$SPARKLE_PRIVATE_KEY" > "$WORK/key" )
-# Prints: sparkle:edSignature="…" length="…"
-ATTRS=$("$WORK/sparkle/bin/sign_update" --ed-key-file "$WORK/key" "$OUT/$ZIP")
-rm -f "$WORK/key"
+# sign_update prints: sparkle:edSignature="…" length="…"
+if [ -n "${SPARKLE_PRIVATE_KEY:-}" ]; then
+  ( umask 077; printf '%s' "$SPARKLE_PRIVATE_KEY" > "$WORK/key" )
+  ATTRS=$("$WORK/sparkle/bin/sign_update" --ed-key-file "$WORK/key" "$OUT/$ZIP")
+  rm -f "$WORK/key"
+else
+  ATTRS=$("$WORK/sparkle/bin/sign_update" "$OUT/$ZIP") || { echo "no private key: set SPARKLE_PRIVATE_KEY or run generate_keys on this Mac"; exit 1; }
+fi
 
 CHANNEL=""
 case "$SHORT" in *-*) CHANNEL="      <sparkle:channel>beta</sparkle:channel>" ;; esac
