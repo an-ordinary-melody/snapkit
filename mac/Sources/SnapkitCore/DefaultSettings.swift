@@ -1,0 +1,373 @@
+// The Electron app's DEFAULT_SETTINGS on macOS (src/shared/settings.ts, defaultsFor('darwin')),
+// as of v0.2.0-beta.14. Checked against fixtures/default-settings.json once that export exists.
+// Keep in step with settings.ts: a changed default there must change here too.
+
+let defaultSettingsJSON = #"""
+{
+  "hotkeys": {
+    "capture": "Alt+Shift+Z",
+    "history": "CommandOrControl+Shift+1",
+    "fullscreen": "CommandOrControl+Shift+9",
+    "settings": "CommandOrControl+Shift+2",
+    "lastArea": "Alt+Shift+X",
+    "ocr": "Alt+Shift+T"
+  },
+  "updates": {
+    "autoCheck": true,
+    "repo": "an-ordinary-melody/snapkit",
+    "lastCheck": 0,
+    "notified": ""
+  },
+  "history": {
+    "maxCount": 10,
+    "maxMB": 300,
+    "maxAgeDays": 30,
+    "paused": false,
+    "panel": {
+      "width": 800,
+      "height": 520
+    }
+  },
+  "toolKeys": {},
+  "toolVariants": {},
+  "capture": {
+    "dimOpacity": 0.75,
+    "dimColor": "#000000",
+    "showSizeLabel": true,
+    "accentColor": "#3b82f6",
+    "engine": "auto",
+    "fullscreenCopy": false,
+    "quickCopy": false,
+    "lastAreaInstant": false
+  },
+  "save": {
+    "folder": "",
+    "askLocation": true,
+    "lastFolder": "",
+    "name": {
+      "text": "Snapkit",
+      "date": "after",
+      "number": "none",
+      "digits": 3
+    },
+    "nextNumber": 1
+  },
+  "ocr": {
+    "engine": "auto",
+    "textButton": "panel",
+    "vietnamese": "auto"
+  },
+  "compress": {
+    "enabled": false,
+    "preset": "standard",
+    "applyTo": "both"
+  },
+  "notifications": {
+    "onCopy": false,
+    "onSave": true
+  },
+  "annotate": {
+    "palette": [
+      "#ef4444",
+      "#facc15",
+      "#3b82f6",
+      "#111111",
+      "#ffffff"
+    ],
+    "strokeWidths": [
+      3,
+      5,
+      8
+    ],
+    "strokeWidth": 0,
+    "highlighterColor": "#fde047",
+    "highlighterPalette": [
+      "#fde047",
+      "#86efac",
+      "#f9a8d4",
+      "#93c5fd",
+      "#fdba74"
+    ],
+    "highlighterWidth": 18,
+    "blurMode": "blur",
+    "blurStrength": 12,
+    "stepSize": 34,
+    "stepTextColor": "",
+    "stepColor": "#ef4444",
+    "stepStroke": {
+      "color": "#ffffff",
+      "width": 2
+    },
+    "stepShadow": 0.3,
+    "text": {
+      "fontFamily": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif",
+      "fontSize": 20,
+      "style": "stroke",
+      "strokeColor": "#ffffff",
+      "strokeWidth": 2,
+      "background": "#ffffff",
+      "shadow": 0.1
+    }
+  },
+  "pin": {
+    "afterCopy": false
+  },
+  "appearance": {
+    "glass": false,
+    "mode": "dark",
+    "accent": "#0a84ff"
+  },
+  "beautify": {
+    "applyOnCopy": false,
+    "preset": "ocean",
+    "presets": [
+      {
+        "id": "ocean",
+        "name": "Blossom",
+        "background": {
+          "type": "gradient",
+          "from": "#f093fb",
+          "to": "#f5576c",
+          "angle": 171
+        },
+        "padding": 20,
+        "radius": 17,
+        "shadow": 0.05
+      },
+      {
+        "id": "sunset",
+        "name": "Sunset",
+        "background": {
+          "type": "gradient",
+          "from": "#fb923c",
+          "to": "#ec4899",
+          "angle": 135
+        },
+        "padding": 48,
+        "radius": 12,
+        "shadow": 0.35
+      },
+      {
+        "id": "mint",
+        "name": "Mint",
+        "background": {
+          "type": "gradient",
+          "from": "#34d399",
+          "to": "#06b6d4",
+          "angle": 135
+        },
+        "padding": 48,
+        "radius": 12,
+        "shadow": 0.35
+      },
+      {
+        "id": "light",
+        "name": "Light",
+        "background": {
+          "type": "solid",
+          "color": "#eef0f3"
+        },
+        "padding": 40,
+        "radius": 10,
+        "shadow": 0.2
+      },
+      {
+        "id": "dark",
+        "name": "Dark",
+        "background": {
+          "type": "solid",
+          "color": "#18181b"
+        },
+        "padding": 40,
+        "radius": 10,
+        "shadow": 0.5
+      }
+    ],
+    "gradients": [
+      [
+        "#f5f7fa",
+        "#c3cfe2"
+      ],
+      [
+        "#a1c4fd",
+        "#c2e9fb"
+      ],
+      [
+        "#ffecd2",
+        "#fcb69f"
+      ],
+      [
+        "#e0c3fc",
+        "#8ec5fc"
+      ],
+      [
+        "#a8edea",
+        "#fed6e3"
+      ],
+      [
+        "#d4fc79",
+        "#96e6a1"
+      ],
+      [
+        "#f6d365",
+        "#fda085"
+      ],
+      [
+        "#ee9ca7",
+        "#ffdde1"
+      ],
+      [
+        "#ff5f6d",
+        "#ffc371"
+      ],
+      [
+        "#f83600",
+        "#f9d423"
+      ],
+      [
+        "#f093fb",
+        "#f5576c"
+      ],
+      [
+        "#fc466b",
+        "#3f5efb"
+      ],
+      [
+        "#4facfe",
+        "#00f2fe"
+      ],
+      [
+        "#43cea2",
+        "#185a9d"
+      ],
+      [
+        "#38ef7d",
+        "#11998e"
+      ],
+      [
+        "#5ee7df",
+        "#b490ca"
+      ],
+      [
+        "#4f8cff",
+        "#a855f7"
+      ],
+      [
+        "#fb923c",
+        "#ec4899"
+      ],
+      [
+        "#34d399",
+        "#06b6d4"
+      ],
+      [
+        "#7f7fd5",
+        "#86a8e7"
+      ],
+      [
+        "#667eea",
+        "#764ba2"
+      ],
+      [
+        "#8e2de2",
+        "#4a00e0"
+      ],
+      [
+        "#30cfd0",
+        "#330867"
+      ],
+      [
+        "#bdc3c7",
+        "#2c3e50"
+      ],
+      [
+        "#232526",
+        "#414345"
+      ],
+      [
+        "#0f2027",
+        "#2c5364"
+      ],
+      [
+        "#141e30",
+        "#243b55"
+      ],
+      [
+        "#42275a",
+        "#734b6d"
+      ],
+      [
+        "#870000",
+        "#190a05"
+      ],
+      [
+        "#000428",
+        "#004e92"
+      ],
+      [
+        "#3a1c71",
+        "#d76d77"
+      ],
+      [
+        "#434343",
+        "#000000"
+      ]
+    ],
+    "rememberLast": true,
+    "solids": [
+      "#ffffff",
+      "#e5e7eb",
+      "#18181b",
+      "#ef4444",
+      "#f59e0b",
+      "#22c55e",
+      "#3b82f6",
+      "#a855f7"
+    ]
+  },
+  "features": {
+    "pen": true,
+    "arrow": true,
+    "rect": true,
+    "line": false,
+    "ellipse": false,
+    "highlighter": true,
+    "text": true,
+    "step": true,
+    "blur": true,
+    "ruler": false,
+    "color": true,
+    "undo": true,
+    "redo": false,
+    "beautify": true,
+    "beautifyEdit": true,
+    "ocr": true,
+    "pin": true,
+    "save": true,
+    "copy": true,
+    "close": true
+  },
+  "toolbarOrder": [
+    "pen",
+    "arrow",
+    "rect",
+    "line",
+    "ellipse",
+    "highlighter",
+    "text",
+    "step",
+    "blur",
+    "ruler",
+    "color",
+    "undo",
+    "redo",
+    "beautify",
+    "beautifyEdit",
+    "ocr",
+    "pin",
+    "save",
+    "copy",
+    "close"
+  ]
+}
+"""#
