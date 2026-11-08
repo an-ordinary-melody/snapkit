@@ -922,7 +922,7 @@ final class OverlayView: NSView {
   }
 
   private func pointerUp(_ p: CGPoint, _ e: NSEvent) {
-    if case .draw? = drag { hoverReady = false }
+    if case .draw? = drag, let d = draft { justPlaced = d.id }
     defer {
       drag = nil
       guides = []
@@ -980,7 +980,7 @@ final class OverlayView: NSView {
       if abs(c.x - p.x) <= 8 && abs(c.y - p.y) <= 8 { return Cursors.resizeName(h) }
     }
     guard sel.contains(p) else { return "crosshair" }
-    if editing == nil, hoverReady, shape(at: p) != nil { return "move" }
+    if editing == nil, let s = shape(at: p), s.id != justPlaced { return "move" }
     return tool == "text" ? "ibeam" : tool == "step" ? "step" : tool != nil ? "crosshair" : "move"
   }
 
@@ -1013,13 +1013,13 @@ final class OverlayView: NSView {
   }
 
   /**
-   * A drawing shows the move cursor only once the pointer moves onto it (as Konva's mouseenter): one
-   * just placed under the pointer, a step or an arrow's end, keeps the tool's cursor until it moves.
+   * The drawing just placed under the pointer (a step, an arrow's end) keeps the tool's cursor until
+   * the pointer has left it: a hand's small movements right after the click don't flip it to move.
    */
-  private var hoverReady = true
+  private var justPlaced: String?
 
   override func mouseMoved(with e: NSEvent) {
-    hoverReady = true
+    if let id = justPlaced, shape(at: point(e))?.id != id { justPlaced = nil }
     updateCursor()
   }
   override func cursorUpdate(with e: NSEvent) { updateCursor() }
@@ -1035,7 +1035,7 @@ final class OverlayView: NSView {
     let id = Annotations.newId()
     switch tool {
     case "step":
-      hoverReady = false
+      justPlaced = id
       commit(shapes + [.step(.init(id: id, x: p.x, y: p.y, size: settings.annotate.stepSize, color: style.stepColor))])
       return
     case "text":

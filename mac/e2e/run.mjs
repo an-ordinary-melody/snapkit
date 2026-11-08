@@ -1190,9 +1190,11 @@ const SUITES = {
     send('tool', 'step')
     send('click', 500, 350)
     const placed = (await state()).cursors?.inside
-    send('pointer-moved')
+    send('pointer-moved', 501, 351) // a hand's small movement, still on the step
+    const jiggled = (await state()).cursors?.inside
+    send('pointer-moved') // off it, then back over it
     const moved = (await state()).cursors?.inside
-    check(placed === 'step' && moved === 'move', 'a step just placed keeps the pin until the pointer moves (then: move)', `${placed} then ${moved}`)
+    check(placed === 'step' && jiggled === 'step' && moved === 'move', 'a step just placed keeps the pin until the pointer leaves it (then over it: move)', `${placed} | ${jiggled} | ${moved}`)
     send('key', 'esc')
     send('key', 'esc')
   },

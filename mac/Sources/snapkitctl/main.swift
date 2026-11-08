@@ -100,6 +100,24 @@ if args[0] == "real-type", args.count >= 2 {
   exit(0)
 }
 
+// `snapkitctl real-click <x> <y>` moves the pointer there and clicks, through the system's event
+// stream (top-left global points).
+if args[0] == "real-click", args.count == 3, let x = Double(args[1]), let y = Double(args[2]) {
+  let p = CGPoint(x: x, y: y)
+  let src = CGEventSource(stateID: .hidSystemState)
+  CGEvent(mouseEventSource: src, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+  usleep(150_000)
+  CGEvent(mouseEventSource: src, mouseType: .leftMouseDown, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+  usleep(90_000)
+  CGEvent(mouseEventSource: src, mouseType: .leftMouseUp, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap)
+  // A hand's small movements right after the click.
+  for d in [1.0, 2.0, 1.0, 2.0] {
+    usleep(40_000)
+    CGEvent(mouseEventSource: src, mouseType: .mouseMoved, mouseCursorPosition: CGPoint(x: x + d, y: y + d - 1), mouseButton: .left)?.post(tap: .cghidEventTap)
+  }
+  exit(0)
+}
+
 if args[0] == "make-screen", args.count == 2 {
   let s = NSScreen.screens[0]
   let w = Int(s.frame.width * s.backingScaleFactor), h = Int(s.frame.height * s.backingScaleFactor)

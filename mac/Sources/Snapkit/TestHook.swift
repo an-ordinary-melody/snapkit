@@ -197,6 +197,26 @@ enum TestHook {
       var cur = v
       while let c = cur, chain.count < 6 { chain.append(String(describing: type(of: c))); cur = c.superview }
       reply(.object([("hit", .string(chain.joined(separator: " < ")))]))
+    case "cursor-trace":
+      // cursor-trace <ms>: the system cursor every 5 ms for that long, as a list of changes
+      let until = Date().addingTimeInterval((nums.first ?? 1000) / 1000)
+      var seen: [String] = []
+      func name(_ c: NSCursor?) -> String {
+        guard let c else { return "none" }
+        for n in ["move", "step", "ibeam", "crosshair", "arrow", "nwse", "nesw", "ns", "ew"] where Cursors.named(n) == c { return n }
+        if c == NSCursor.openHand { return "openHand" }
+        return "other(\(Int(c.image.size.width))x\(Int(c.image.size.height)) @\(Int(c.hotSpot.x)),\(Int(c.hotSpot.y)))"
+      }
+      Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { t in
+        let n = name(NSCursor.currentSystem ?? NSCursor.current)
+        let c = name(NSCursor.current)
+        let entry = "\(n)/\(c)"
+        if seen.last != entry { seen.append(entry) }
+        if Date() >= until {
+          t.invalidate()
+          reply(.object([("cursors", .array(seen.map { .string($0) }))]))
+        }
+      }
     case "window-image":
       // window-image <png>: the Settings window as on screen (an app may capture its own windows)
       guard let path = args.first, let w = app.settingsWindow.testWindow,
@@ -262,8 +282,8 @@ enum TestHook {
         if let e = event(.leftMouseUp, p, in: v, flags: flags) { v.mouseUp(with: e) }
       }
     case "pointer-moved":
-      // pointer-moved: the pointer moved over capture mode
-      guard let v = mainView, let e = event(.mouseMoved, .zero, in: v) else { return }
+      // pointer-moved [x y]: the pointer moved over capture mode (to that point; default the corner)
+      guard let v = mainView, let e = event(.mouseMoved, nums.count == 2 ? CGPoint(x: nums[0], y: nums[1]) : .zero, in: v) else { return }
       v.mouseMoved(with: e)
     case "rightclick":
       guard let v = mainView, nums.count >= 2, let e = event(.rightMouseDown, CGPoint(x: nums[0], y: nums[1]), in: v) else { return }
