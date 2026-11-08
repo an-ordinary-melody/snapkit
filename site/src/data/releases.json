@@ -1,7 +1,26 @@
 [
   {
-    "version": "0.3.0-beta.2",
+    "version": "0.3.3",
     "date": null,
+    "intro": "Mac update checks that don't get in the way, and simpler version numbers.",
+    "items": [
+      {
+        "text": "**Update checks never leave Settings stuck (Mac).** Check now in Settings → About and Check for Updates… in the menu bar icon show the answer in Settings → About. A window opens only when there's an update. Before, the \"You're up to date\" box could hide behind other apps and leave Settings not responding to clicks.",
+        "sub": []
+      },
+      {
+        "text": "**Mac updates install from inside the app,** including from 0.3.0-beta.1 and 0.3.0-beta.2, which didn't see newer betas.",
+        "sub": []
+      },
+      {
+        "text": "**Simpler version numbers.** Snapkit now counts up normally: this is 0.3.3, the next is 0.3.4. The site's changelog lists the earlier betas as 0.2.1 to 0.3.2.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.3.0-beta.2",
+    "date": "2026-11-08",
     "intro": "Polish for the floating preview and blur, on Mac and Windows.",
     "items": [
       {
