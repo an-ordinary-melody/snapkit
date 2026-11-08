@@ -248,7 +248,7 @@ try {
     if (Array.isArray(list)) {
       const newest = list.filter((r) => !r.draft && r.assets.some((a) => a.name.endsWith('.dmg'))).sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))[0]
       const html = await (await fetch(base + '/')).text()
-      const offered = html.match(/Snapkit-([\d.]+-?[\w.]*)-mac-arm64\.dmg/)?.[1]
+      const offered = html.match(/Snapkit-([\d.]+-?[\w.]*)-mac(?:-arm64)?\.dmg/)?.[1]
       check('downloads offer the newest GitHub release', `v${offered}` === newest?.tag_name, `site v${offered}, GitHub ${newest?.tag_name}`)
     } else console.log('(skipped: GitHub API not reachable)')
   }

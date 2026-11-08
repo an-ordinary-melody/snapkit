@@ -443,7 +443,8 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
 
 /* ---- Floating preview after copy ---- */
 .thumb { position: fixed; inset: 0; overflow: hidden; border-radius: 10px; background: #111; cursor: grab; }
-.thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.thumb-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.thumb-backdrop { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); object-fit: cover; filter: blur(14px) brightness(.65); pointer-events: none; }
 .thumb::after { content: ''; position: absolute; inset: 0; border-radius: 10px; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
 .thumb-actions, .thumb-icon { opacity: 0; transition: opacity .12s; }
 .thumb:hover .thumb-actions, .thumb:hover .thumb-icon { opacity: 1; }
@@ -456,7 +457,12 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
   background: var(--ui-bg-strong); color: var(--ui-fg); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
   backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur); box-shadow: 0 2px 8px rgba(0,0,0,.25), var(--ui-rim);
 }
-.thumb-btn:hover { filter: brightness(1.04); }
+/* Hover: the toolbar's hover tint over the button; pressed: a slight shrink. */
+.thumb-btn:hover, .thumb-icon:hover { background: linear-gradient(var(--ui-hover), var(--ui-hover)), var(--ui-bg-strong); }
+.thumb-btn:active { transform: scale(.95); }
+.thumb-btn { transition: transform .08s; }
+.thumb-done { color: #22c55e; animation: thumb-pop .18s ease-out; }
+@keyframes thumb-pop { from { transform: scale(.6); } to { transform: scale(1); } }
 .thumb-btn-icon { width: 30px; padding: 0; justify-content: center; }
 /* Too narrow for the labels (a tall capture): icons only, names in the tooltips. */
 .thumb { container-type: size; }
@@ -478,6 +484,8 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
   .thumb .thumb-icon { top: 50%; transform: translateY(-50%); }
   .thumb .thumb-move { left: auto; right: 36px; }
 }
+/* The preview window is small: its tooltips wrap to fit. */
+.thumb-tip { white-space: normal; max-width: calc(100vw - 8px); width: max-content; }
 .thumb-status {
   position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); max-width: calc(100% - 16px); padding: 3px 10px; border-radius: 11px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
@@ -488,7 +496,6 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
   background: var(--ui-bg-strong); color: var(--ui-fg); cursor: pointer; backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur);
   box-shadow: var(--ui-rim);
 }
-.thumb-icon:hover { filter: brightness(.96); }
 .thumb-pin { left: 6px; }
 .thumb-move { left: 50%; transform: translateX(-50%); cursor: move; }
 .thumb-close { right: 6px; }

@@ -7,6 +7,7 @@ import { copyTextFrom } from './ocr'
 import { ipcHandle, ipcOn } from './security'
 import { copyPng, savePng, timestampName } from './output'
 import { getSettings } from './settings'
+import { thumbSize as previewSize } from '@shared/thumb'
 import { startEdit } from './overlay'
 
 const isMac = process.platform === 'darwin'
@@ -174,14 +175,12 @@ export function createPin(png: Buffer, at: Rectangle) {
 
 // ---- floating previews (after copy) ------------------------------------------
 
-const THUMB_MAX = { w: 240, h: 160 }
 const THUMB_GAP = 10
 const THUMB_MARGIN = 16
 
 function thumbSize(png: Buffer) {
   const { width, height } = nativeImage.createFromBuffer(png).getSize()
-  const k = Math.min(THUMB_MAX.w / width, THUMB_MAX.h / height, 1)
-  return { w: Math.max(60, Math.round(width * k)), h: Math.max(40, Math.round(height * k)) }
+  return previewSize(width, height)
 }
 
 /** Stack a display's previews in its bottom-right corner, newest at the bottom. */

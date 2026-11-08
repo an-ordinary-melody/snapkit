@@ -100,7 +100,7 @@ try {
   await overlay().keyboard.press(process.platform === 'darwin' ? 'Meta+c' : 'Control+c'); await wait(1500)
   const thumb = app.windows().find((w) => w.url().endsWith('#thumb'))
   await app.evaluate(({ clipboard }) => clipboard.writeText('old'))
-  await thumb.click('.thumb-btn[title="Capture Text (OCR)"]')
+  await thumb.click('.thumb-btn[aria-label="Capture Text (OCR)"]')
   await thumb.waitForSelector('.thumb-status:has-text("Copied")', { timeout: 30000 }).catch(() => {})
   const label = await thumb.$eval('.thumb-status', (b) => b.textContent)
   const clip3 = (await app.evaluate(({ clipboard }) => clipboard.readText())).split('\n').map(norm)

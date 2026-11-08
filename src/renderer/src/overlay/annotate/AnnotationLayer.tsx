@@ -232,7 +232,11 @@ export const AnnotationLayer = forwardRef<AnnotationLayerHandle, Props>(function
       window.removeEventListener('pointerup', up)
       const d = draftRef.current
       setDraft(null)
-      if (d && isMeaningful(d)) onCommit([...shapesRef.current, d])
+      if (d && isMeaningful(d)) {
+        onCommit([...shapesRef.current, d])
+        // A new blur stays selected, so the strength slider and Pixelate/Blur apply to it right away.
+        if (d.type === 'blur') onSelect(d.id)
+      }
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)

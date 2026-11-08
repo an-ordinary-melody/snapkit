@@ -18,6 +18,7 @@ const SUITES = {
     [/typed size 36 -> text node: true/, 'typed text size applies'],
     [/dark background sets white text: #ffffff/, 'readable text on a dark background'],
     [/highlighter swatches: 5 \| custom: false/, 'highlighter has its own five colors'],
+    [/new blur selected: true \| slider changes it: true \| drag on it moves it: true \| drag elsewhere draws another: true/, 'a new blur stays selected for the strength slider'],
     [/blur strength: 36/, 'a blur area can be clicked and adjusted (hit-testing)'],
     [/blur strength 0: 0 \| unblurred: true/, 'blur strength goes down to 0 (no blur)'],
     [/style bar shown for selected arrow: true/, 'style bar follows the selected shape'],
@@ -41,6 +42,7 @@ const SUITES = {
     [/color after background default changed: picked #\w+ \| kept true/, '"Remember last background" reset the color picked'],
     [/Esc during copy: .*consistent true/, 'Esc right after ⌘C still added the capture to history'],
     [/preview buttons fit: true/, 'the floating preview buttons fit inside it'],
+    [/preview Copy shows a check: true \| back to Copy after a moment: true/, 'the preview Copy button confirms the copy'],
     [/preview Copy double-clicked: editor opened false/, 'double-clicking a preview button opened the editor'],
     [/pin saved twice quickly: files 1/, 'a pin saved twice at once wrote two files'],
     [/renderer errors: none/, 'no page errors']
