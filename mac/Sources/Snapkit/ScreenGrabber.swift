@@ -19,6 +19,10 @@ final class ScreenGrabber {
   private var content: SCShareableContent?
   private var refreshing = false
   let testImage: CGImage?
+  #if DEBUG
+  /** Tests: the next grab of the test image lands this much later (seconds), as a slow ScreenCaptureKit grab. */
+  static var testDelay = 0.0
+  #endif
 
   init() {
     if let path = TestOption.string("SnapkitTestScreen"),
@@ -51,6 +55,14 @@ final class ScreenGrabber {
   func grab(_ screens: [NSScreen], engine: String, exclude: [CGWindowID], belowWindow: @escaping (CGDirectDisplayID) -> CGWindowID?,
             deliver: @escaping (CGDirectDisplayID, CGImage?) -> Void) {
     if let testImage {
+      #if DEBUG
+      if ScreenGrabber.testDelay > 0 {
+        let ids = screens.map(\.displayID)
+        DispatchQueue.main.asyncAfter(deadline: .now() + ScreenGrabber.testDelay) { for id in ids { deliver(id, testImage) } }
+        ScreenGrabber.testDelay = 0
+        return
+      }
+      #endif
       for s in screens { deliver(s.displayID, testImage) }
       return
     }

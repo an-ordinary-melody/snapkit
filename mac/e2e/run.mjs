@@ -1140,6 +1140,17 @@ const SUITES = {
     send('edit-bad')
     s = await state()
     check(!s.capturing, 'undecodable edit image: no editor left open')
+
+    // Not an Electron check: a capture window replaced while its screen was being grabbed wasn't left
+    // out of that grab (its dim was in the frozen image, so the dim stacked). That screen is grabbed again.
+    const mark = logMark()
+    send('slow-grab', 600)
+    send('capture')
+    s = await waitFor((x) => x.hasImage, 3000)
+    const log = logSince(mark)
+    check(s.capturing && s.hasImage && /replaced during the grab: grabbing it again/.test(log) && (log.match(/opened in/g) || []).length === 1,
+      'capture window replaced during the grab: that screen is grabbed again', log.slice(-300))
+    send('key', 'esc')
   },
 
   async hotkeys() {

@@ -38,6 +38,8 @@ final class OverlayPool {
   private(set) var entries: [CGDirectDisplayID: (panel: OverlayPanel, view: OverlayView)] = [:]
   var isBusy: () -> Bool = { false }
   var makeView: (NSScreen) -> OverlayView = { OverlayView(frame: NSRect(origin: .zero, size: $0.frame.size)) }
+  /** New panels were made: the grabber's window list should be fetched again, so it can leave them out. */
+  var onNewPanels: () -> Void = {}
   private var pending: DispatchWorkItem?
   private var rebuildWhenIdle = false
 
@@ -55,6 +57,7 @@ final class OverlayPool {
     for e in entries.values { e.panel.orderOut(nil); e.panel.close() }
     entries = [:]
     for s in NSScreen.screens { entries[s.displayID] = make(s) }
+    onNewPanels()
   }
 
   /** A fresh panel for one display (the old one never reached the screen). */
@@ -63,6 +66,7 @@ final class OverlayPool {
     if let old = entries[id] { old.panel.orderOut(nil); old.panel.close() }
     let e = make(screen)
     entries[id] = e
+    onNewPanels()
     return e
   }
 

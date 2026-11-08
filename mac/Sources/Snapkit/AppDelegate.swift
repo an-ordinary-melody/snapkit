@@ -35,8 +35,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     capture.onModeChange = { on in Hotkeys.shared.captureMode(on) }
     setUpHistory()
     setUpSettings()
+    pool.onNewPanels = { [weak self] in self?.grabber.refresh() }
     pool.rebuild()
-    grabber.refresh()
     NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
       self?.grabber.refresh()
     }

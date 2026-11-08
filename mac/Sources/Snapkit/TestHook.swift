@@ -284,6 +284,10 @@ enum TestHook {
     case "read-delays":
       // read-delays <ms> [<ms>…]: the next text reads answer that much later
       TextRecognition.testDelays = nums.map { $0 / 1000 }
+    case "slow-grab":
+      // slow-grab <ms>: the next grab lands that much later, and its capture window is replaced meanwhile
+      ScreenGrabber.testDelay = (nums.first ?? 600) / 1000
+      CaptureController.testNotPresented = true
     case "area-taken":
       // As if the area was started on another display
       mainView?.clearSelection()

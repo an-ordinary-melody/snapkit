@@ -340,6 +340,8 @@ Bad states Electron fixed in 1a00d6f (docs/state-machines.md). Native already pa
 
 Pin saves: native saves are instant, so two separate ⌘S presses rightly make two files (with different names); the case left is a held key. Also from 1a00d6f, outside the e2e suites: the latest copy wins the clipboard and saves never overwrite each other (`output.test.ts`) hold natively because copies and saves run one after another on the main thread and the name is picked right before writing; one permission dialog at a time (`permissions.test.ts`) is a guard in `Permissions.ask`, not testable without revoking Screen Recording; an undecodable edit image is states › undecodable edit image: no editor left open.
 
+Native only: states › capture window replaced during the grab: that screen is grabbed again (a capture window replaced mid-grab wasn't left out of it, so its dim stacked in the frozen image).
+
 ### Not in `run-all.mjs`
 
 | Electron script | Native |

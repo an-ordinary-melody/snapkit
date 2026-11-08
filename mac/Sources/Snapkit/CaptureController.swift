@@ -105,18 +105,31 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
       focused = true
       self.focus(keyScreen)
     }
-    grabber.grab(screens, engine: engineId(settings.capture.engine), exclude: captureWindowIds, belowWindow: { [weak self] id in
+    grab(screens, session: session, keyScreen: keyScreen, t0: t0, takeFocus: takeFocus)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: takeFocus) // a slow or failed grab
+    touchIdle()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.checkPresented(session: session) }
+  }
+
+  /**
+   * Freeze `screens` for this capture. A capture window replaced while its screen was being grabbed
+   * (checkPresented) wasn't left out of that grab, so its dim is in the image: that screen is grabbed again.
+   */
+  private func grab(_ screens: [NSScreen], session: Int, keyScreen: NSScreen?, t0: Date, takeFocus: @escaping () -> Void, retry: Bool = false) {
+    let excluded = captureWindowIds
+    grabber.grab(screens, engine: engineId(store.current.capture.engine), exclude: excluded, belowWindow: { [weak self] id in
       self?.pool.entries[id].map { CGWindowID($0.panel.windowNumber) }
     }) { [weak self] id, image in
       guard let self, self.active, self.session == session, let e = self.pool.entries[id] else { return }
+      if !excluded.contains(CGWindowID(e.panel.windowNumber)), !retry, let screen = NSScreen.screens.first(where: { $0.displayID == id }) {
+        log("[capture] capture window on display \(id) was replaced during the grab: grabbing it again")
+        return self.grab([screen], session: session, keyScreen: keyScreen, t0: t0, takeFocus: takeFocus, retry: true)
+      }
       if image == nil { log("[capture] no image for display \(id)") }
       e.view.setImage(image)
       if screens.first?.displayID == id { log("[capture] opened in \(ms(t0)) ms") }
       if id == keyScreen?.displayID { takeFocus() }
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: takeFocus) // a slow or failed grab
-    touchIdle()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.checkPresented(session: session) }
   }
 
   /**
@@ -165,11 +178,19 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
    * Each panel should be on screen now. One that isn't (WindowServer refused it, or it lost its place
    * on this Space) is replaced by a fresh window and shown again.
    */
+  #if DEBUG
+  /** Tests: the next check finds the capture window off screen, so it's replaced. */
+  static var testNotPresented = false
+  #endif
+
   private func checkPresented(session: Int) {
     guard active, self.session == session, editTarget == nil else { return }
     for screen in NSScreen.screens {
       guard let e = pool.entries[screen.displayID] else { continue }
-      let ok = e.panel.isVisible && e.panel.isOnActiveSpace && e.panel.occlusionState.contains(.visible)
+      var ok = e.panel.isVisible && e.panel.isOnActiveSpace && e.panel.occlusionState.contains(.visible)
+      #if DEBUG
+      if CaptureController.testNotPresented { ok = false; CaptureController.testNotPresented = false }
+      #endif
       guard !ok else { continue }
       log("[overlay] capture window on display \(screen.displayID) isn't on screen (visible \(e.panel.isVisible), this Space \(e.panel.isOnActiveSpace)): replacing it")
       let image = e.view.image
