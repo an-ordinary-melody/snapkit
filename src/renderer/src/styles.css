@@ -458,6 +458,8 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
   backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur); box-shadow: 0 2px 8px rgba(0,0,0,.25), var(--ui-rim);
 }
 .thumb-btn:hover { filter: brightness(1.04); }
+.thumb-done { color: #22c55e; animation: thumb-pop .18s ease-out; }
+@keyframes thumb-pop { from { transform: scale(.6); } to { transform: scale(1); } }
 .thumb-btn-icon { width: 30px; padding: 0; justify-content: center; }
 /* Too narrow for the labels (a tall capture): icons only, names in the tooltips. */
 .thumb { container-type: size; }

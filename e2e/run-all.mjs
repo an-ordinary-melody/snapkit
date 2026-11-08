@@ -42,6 +42,7 @@ const SUITES = {
     [/color after background default changed: picked #\w+ \| kept true/, '"Remember last background" reset the color picked'],
     [/Esc during copy: .*consistent true/, 'Esc right after ⌘C still added the capture to history'],
     [/preview buttons fit: true/, 'the floating preview buttons fit inside it'],
+    [/preview Copy shows a check: true \| back to Copy after a moment: true/, 'the preview Copy button confirms the copy'],
     [/preview Copy double-clicked: editor opened false/, 'double-clicking a preview button opened the editor'],
     [/pin saved twice quickly: files 1/, 'a pin saved twice at once wrote two files'],
     [/renderer errors: none/, 'no page errors']

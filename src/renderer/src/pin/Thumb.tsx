@@ -1,4 +1,4 @@
-import { Copy, Move, PencilLine, Pin, X } from 'lucide-react'
+import { Check, Copy, Move, PencilLine, Pin, X } from 'lucide-react'
 import { OcrIcon } from '../icons'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { applyTheme } from '../theme'
@@ -57,10 +57,13 @@ export function Thumb() {
     setTimeout(() => setTextState(null), 1500)
   }
 
+  // The Copy button turns into a check for a moment (also when only its icon shows).
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const copy = () => {
     api.pinCopy()
     setCopied(true)
-    setTimeout(() => setCopied(false), 1000)
+    clearTimeout(copiedTimer.current)
+    copiedTimer.current = setTimeout(() => setCopied(false), 1500)
   }
 
   // Tooltips like the toolbar's (.tip), kept inside this small window.
@@ -97,7 +100,7 @@ export function Thumb() {
       <div className="thumb-actions">
         {/* Labels show when they fit (styles.css); Text is an icon so all three fit a 240 px preview. */}
         <button className="thumb-btn" aria-label="Copy" data-tip={copied ? 'Copied' : 'Copy'} onClick={copy}>
-          <Copy size={14} /> <span className="thumb-label">{copied ? 'Copied' : 'Copy'}</span>
+          {copied ? <Check size={14} className="thumb-done" /> : <Copy size={14} />} <span className="thumb-label">{copied ? 'Copied' : 'Copy'}</span>
         </button>
         <button className="thumb-btn" aria-label="Edit" data-tip="Edit" data-sub="Or double-click the image" onClick={() => api.thumbEdit()}>
           <PencilLine size={14} /> <span className="thumb-label">Edit</span>
