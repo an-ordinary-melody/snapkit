@@ -188,6 +188,20 @@ enum TestHook {
       guard let v, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return }
       v.cacheDisplay(in: v.bounds, to: rep)
       try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[1]))
+    case "settings-hit":
+      // settings-hit <x> <y>: which view a click at that point (top-left window points) goes to
+      guard nums.count == 2, let w = app.settingsWindow.testWindow, let frame = w.contentView?.superview else { return }
+      let p = CGPoint(x: nums[0], y: w.frame.height - nums[1])
+      let v = frame.hitTest(p)
+      var chain: [String] = []
+      var cur = v
+      while let c = cur, chain.count < 6 { chain.append(String(describing: type(of: c))); cur = c.superview }
+      reply(.object([("hit", .string(chain.joined(separator: " < ")))]))
+    case "window-image":
+      // window-image <png>: the Settings window as on screen (an app may capture its own windows)
+      guard let path = args.first, let w = app.settingsWindow.testWindow,
+            let img = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.bestResolution, .boundsIgnoreFraming]) else { return }
+      try? NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
     case "hist-resize":
       if nums.count == 2, let w = app.historyPanel.testView?.window {
         var f = w.frame

@@ -9,7 +9,8 @@ import SwiftUI
 final class SettingsWindowController: NSObject, NSWindowDelegate {
   let model: SettingsModel
   private var window: NSWindow?
-  private var frost: NSVisualEffectView?
+  /** The window's content (its appearance is set directly, so a theme switch shows at once). */
+  private var frost: NSView?
   var onClose: () -> Void = {}
 
   init(model: SettingsModel) {
@@ -24,26 +25,23 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                        backing: .buffered, defer: false)
       w.titlebarAppearsTransparent = true
       w.titleVisibility = .hidden
+      // An empty unified toolbar: the window buttons sit lower, inside the sidebar pane, and the
+      // window gets the toolbar corner radius its pane is concentric with (macOS 26).
+      w.toolbar = NSToolbar(identifier: "settings")
+      w.toolbarStyle = .unified
       w.title = "Snapkit Settings"
       w.minSize = CGSize(width: 720, height: 480)
       w.isReleasedWhenClosed = false
       w.delegate = self
-      // Liquid Glass: a frosted sidebar like System Settings (the content area stays solid); without
-      // it the SwiftUI backgrounds are solid and cover the material.
-      let frost = NSVisualEffectView(frame: w.contentRect(forFrameRect: w.frame))
-      frost.material = .sidebar
-      frost.blendingMode = .behindWindow
-      frost.state = .active
+      // Liquid Glass is the sidebar's floating pane (SettingsRoot), over the window's own background,
+      // as macOS 26 sidebars: nothing behind the window shows through.
       let host = NSHostingView(rootView: SettingsRoot(model: model))
-      host.frame = frost.bounds
+      host.frame = w.contentRect(forFrameRect: w.frame)
       host.autoresizingMask = [.width, .height]
-      frost.addSubview(host)
-      w.contentView = frost
-      w.isOpaque = false
-      w.backgroundColor = .clear
+      w.contentView = host
       w.center()
       window = w
-      self.frost = frost
+      self.frost = host
     }
     if let section { model.section = section }
     model.refreshHistory()
@@ -62,7 +60,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     let m = mode ?? model.s.appearance.mode
     let a = m == "light" ? NSAppearance(named: .aqua) : m == "system" ? nil : NSAppearance(named: .darkAqua)
     window?.appearance = a
-    // The frosted material keeps the appearance it was drawn with unless told: set it directly.
     frost?.appearance = a ?? NSApp.effectiveAppearance
     frost?.needsDisplay = true
   }
@@ -87,46 +84,75 @@ struct SettingsRoot: View {
   @ObservedObject var model: SettingsModel
   var body: some View {
     let th = SettingsTheme(model.s.appearance)
-    HStack(spacing: 0) {
-      VStack(alignment: .leading, spacing: 2) {
-        Spacer().frame(height: 44)
-        ForEach(SettingsSections.all, id: \.id) { sec in
-          let on = sec.id == model.section
-          HStack(spacing: 9) {
-            IconView(id: sec.icon, size: 16, color: on ? th.t.activeForeground : th.t.foreground)
-            Text(sec.label).font(.system(size: 13)).foregroundColor(on ? th.activeFg : th.fg)
-            Spacer()
-          }
-          .padding(.horizontal, 10).frame(height: 30)
-          .background(RoundedRectangle(cornerRadius: 7).fill(on ? th.activeBg : Color.clear))
-          .contentShape(Rectangle())
-          .onTapGesture { model.section = sec.id }
+    Group {
+      if th.glass {
+        // A floating glass sidebar inset from the window's edges, the content's background running
+        // under it (macOS 26 sidebars; WWDC25 "Build an AppKit app with the new design").
+        HStack(spacing: 0) {
+          sidebar(th).frame(width: 210).glassPane(th, radius: 12).padding(8)
+          content(th)
         }
-        Spacer()
-      }
-      .padding(.horizontal, 10).padding(.vertical, 8)
-      .frame(width: 210)
-      .background(th.sidebar)
-      VStack(spacing: 0) {
-        let sec = SettingsSections.all.first { $0.id == model.section } ?? SettingsSections.all[0]
-        HStack {
-          Text(sec.label).font(.system(size: 15, weight: .semibold)).foregroundColor(th.fg)
-          Spacer()
-          if !sec.keys.isEmpty {
-            SButton(label: "Reset section", icon: "rotate", subtle: true, th: th) { model.reset(sec.keys) }
-          }
-        }
-        .padding(.horizontal, 24).frame(height: 52)
-        ScrollView {
-          VStack(alignment: .leading, spacing: 0) { SectionView(id: sec.id, model: model, th: th) }
-            .padding(.horizontal, 24).padding(.top, 4).padding(.bottom, 32)
+        .background(th.main)
+      } else {
+        HStack(spacing: 0) {
+          sidebar(th).frame(width: 210).background(th.sidebar)
+          content(th).background(th.main).overlay(alignment: .leading) { Rectangle().fill(th.cardEdge).frame(width: 0.5) }
         }
       }
-      .background(th.main)
-      .overlay(alignment: .leading) { Rectangle().fill(th.cardEdge).frame(width: 0.5) }
     }
+    .environment(\.colorScheme, th.dark ? .dark : .light)
     .ignoresSafeArea()
     .frame(minWidth: 720, minHeight: 480)
+  }
+
+  private func sidebar(_ th: SettingsTheme) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Spacer().frame(height: th.glass ? 46 : 52)
+      ForEach(SettingsSections.all, id: \.id) { sec in
+        let on = sec.id == model.section
+        HStack(spacing: 9) {
+          IconView(id: sec.icon, size: 16, color: on ? th.t.activeForeground : th.t.foreground)
+          Text(sec.label).font(.system(size: 13)).foregroundColor(on ? th.activeFg : th.fg)
+          Spacer()
+        }
+        .padding(.horizontal, 10).frame(height: 30)
+        .background(RoundedRectangle(cornerRadius: 7).fill(on ? th.activeBg : Color.clear))
+        .contentShape(Rectangle())
+        .onTapGesture { model.section = sec.id }
+      }
+      Spacer()
+    }
+    .padding(.horizontal, th.glass ? 6 : 10).padding(.vertical, 8)
+  }
+
+  private func content(_ th: SettingsTheme) -> some View {
+    VStack(spacing: 0) {
+      let sec = SettingsSections.all.first { $0.id == model.section } ?? SettingsSections.all[0]
+      HStack {
+        Text(sec.label).font(.system(size: 15, weight: .semibold)).foregroundColor(th.fg)
+        Spacer()
+        if !sec.keys.isEmpty {
+          SButton(label: "Reset section", icon: "rotate", subtle: true, th: th) { model.reset(sec.keys) }
+        }
+      }
+      .padding(.horizontal, th.glass ? 16 : 24).frame(height: 52)
+      ScrollView {
+        VStack(alignment: .leading, spacing: 0) { SectionView(id: sec.id, model: model, th: th) }
+          .padding(.horizontal, th.glass ? 16 : 24).padding(.top, 4).padding(.bottom, 32)
+      }
+    }
+  }
+}
+
+private extension View {
+  /** Liquid Glass on macOS 26 and later; a frosted pane with a hairline edge before that. */
+  @ViewBuilder func glassPane(_ th: SettingsTheme, radius: CGFloat) -> some View {
+    if #available(macOS 26.0, *) {
+      glassEffect(.regular, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+    } else {
+      background(.regularMaterial, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(th.cardEdge, lineWidth: 0.5))
+    }
   }
 }
 
