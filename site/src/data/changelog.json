@@ -1,35 +1,17 @@
 [
   {
-    "title": "Smoother Mac update checks",
-    "from": "0.3.3",
-    "upTo": "0.3.3",
-    "items": [
-      "Mac: checking for updates never leaves Settings stuck; the answer shows in Settings → About",
-      "Mac updates install from inside the app, including from the 0.3 betas",
-      "Simpler version numbers: 0.3.3, then 0.3.4"
-    ]
-  },
-  {
-    "title": "Floating preview polish",
-    "from": "0.3.0-beta.2",
-    "upTo": "0.3.0-beta.2",
-    "items": [
-      "Copy in the floating preview shows a check when it's done",
-      "Preview buttons react to hover and press; tooltips like the toolbar's",
-      "Very wide or tall captures get a standard 16:9 preview",
-      "A new blur stays selected, so its slider works right away"
-    ]
-  },
-  {
     "title": "A native Mac app",
     "from": "0.3.0-beta.1",
-    "upTo": "0.3.0-beta.1",
+    "upTo": "0.3.3",
     "items": [
       "Snapkit for Mac is rewritten in Swift: same features, settings and history, much lighter",
       "Runs on Apple Silicon and Intel Macs, macOS 14 or newer",
       "Mac updates install from inside the app and keep Screen Recording permission",
       "Text starting style: Light or Dark background",
-      "Steadier when saves, copies and text reads overlap"
+      "Floating preview: Copy shows a check, buttons react to hover, tooltips like the toolbar's, a standard 16:9 size for very wide or tall captures",
+      "A new blur stays selected, so its slider works right away",
+      "Steadier when saves, copies and text reads overlap",
+      "Simpler version numbers: 0.3.3, then 0.3.4"
     ]
   },
   {
