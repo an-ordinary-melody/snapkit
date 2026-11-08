@@ -220,12 +220,6 @@ enum TestHook {
           reply(.object([("cursors", .array(seen.map { .string($0) }))]))
         }
       }
-    case "backdrop":
-      // backdrop <image>: glass previews: the picture under Settings' glass, placed as if it were the
-      // desktop (another app's window can't be put behind it from here)
-      guard let path = args.first, let img = NSImage(contentsOfFile: path) else { return }
-      app.settingsWindow.testWallpaper = img
-      app.settingsWindow.applyBackdrop()
     case "window-image":
       // window-image <png>: the Settings window as on screen (an app may capture its own windows)
       guard let path = args.first, let w = app.settingsWindow.testWindow,
