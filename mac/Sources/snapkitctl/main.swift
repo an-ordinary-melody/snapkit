@@ -73,6 +73,33 @@ if args[0] == "hold-hotkey", args.count == 2 {
   exit(0)
 }
 
+// `snapkitctl real-type <text>` presses the keys for <text> (letters, digits, space) through the system's
+// event stream, as a keyboard would: they reach whichever window has the keyboard, through the selected
+// input source (an input method such as Vietnamese Telex sees them too). Needs Accessibility for the app
+// that runs it.
+if args[0] == "real-type", args.count >= 2 {
+  let codes: [Character: Int] = [
+    "a": kVK_ANSI_A, "b": kVK_ANSI_B, "c": kVK_ANSI_C, "d": kVK_ANSI_D, "e": kVK_ANSI_E, "f": kVK_ANSI_F, "g": kVK_ANSI_G,
+    "h": kVK_ANSI_H, "i": kVK_ANSI_I, "j": kVK_ANSI_J, "k": kVK_ANSI_K, "l": kVK_ANSI_L, "m": kVK_ANSI_M, "n": kVK_ANSI_N,
+    "o": kVK_ANSI_O, "p": kVK_ANSI_P, "q": kVK_ANSI_Q, "r": kVK_ANSI_R, "s": kVK_ANSI_S, "t": kVK_ANSI_T, "u": kVK_ANSI_U,
+    "v": kVK_ANSI_V, "w": kVK_ANSI_W, "x": kVK_ANSI_X, "y": kVK_ANSI_Y, "z": kVK_ANSI_Z, " ": kVK_Space,
+    "0": kVK_ANSI_0, "1": kVK_ANSI_1, "2": kVK_ANSI_2, "3": kVK_ANSI_3, "4": kVK_ANSI_4,
+    "5": kVK_ANSI_5, "6": kVK_ANSI_6, "7": kVK_ANSI_7, "8": kVK_ANSI_8, "9": kVK_ANSI_9,
+  ]
+  let src = CGEventSource(stateID: .hidSystemState)
+  for ch in args.dropFirst().joined(separator: " ") {
+    guard let code = codes[Character(ch.lowercased())] else { continue }
+    let shift = ch.isUppercase
+    for down in [true, false] {
+      let e = CGEvent(keyboardEventSource: src, virtualKey: CGKeyCode(code), keyDown: down)
+      e?.flags = shift ? .maskShift : []
+      e?.post(tap: .cghidEventTap)
+    }
+    usleep(30_000)
+  }
+  exit(0)
+}
+
 if args[0] == "make-screen", args.count == 2 {
   let s = NSScreen.screens[0]
   let w = Int(s.frame.width * s.backingScaleFactor), h = Int(s.frame.height * s.backingScaleFactor)

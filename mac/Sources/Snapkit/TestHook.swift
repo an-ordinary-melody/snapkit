@@ -333,7 +333,7 @@ enum TestHook {
         if let e = event(.leftMouseDown, p, in: v) { v.mouseDown(with: e) }
         if let e = event(.leftMouseUp, p, in: v) { v.mouseUp(with: e) }
       }
-      v.typeText(args.joined(separator: " ").replacingOccurrences(of: "\\n", with: "\n"))
+      if !args.isEmpty { v.typeText(args.joined(separator: " ").replacingOccurrences(of: "\\n", with: "\n")) }
     case "key":
       guard let v = mainView, let name = args.first else { return }
       key(v.window?.firstResponder as? NSView ?? v, name, flags)
@@ -372,7 +372,12 @@ enum TestHook {
         o = o.setting("screen", .array([.number(v.bounds.width), .number(v.bounds.height)]))
         o = o.setting("toolbar", .array(v.toolIds.map { .string($0) }))
         o = o.setting("typing", .bool(v.isTyping))
-        if let t = v.editing { o = o.setting("textBox", .array([.number(t.x), .number(t.y)])) }
+        if let t = v.editing {
+          o = o.setting("textBox", .array([.number(t.x), .number(t.y)]))
+          o = o.setting("typedText", .string(t.text))
+        }
+        o = o.setting("keyWindow", .bool(v.window?.isKeyWindow ?? false))
+        o = o.setting("firstResponder", .string(v.window?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"))
         if let s = v.sel { o = o.setting("selection", .array([s.x, s.y, s.w, s.h].map { .number($0) })) }
         o = o.setting("editorOpen", .bool(v.editorOpen))
         o = o.setting("beautify", v.beautifyJSON)

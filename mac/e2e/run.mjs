@@ -1012,6 +1012,75 @@ const SUITES = {
     check(held === 'holding' && s.captureHotkeyRegistered, 'Takes a shortcut back once the app holding it quits', `holder: ${held} | while held: ${whileHeld} | after: ${s.captureHotkeyRegistered}`)
   },
 
+  // Keys typed for real (through the system's event stream, not straight to the view): they reach
+  // capture mode only when its window really has the keyboard.
+  async realKeys() {
+    // Typed through the selected input source: with Vietnamese Telex, "there" becomes "thể".
+    const telex = /VietnameseTelex/.test(spawnSync('defaults', ['read', 'com.apple.HIToolbox', 'AppleSelectedInputSources']).stdout?.toString() ?? '')
+    await launch()
+    // As with the shortcut: another app is in front when capture mode opens.
+    spawnSync('osascript', ['-e', 'tell application "Finder" to activate'])
+    await wait(500)
+    send('capture')
+    send('select', 110, 120, 580, 60)
+    await wait(700) // the keyboard comes over once the screen is grabbed
+    let s = await state()
+    run(ctl, ['real-type', 'r'])
+    await wait(300)
+    const tool = (await state()).tool
+    check(s.keyWindow && tool === 'rect', 'capture mode has the keyboard: a typed R picks the rectangle', `key window ${s.keyWindow} | responder ${s.firstResponder} | tool ${tool}`)
+    send('tool', 'text')
+    send('type')
+    await wait(300)
+    run(ctl, ['real-type', 'hi there'])
+    await wait(500)
+    s = await state()
+    check(s.typing && s.typedText.normalize() === (telex ? 'hi thể' : 'hi there').normalize(), 'typing text: the keys land in the text box', `typing ${s.typing} | text ${JSON.stringify(s.typedText)} | key window ${s.keyWindow} | responder ${s.firstResponder}`)
+    // A word still being composed (an input method's marked text) shows before it's committed.
+    run(ctl, ['real-type', ' viet'])
+    await wait(500)
+    s = await state()
+    check(s.typedText?.normalize().startsWith('hi th') && s.typedText.normalize().endsWith(' viet'), 'a word still being composed shows as it is typed', JSON.stringify(s.typedText))
+    send('key', 'esc')
+    // In the background editor
+    await launch()
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    await wait(300)
+    send('tool', 'beautifyEdit')
+    send('tool', 'text')
+    const pre = await state(); const p = pre.editorPreview
+    const [cx, cy] = [p[0] + p[2] - 80, p[1] + p[3] / 2]
+    send('editor', 'drag', cx, cy, cx, cy)
+    await wait(300)
+    run(ctl, ['real-type', 'edit'])
+    await wait(500)
+    s = await state()
+    check(s.typing && s.typedText === 'edit', 'typing text in the background editor', `before: selected ${pre.selected} typing ${pre.typing} sel ${JSON.stringify(pre.selection)} | editor ${s.editorOpen} tool ${s.tool} preview ${JSON.stringify(p)} shapes ${JSON.stringify(s.shapes)} | typing ${s.typing} | text ${JSON.stringify(s.typedText)} | key window ${s.keyWindow} | responder ${s.firstResponder}`)
+    send('key', 'esc')
+    send('key', 'c', 'cmd')
+    // Reopened from the floating preview
+    await launch({ pin: { afterCopy: true } })
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    send('key', 'c', 'cmd')
+    await wait(300)
+    send('thumb', 'edit')
+    await wait(500)
+    send('tool', 'text')
+    const q = (await state()).editorPreview
+    send('editor', 'drag', q[0] + 60, q[1] + 60, q[0] + 60, q[1] + 60)
+    await wait(300)
+    run(ctl, ['real-type', 'again'])
+    await wait(500)
+    s = await state()
+    check(s.typing && s.typedText === 'again', 'typing text in an editor reopened from the preview', `typing ${s.typing} | text ${JSON.stringify(s.typedText)} | key window ${s.keyWindow} | responder ${s.firstResponder}`)
+    send('key', 'esc')
+    send('key', 'esc')
+    send('key', 'esc')
+    send('closepins')
+  },
+
   // Bad states Electron fixed in 1a00d6f (docs/state-machines.md, e2e/states.mjs), checked here.
   async states() {
     const saves = await launch({ ocr: { textButton: 'copy' } })
