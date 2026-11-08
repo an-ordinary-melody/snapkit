@@ -745,6 +745,16 @@ const SUITES = {
     s = await state()
     check(s.settingsAppearance.includes('DarkAqua') && s.historyTheme?.dark, 'theme mode dark reaches Settings and the open history panel', `${s.settingsAppearance} ${JSON.stringify(s.historyTheme)}`)
     const darkBg = s.historyTheme?.background
+    // Switched from the Settings window itself with Liquid Glass on: the frosted sidebar follows too.
+    await set({ appearance: { mode: 'light', glass: true } })
+    send('settings-set', JSON.stringify({ appearance: { mode: 'dark' } }))
+    await wait(300)
+    let f = (await state()).settingsFrost
+    send('settings-set', JSON.stringify({ appearance: { mode: 'light' } }))
+    await wait(300)
+    const f2 = (await state()).settingsFrost
+    check(/DarkAqua/.test(f) && /^NSAppearanceNameAqua$/.test(f2), 'glass: the frosted sidebar follows a theme switched in Settings', `${f} then ${f2}`)
+    await set({ appearance: { mode: 'dark', glass: false } })
     await set({ appearance: { mode: 'gray' } })
     s = await state()
     check(s.historyTheme?.dark && s.historyTheme.background !== darkBg, 'Gray is a dark theme with lighter surfaces, in every open window', JSON.stringify(s.historyTheme))
@@ -1010,6 +1020,28 @@ const SUITES = {
     await wait(6000)
     s = await state()
     check(held === 'holding' && s.captureHotkeyRegistered, 'Takes a shortcut back once the app holding it quits', `holder: ${held} | while held: ${whileHeld} | after: ${s.captureHotkeyRegistered}`)
+  },
+
+  // Capture mode's cursors, as Electron's (AnnotationLayer containerCursor, the handles, shapes: move).
+  async cursors() {
+    await launch()
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    let c = (await state()).cursors
+    check(c?.inside === 'move' && c.outside === 'crosshair' && c.corner === 'nwse' && c.edge === 'ns', 'no tool: move inside, crosshair outside, resize arrows on the handles', JSON.stringify(c))
+    const picks = {}
+    for (const t of ['arrow', 'rect', 'pen', 'text', 'step']) {
+      send('tool', t)
+      picks[t] = (await state()).cursors?.inside
+    }
+    check(picks.arrow === 'crosshair' && picks.rect === 'crosshair' && picks.pen === 'crosshair' && picks.text === 'ibeam' && picks.step === 'step', 'drawing tools: crosshair; Text: I-beam; Steps: the pin', JSON.stringify(picks))
+    send('tool', 'line') // through the middle, where the check looks
+    send('drag', 420, 350, 580, 350)
+    send('tool', 'arrow')
+    c = (await state()).cursors
+    check(c?.inside === 'move', 'over a drawing: move, whatever the tool', JSON.stringify(c))
+    send('key', 'esc')
+    send('key', 'esc')
   },
 
   // Keys typed for real (through the system's event stream, not straight to the view): they reach

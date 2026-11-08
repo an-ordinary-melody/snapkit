@@ -779,7 +779,10 @@ final class OverlayView: NSView {
   }
 
   override func mouseDown(with e: NSEvent) { pointerDown(point(e), e) }
-  override func mouseDragged(with e: NSEvent) { pointerDragged(point(e), e) }
+  override func mouseDragged(with e: NSEvent) {
+    pointerDragged(point(e), e)
+    updateCursor()
+  }
   override func mouseUp(with e: NSEvent) { pointerUp(point(e), e) }
 
   private func pointerDown(_ p: CGPoint, _ e: NSEvent) {
@@ -955,22 +958,61 @@ final class OverlayView: NSView {
   func invalidateCursors() {
     window?.invalidateCursorRects(for: self)
     if let editor { window?.invalidateCursorRects(for: editor) }
+    updateCursor()
+  }
+
+  /**
+   * Capture mode's cursor at `p`, as Electron's: crosshair to make an area and to draw; the move
+   * arrows inside the area with no tool, over drawings and while moving; resize arrows on the handles;
+   * the I-beam for Text and the pin for Steps.
+   */
+  func cursorName(at p: CGPoint) -> String {
+    switch drag {
+    case .move?, .shapeMove?: return "move"
+    case let .resize(_, _, h)?, let .shapeResize(_, _, _, _, h)?: return Cursors.resizeName(h)
+    case .some: return "crosshair"
+    case nil: break
+    }
+    guard let sel, image != nil, !textOnly else { return "crosshair" }
+    for h in Handle.allCases {
+      let c = OverlayLayout.handlePoint(sel, h)
+      if abs(c.x - p.x) <= 8 && abs(c.y - p.y) <= 8 { return Cursors.resizeName(h) }
+    }
+    guard sel.contains(p) else { return "crosshair" }
+    if editing == nil, shape(at: p) != nil { return "move" }
+    return tool == "text" ? "ibeam" : tool == "step" ? "step" : tool != nil ? "crosshair" : "move"
   }
 
   override func resetCursorRects() {
     // The background editor covers capture mode and sets its own cursors.
     if editorOpen { return }
-    addCursorRect(bounds, cursor: .crosshair)
-    guard let sel, image != nil else { return }
-    let inside: NSCursor = tool == "text" ? .iBeam : tool == "step" ? Cursors.step : tool != nil ? .crosshair : .openHand
-    addCursorRect(sel.cg, cursor: inside)
-    for s in shapes { addCursorRect(ShapeDrawing.bounds(s, scale: imageScale).intersection(sel.cg), cursor: .openHand) }
-    for h in Handle.allCases {
-      let p = OverlayLayout.handlePoint(sel, h)
-      let c: NSCursor = h == .n || h == .s ? .resizeUpDown : h == .e || h == .w ? .resizeLeftRight : .crosshair
-      addCursorRect(CGRect(x: p.x - 8, y: p.y - 8, width: 16, height: 16), cursor: c)
-    }
+    addCursorRect(bounds, cursor: Cursors.named(cursorName(at: mouseInView)))
   }
+
+  private var mouseInView: CGPoint {
+    guard let window else { return .zero }
+    return convert(window.mouseLocationOutsideOfEventStream, from: nil)
+  }
+
+  /**
+   * Set as the pointer moves, not only through cursor rects: those only apply while Snapkit is the
+   * active app, and capture mode's panel takes the keyboard without activating it.
+   */
+  private func updateCursor() {
+    guard !editorOpen, let window, window.isVisible else { return }
+    let hit = window.contentView?.hitTest(window.mouseLocationOutsideOfEventStream)
+    guard hit === self || hit === frozen || hit === chrome else { return }
+    Cursors.named(cursorName(at: mouseInView)).set()
+  }
+
+  override func updateTrackingAreas() {
+    super.updateTrackingAreas()
+    for a in trackingAreas where a.owner === self { removeTrackingArea(a) }
+    addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect], owner: self))
+  }
+
+  override func mouseMoved(with e: NSEvent) { updateCursor() }
+  override func cursorUpdate(with e: NSEvent) { updateCursor() }
 
   // MARK: - Drawing tools
 
@@ -1739,6 +1781,67 @@ private final class InvisibleTextView: NSTextView {
 
 /** Custom cursors. */
 enum Cursors {
+  static func named(_ name: String) -> NSCursor {
+    switch name {
+    case "move": return move
+    case "ibeam": return .iBeam
+    case "step": return step
+    case "ns": return .resizeUpDown
+    case "ew": return .resizeLeftRight
+    case "nwse": return nwse
+    case "nesw": return nesw
+    case "arrow": return .arrow
+    default: return .crosshair
+    }
+  }
+
+  static func resizeName(_ h: Handle) -> String {
+    switch h {
+    case .n, .s: return "ns"
+    case .e, .w: return "ew"
+    case .nw, .se: return "nwse"
+    case .ne, .sw: return "nesw"
+    }
+  }
+
+  /** The four-way move arrows (CSS `move`). */
+  static let move = symbol("arrow.up.and.down.and.arrow.left.and.right")
+  /** Diagonal resize: the system's on macOS 15 and later. */
+  static let nwse: NSCursor = {
+    if #available(macOS 15.0, *) { return NSCursor.frameResize(position: .topLeft, directions: .all) }
+    return symbol("arrow.up.left.and.arrow.down.right")
+  }()
+  static let nesw: NSCursor = {
+    if #available(macOS 15.0, *) { return NSCursor.frameResize(position: .topRight, directions: .all) }
+    return symbol("arrow.up.right.and.arrow.down.left")
+  }()
+
+  /** An SF Symbol as a cursor: black, outlined in white like the system's, hot spot in the middle. */
+  private static func symbol(_ name: String) -> NSCursor {
+    let size: CGFloat = 22
+    let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .bold)
+    guard let base = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config) else { return .crosshair }
+    let tint = { (c: NSColor) -> NSImage in
+      let i = NSImage(size: base.size, flipped: false) { r in
+        base.draw(in: r)
+        c.set()
+        r.fill(using: .sourceAtop)
+        return true
+      }
+      return i
+    }
+    let white = tint(.white), black = tint(.black)
+    let img = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+      let o = CGPoint(x: (size - base.size.width) / 2, y: (size - base.size.height) / 2)
+      for dx in [-1.5, 0, 1.5] { for dy in [-1.5, 0, 1.5] where dx != 0 || dy != 0 {
+        white.draw(at: CGPoint(x: o.x + dx, y: o.y + dy), from: .zero, operation: .sourceOver, fraction: 1)
+      } }
+      black.draw(at: o, from: .zero, operation: .sourceOver, fraction: 1)
+      return true
+    }
+    return NSCursor(image: img, hotSpot: NSPoint(x: size / 2, y: size / 2))
+  }
+
   /** Push pin for the numbered-step tool; the hot spot is the pin's point. */
   static let step: NSCursor = {
     let img = NSImage(size: NSSize(width: 28, height: 28), flipped: true) { _ in

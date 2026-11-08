@@ -163,7 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     extraHotkeys.append(("settings", \.settings, { [weak self] in self?.showSettings() }))
     store.onChange { [weak self] s, prev in
       if s.appearance != prev.appearance {
-        self?.settingsWindow.applyAppearance()
+        self?.settingsWindow.applyAppearance(s.appearance.mode)
         self?.historyPanel.testView?.theme = Theme.from(s.appearance)
         self?.historyPanel.applyAppearance()
       }

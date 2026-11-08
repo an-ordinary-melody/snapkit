@@ -228,6 +228,9 @@ enum TestHook {
     case "setting":
       // setting <json patch>
       if let patch = try? JSON.parse(args.joined(separator: " ")) { app.store.update(patch) }
+    case "settings-set":
+      // settings-set <json patch>: as a control in the Settings window changes it (through its model)
+      if let patch = try? JSON.parse(args.joined(separator: " ")) { app.settingsWindow.model.set(patch) }
     case "select":
       guard let v = mainView, nums.count == 4 else { return }
       drag(v, from: CGPoint(x: nums[0], y: nums[1]), to: CGPoint(x: nums[0] + nums[2], y: nums[1] + nums[3]))
@@ -334,6 +337,10 @@ enum TestHook {
         if let e = event(.leftMouseUp, p, in: v) { v.mouseUp(with: e) }
       }
       if !args.isEmpty { v.typeText(args.joined(separator: " ").replacingOccurrences(of: "\\n", with: "\n")) }
+    case "cursor-image":
+      // cursor-image <name> <png>: that capture-mode cursor's image
+      guard args.count == 2, let tiff = Cursors.named(args[0]).image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return }
+      try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[1]))
     case "mark":
       // mark <text>: an input method's word still being composed (marked text), as Telex or Pinyin send it
       guard let tv = mainView?.textEditorView?.subviews.first as? NSTextView else { return }
@@ -380,6 +387,14 @@ enum TestHook {
           o = o.setting("textBox", .array([.number(t.x), .number(t.y)]))
           o = o.setting("typedText", .string(t.text))
           o = o.setting("markedText", .bool(((v.textEditorView?.subviews.first as? NSTextView)?.hasMarkedText()) ?? false))
+        }
+        if let sel = v.sel {
+          o = o.setting("cursors", .object([
+            ("inside", .string(v.cursorName(at: CGPoint(x: sel.x + sel.w / 2, y: sel.y + sel.h / 2)))),
+            ("outside", .string(v.cursorName(at: CGPoint(x: sel.x + sel.w + 40, y: sel.y + sel.h + 40)))),
+            ("corner", .string(v.cursorName(at: CGPoint(x: sel.x, y: sel.y)))),
+            ("edge", .string(v.cursorName(at: CGPoint(x: sel.x + sel.w / 2, y: sel.y)))),
+          ]))
         }
         o = o.setting("keyWindow", .bool(v.window?.isKeyWindow ?? false))
         o = o.setting("firstResponder", .string(v.window?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"))
@@ -444,6 +459,7 @@ enum TestHook {
       o = o.setting("dockIcon", .bool(NSApp.activationPolicy() == .regular))
       if let m = app.settingsWindow.model.update { o = o.setting("updateStatus", .string("\(m.status)")) }
       o = o.setting("updateChecking", .bool(app.settingsWindow.model.checking))
+      o = o.setting("settingsFrost", .string(app.settingsWindow.testFrost?.appearance?.name.rawValue ?? "none"))
       o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))
       if let t = app.historyPanel.testView?.theme { o = o.setting("historyTheme", .object([("dark", .bool(t.dark)), ("background", .string(hexOf(t.background)))])) }
       o = o.setting("settingsSection", .string(app.settingsWindow.model.section))

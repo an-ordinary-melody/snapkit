@@ -54,9 +54,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     window?.makeKeyAndOrderFront(nil)
   }
 
-  /** Light / dark / system for the window's own parts (title bar, menus, pop-ups); Gray is dark. */
-  func applyAppearance() {
-    let m = model.s.appearance.mode
+  /**
+   * Light / dark / system for the window's own parts (title bar, menus, pop-ups); Gray is dark.
+   * `mode`: the new one when called from a settings change (the model still holds the old one then).
+   */
+  func applyAppearance(_ mode: String? = nil) {
+    let m = mode ?? model.s.appearance.mode
     let a = m == "light" ? NSAppearance(named: .aqua) : m == "system" ? nil : NSAppearance(named: .darkAqua)
     window?.appearance = a
     // The frosted material keeps the appearance it was drawn with unless told: set it directly.
@@ -75,6 +78,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
   /** Test hooks. */
   var testWindow: NSWindow? { window }
+  var testFrost: NSView? { frost }
   func close() { window?.close() }
 }
 
