@@ -55,6 +55,27 @@ try {
   await tool('Pencil'); await drag(250, 400, 400, 500)
   await tool('Highlighter'); await drag(250, 550, 450, 550)
   await tool('Blur'); await drag(700, 450, 850, 600)
+  // The new blur stays selected: the strength slider changes it right away (one undo step).
+  const blurImage = () => win.evaluate(() => window.Konva.stages[0].find('Image').filter((n) => n.image()?.width > 1).map((n) => n.image().toDataURL()).join())
+  const blurBefore = await blurImage()
+  const blurSelected = await win.evaluate(() => window.Konva.stages[0].find('Transformer').some((t) => t.nodes().length > 0))
+  await win.$eval('.style-bar input.slider', (el) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    set.call(el, '4'); el.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await wait(250)
+  const blurChanged = (await blurImage()) !== blurBefore // (later checks set the strength they need)
+  // With the Blur tool still on: dragging the selected blur moves it, dragging elsewhere draws another.
+  const blurs = () => win.evaluate(() => window.Konva.stages[0].find('Image').filter((n) => n.image()?.width > 1).map((n) => Math.round(n.x())))
+  const [before] = await blurs()
+  await drag(720, 470, 760, 470); await wait(150)
+  const afterMove = await blurs()
+  const moved = afterMove.length === 1 && afterMove[0] !== before
+  await win.keyboard.press(MOD + '+z'); await wait(150)
+  await drag(880, 450, 960, 520); await wait(150)
+  const drewAnother = (await blurs()).length === 2
+  await win.keyboard.press(MOD + '+z'); await wait(300)
+  console.log(`new blur selected: ${blurSelected} | slider changes it: ${blurChanged} | drag on it moves it: ${moved} | drag elsewhere draws another: ${drewAnother}`)
   await tool('Numbered step'); await m.click(300, 600); await m.click(340, 600); await wait(80)
   await tool('Text'); await m.click(600, 560); await wait(150)
   await win.keyboard.type('Hello')

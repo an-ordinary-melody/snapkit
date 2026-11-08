@@ -18,6 +18,7 @@ const SUITES = {
     [/typed size 36 -> text node: true/, 'typed text size applies'],
     [/dark background sets white text: #ffffff/, 'readable text on a dark background'],
     [/highlighter swatches: 5 \| custom: false/, 'highlighter has its own five colors'],
+    [/new blur selected: true \| slider changes it: true \| drag on it moves it: true \| drag elsewhere draws another: true/, 'a new blur stays selected for the strength slider'],
     [/blur strength: 36/, 'a blur area can be clicked and adjusted (hit-testing)'],
     [/blur strength 0: 0 \| unblurred: true/, 'blur strength goes down to 0 (no blur)'],
     [/style bar shown for selected arrow: true/, 'style bar follows the selected shape'],
