@@ -3,14 +3,14 @@
   <channel>
     <title>Snapkit</title>
     <item>
-      <title>0.3.0-beta.1</title>
-      <pubDate>Sun, 08 Nov 2026 05:33:07 +0000</pubDate>
-      <sparkle:version>0.3.0-beta.1</sparkle:version>
-      <sparkle:shortVersionString>0.3.0-beta.1</sparkle:shortVersionString>
+      <title>0.3.0-beta.2</title>
+      <pubDate>Sun, 08 Nov 2026 08:33:27 +0000</pubDate>
+      <sparkle:version>0.3.0-beta.2</sparkle:version>
+      <sparkle:shortVersionString>0.3.0-beta.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <sparkle:channel>beta</sparkle:channel>
-      <sparkle:releaseNotesLink>https://github.com/an-ordinary-melody/snapkit/releases/tag/v0.3.0-beta.1</sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/an-ordinary-melody/snapkit/releases/download/v0.3.0-beta.1/Snapkit-0.3.0-beta.1.zip" type="application/octet-stream" sparkle:edSignature="LZsMv377xeIEmDp9Xd1I/2YCBGcol1+VlMwyRmFx39mo96Ez8i3A+mVhxdeB481udj8oWIA+OuRO0Q5znmEkBg==" length="3466129"/>
+      <sparkle:releaseNotesLink>https://github.com/an-ordinary-melody/snapkit/releases/tag/v0.3.0-beta.2</sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/an-ordinary-melody/snapkit/releases/download/v0.3.0-beta.2/Snapkit-0.3.0-beta.2.zip" type="application/octet-stream" sparkle:edSignature="7hycj95DRV/kjT1LQqHMcFQ2XIs4pV7+zce3cPTO9I2K9gQlu5YldNqC5Lh5UVmvdcIgns4baIq8awDu2vogAQ==" length="3484848"/>
     </item>
   </channel>
 </rss>

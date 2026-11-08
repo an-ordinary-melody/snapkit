@@ -1,7 +1,30 @@
 [
   {
-    "version": "0.3.0-beta.1",
+    "version": "0.3.0-beta.2",
     "date": null,
+    "intro": "Polish for the floating preview and blur, on Mac and Windows.",
+    "items": [
+      {
+        "text": "**Copy confirms.** The Copy button in the floating preview turns into a green check for a moment after copying.",
+        "sub": []
+      },
+      {
+        "text": "**Preview buttons react** to hover and press, and their tooltips look like the toolbar's (with shortcuts and hints).",
+        "sub": []
+      },
+      {
+        "text": "**Strips and tall captures get a standard preview.** When a capture is wider than 3:1 or taller than 1:2, the floating preview keeps a 16:9 size and fits the image inside, so its buttons stay usable.",
+        "sub": []
+      },
+      {
+        "text": "**A new blur stays selected,** so its strength slider works right away.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.3.0-beta.1",
+    "date": "2026-11-08",
     "intro": "First beta of Snapkit, a fast screenshot tool for macOS and Windows.",
     "items": [
       {

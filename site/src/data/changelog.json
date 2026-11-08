@@ -1,5 +1,16 @@
 [
   {
+    "title": "Floating preview polish",
+    "from": "0.3.0-beta.2",
+    "upTo": "0.3.0-beta.2",
+    "items": [
+      "Copy in the floating preview shows a check when it's done",
+      "Preview buttons react to hover and press; tooltips like the toolbar's",
+      "Very wide or tall captures get a standard 16:9 preview",
+      "A new blur stays selected, so its slider works right away"
+    ]
+  },
+  {
     "title": "A native Mac app",
     "from": "0.3.0-beta.1",
     "upTo": "0.3.0-beta.1",
