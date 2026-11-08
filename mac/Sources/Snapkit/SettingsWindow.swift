@@ -23,6 +23,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       log("[settings] another app was clicked: closing Settings")
       self.close()
     }
+    // A modal box (Reset all…, an alert) hides with the app; coming back shows it again, never leaving
+    // Settings swallowing clicks behind an invisible one.
+    NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+      NSApp.modalWindow?.makeKeyAndOrderFront(nil)
+    }
   }
 
   var isOpen: Bool { window?.isVisible ?? false }
@@ -58,6 +63,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
     window?.makeKeyAndOrderFront(nil)
+    NSApp.modalWindow?.makeKeyAndOrderFront(nil)
   }
 
   /**
@@ -898,6 +904,9 @@ struct AboutSection: View {
         if c?.status == .available, !model.usesSparkle {
           SButton(label: "What's new", subtle: true, th: th) { if let p = c?.page, let url = URL(string: p) { NSWorkspace.shared.open(url) } }
           SButton(label: "Download \(c?.version ?? "")", primary: true, th: th) { if let p = c?.url, let url = URL(string: p) { NSWorkspace.shared.open(url) } }
+        }
+        if c?.status == .available, model.usesSparkle {
+          SButton(label: "Update to \(c?.version ?? "")…", primary: true, th: th) { model.installUpdate() }
         }
         SButton(label: model.checking ? "Checking…" : "Check now", disabled: model.checking, th: th) {
           model.checking = true

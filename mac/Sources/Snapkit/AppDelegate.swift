@@ -165,12 +165,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
       sp.onCheck = { [weak self] r in
         model.update = r
         self?.updater.latest = r
+        // A check someone asked for that found one: Sparkle's window shows it and installs.
+        if pending != nil, r.status == .available { sp.checkNow() }
         pending?(r)
         pending = nil
       }
+      model.installUpdate = { sp.checkNow() }
       model.checkUpdates = { done in
         pending = done
-        sp.checkNow()
+        sp.probe()
       }
     } else {
       model.checkUpdates = { [weak self] done in self?.updater.check(manual: true, done: done) }
@@ -191,8 +194,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     if let sparkle { sparkle.start() } else { updater.schedule() }
   }
 
+  /** Settings → About checks and shows the result there; Sparkle's window opens only for an update. */
   @objc private func checkForUpdates() {
-    if let sparkle { sparkle.checkNow() } else { updater.check(manual: true) { _ in } }
+    showSettings(section: "about")
+    let m = settingsWindow.model
+    m.checking = true
+    m.checkUpdates { r in
+      m.update = r
+      m.checking = false
+    }
   }
 
   /** From anywhere, capture mode included (it closes, so the window isn't hidden behind it). */

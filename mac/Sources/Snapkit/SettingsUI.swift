@@ -24,6 +24,8 @@ final class SettingsModel: ObservableObject {
   var setHotkey: (String, String) -> String? = { _, _ in nil }
   var hotkeyTaken: (String) -> Bool = { _ in false }
   var checkUpdates: (@escaping (UpdateCheck) -> Void) -> Void = { _ in }
+  /** Sparkle builds: its window for the update found (download, install, relaunch). */
+  var installUpdate: () -> Void = {}
   var openHistoryFolder: () -> Void = {}
 
   init(store: SettingsStore) {
