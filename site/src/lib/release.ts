@@ -53,13 +53,9 @@ export type Entry = { title: string; label: string; upTo: string; date: string; 
  */
 export function changelog(curated: { title: string; from: string; upTo: string; items: string[] }[]): Entry[] {
   const out = releaseNotes()
-  // "0.2.0-beta.2" → "0.2 Beta 2" (beta numbers restart with each version); versions that aren't betas keep their number.
-  const beta = (v: string) => v.match(/-beta\.(\d+)$/)?.[1]
-  const minor = (v: string) => v.split('.').slice(0, 2).join('.')
-  const label = (from: string, upTo: string) =>
-    beta(from) && beta(upTo) && minor(from) === minor(upTo)
-      ? `${minor(upTo)} Beta ${beta(from)}${from === upTo ? '' : `–${beta(upTo)}`}`
-      : from === upTo ? `v${upTo}` : `v${from} – v${upTo}`
+  // "0.2.0-beta.14" → "0.2.14": betas read as patch numbers; versions that aren't betas keep their number.
+  const short = (v: string) => v.replace(/^(\d+\.\d+)\.\d+-beta\.(\d+)$/, '$1.$2')
+  const label = (from: string, upTo: string) => (from === upTo ? short(upTo) : `${short(from)} – ${short(upTo)}`)
   const newest = curated[0]?.upTo
   const newer = out.slice(0, Math.max(0, out.findIndex((n) => n.version === newest)))
   const auto = newer.map((n) => ({
