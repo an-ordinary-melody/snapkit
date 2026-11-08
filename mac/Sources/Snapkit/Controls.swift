@@ -181,18 +181,23 @@ final class ValueLabel: NSView {
   }
 }
 
-/** Tooltip (.tip): label, shortcut key, and a second dimmer line. */
+/**
+ * Tooltip (.tip): label, shortcut key, and a second dimmer line. `maxWidth`: the text wraps to stay
+ * within it (the floating preview's small window, .thumb-tip).
+ */
 final class TooltipView: NSView {
   private let text: String
   private let hint: String?
   private let sub: String?
   private let theme: Theme
+  private let maxWidth: CGFloat
 
-  init(text: String, hint: String?, sub: String?, theme: Theme) {
+  init(text: String, hint: String?, sub: String?, theme: Theme, maxWidth: CGFloat = .greatestFiniteMagnitude) {
     self.text = text
     self.hint = hint
     self.sub = sub
     self.theme = theme
+    self.maxWidth = maxWidth
     super.init(frame: .zero)
     wantsLayer = true
     let s = NSShadow()
@@ -211,13 +216,27 @@ final class TooltipView: NSView {
   private var key: NSAttributedString? { hint.map { NSAttributedString(string: $0, attributes: [.font: NSFont.systemFont(ofSize: 10.5), .foregroundColor: NSColor(hex: "#a1a1aa")]) } }
   private var second: NSAttributedString? { sub.map { NSAttributedString(string: $0, attributes: [.font: NSFont.systemFont(ofSize: 10.5), .foregroundColor: NSColor(hex: "#a1a1aa")]) } }
 
+  private var keyWidth: CGFloat { key.map { 6 + $0.size().width + 8 } ?? 0 }
+
+  /** A string's size, wrapped at `width`. */
+  private func fit(_ s: NSAttributedString, _ width: CGFloat) -> CGSize {
+    let r = s.boundingRect(with: CGSize(width: max(1, width), height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading])
+    return CGSize(width: ceil(r.width), height: ceil(r.height))
+  }
+
+  private var textWidth: CGFloat { maxWidth - 16 }
+  /** The key goes under the label when both don't fit on one line (a word never breaks). */
+  private var keyOwnLine: Bool { key != nil && main.size().width + keyWidth > textWidth }
+  private var keyLine: CGFloat { keyOwnLine ? (key?.size().height ?? 0) + 3 : 0 }
+  private var mainSize: CGSize { fit(main, keyOwnLine ? textWidth : textWidth - keyWidth) }
+  private var secondSize: CGSize? { second.map { fit($0, textWidth) } }
+
   private func measure() -> CGSize {
-    var w = main.size().width
-    if let k = key { w += 6 + k.size().width + 8 }
-    var h = main.size().height
-    if let s = second {
-      w = max(w, s.size().width)
-      h += 2 + s.size().height
+    var w = keyOwnLine ? max(mainSize.width, keyWidth - 6) : mainSize.width + keyWidth
+    var h = mainSize.height + keyLine
+    if let s = secondSize {
+      w = max(w, s.width)
+      h += 2 + s.height
     }
     return CGSize(width: ceil(w) + 16, height: ceil(h) + 8)
   }
@@ -225,17 +244,21 @@ final class TooltipView: NSView {
   override func draw(_ dirtyRect: NSRect) {
     theme.tipBackground.setFill()
     NSBezierPath(roundedRect: bounds, xRadius: 5, yRadius: 5).fill()
-    main.draw(at: CGPoint(x: 8, y: 4))
+    let m = mainSize
+    // Drawn 1 pt wider than measured, so rounding never breaks a line that fit.
+    main.draw(with: CGRect(x: 8, y: 4, width: m.width + 1, height: m.height), options: [.usesLineFragmentOrigin, .usesFontLeading])
     if let k = key {
-      let x = 8 + main.size().width + 6
-      let box = CGRect(x: x, y: 4 + (main.size().height - k.size().height) / 2 - 0.5, width: k.size().width + 8, height: k.size().height + 1)
+      let x = keyOwnLine ? 8 : 8 + m.width + 6
+      let line = main.size().height
+      let y = keyOwnLine ? 4 + m.height + 2 : 4 + (line - k.size().height) / 2 - 0.5
+      let box = CGRect(x: x, y: y, width: k.size().width + 8, height: k.size().height + 1)
       let p = NSBezierPath(roundedRect: box, xRadius: 3, yRadius: 3)
       NSColor.white.withAlphaComponent(0.18).setStroke()
       p.lineWidth = 1
       p.stroke()
       k.draw(at: CGPoint(x: box.minX + 4, y: box.minY + 0.5))
     }
-    if let s = second { s.draw(at: CGPoint(x: 8, y: 4 + main.size().height + 2)) }
+    if let s = second, let ss = secondSize { s.draw(with: CGRect(x: 8, y: 4 + m.height + keyLine + 2, width: ss.width + 1, height: ss.height), options: [.usesLineFragmentOrigin, .usesFontLeading]) }
   }
 }
 

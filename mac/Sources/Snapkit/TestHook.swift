@@ -112,6 +112,9 @@ enum TestHook {
     case "pin-move":
       if let p = Floating.shared.items.last, nums.count == 2 { Floating.shared.moveBy(p, dx: nums[0], dy: nums[1]) }
     case "closepins": Floating.shared.closeAll()
+    case "thumb-hover":
+      // thumb-hover <0|1|2|pin|move|close>: the pointer over that control of the newest preview
+      if let item = Floating.shared.items.last(where: { $0.kind == .thumb }), let w = args.first { Floating.shared.thumbHover(item, at: w) }
     case "unhover": Floating.shared.testUnhoverAll()
     case "hover": Floating.shared.testUnhoverAll(hover: true)
     case "clearclip": Output.pasteboard.clearContents()
@@ -497,7 +500,12 @@ enum TestHook {
         j = j.setting("image", .array([.number(Double(item.image.width)), .number(Double(item.image.height))]))
         j = j.setting("shapes", .number(Double(item.doc?.shapes.count ?? 0)))
         j = j.setting("historyId", item.doc?.historyId.map { .string($0) } ?? .null)
-        if item.kind == .thumb { j = j.setting("buttonsFit", .bool(Floating.shared.thumbButtonsFit(item))) }
+        if item.kind == .thumb {
+          j = j.setting("buttonsFit", .bool(Floating.shared.thumbButtonsFit(item)))
+          if let t = Floating.shared.thumbTip(item) {
+            j = j.setting("tip", .object([("text", .string(t.text)), ("frame", .array([t.frame.minX, t.frame.minY, t.frame.width, t.frame.height].map { .number(Double($0)) }))]))
+          }
+        }
         j = j.setting("labels", .array(item.kind == .thumb ? Floating.shared.thumbLabels(item).map { .string($0) } : []))
         j = j.setting("visible", .bool(item.panel.isVisible))
         if let s = item.panel.screen { j = j.setting("visibleFrame", .array([s.visibleFrame.maxX, Floating.primaryHeight - s.visibleFrame.minY].map { .number(Double($0)) })) }

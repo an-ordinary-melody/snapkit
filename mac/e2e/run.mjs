@@ -1392,6 +1392,17 @@ const SUITES = {
       fits.push(f?.buttonsFit && `${Math.round(f.frame[2])}x${Math.round(f.frame[3])}`)
     }
     check(fits.every(Boolean), 'preview buttons fit: normal, tall, strip and narrow previews', JSON.stringify(fits))
+    // Tooltips like the toolbar's, kept 4 pt inside the (narrow) preview (Electron 587459c).
+    const tips = []
+    for (const which of ['close', '1', 'move']) {
+      send('thumb-hover', which)
+      await wait(450)
+      const f = (await state()).floating.at(-1)
+      const [x, y, w, h] = f.tip?.frame ?? [-1, -1, 0, 0]
+      tips.push(f.tip && x >= 4 && x + w <= f.frame[2] - 4 && y >= 4 && y + h <= f.frame[3] - 4 ? f.tip.text : `${which}: ${JSON.stringify(f.tip)} in ${f.frame[2]}x${f.frame[3]}`)
+    }
+    send('unhover')
+    check(JSON.stringify(tips) === '["close","edit","move"]', 'preview tooltips (toolbar style) show and stay inside a narrow preview', JSON.stringify(tips))
     send('closepins')
     send('capture')
     send('select', 200, 150, 400, 250)
