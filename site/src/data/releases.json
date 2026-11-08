@@ -1,5 +1,55 @@
 [
   {
+    "version": "0.3.0-beta.1",
+    "date": null,
+    "intro": "First beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**A native Mac app.** Snapkit for Mac is rewritten in Swift: it starts faster and uses much less memory and disk, with the same features, shortcuts, settings and history as before. It runs on Apple Silicon and Intel Macs with macOS 14 or newer. Your settings and history carry over.",
+        "sub": []
+      },
+      {
+        "text": "**Updates install from inside the app** on Mac: Snapkit shows what's new, downloads the update, checks its signature and restarts. Screen Recording permission stays granted across updates.",
+        "sub": []
+      },
+      {
+        "text": "**Text starting style: Light or Dark background.** Settings → Annotate → Text now offers Plain, Stroke, Light and Dark, the same choices as the style bar.",
+        "sub": []
+      },
+      {
+        "text": "**Steadier when things overlap:** two quick saves no longer overwrite each other, the clipboard always ends up with the newest copy, a text read finishing late no longer freezes the next capture, Capture Text is for text only, History only gets captures that were really copied or saved, and a pin saved twice quickly makes one file.",
+        "sub": []
+      },
+      {
+        "text": "**Floating preview buttons fit** at every size (on Windows the Text button used to be cut off). Text is now an icon button; its result shows at the bottom of the preview.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.2.0-beta.14",
+    "date": "2026-11-06",
+    "intro": "Fourteenth beta of Snapkit, a fast screenshot tool for macOS and Windows.",
+    "items": [
+      {
+        "text": "**New default background:** a pink gradient with 20 px padding, softer 17 px corners and a light 5% shadow. **Remember last background** is now on by default, so the background you last copied or saved with becomes the default. If you changed these before, your choices are kept; **Settings → Background → Reset section** switches to the new defaults.",
+        "sub": []
+      },
+      {
+        "text": "**Blur strength goes down to 0** (no blur), in capture mode and Settings.",
+        "sub": []
+      },
+      {
+        "text": "**macOS: more reliable capture mode.** If capture mode never shows up, pressing the shortcut again replaces the capture window. If macOS slides to another Space when capture mode opens, Snapkit reopens it where you are. Capture windows are also refreshed every hour while idle.",
+        "sub": []
+      },
+      {
+        "text": "**Display changes** (resolution, plugging in a monitor) no longer close an open capture.",
+        "sub": []
+      }
+    ]
+  },
+  {
     "version": "0.2.0-beta.13",
     "date": "2026-10-26",
     "intro": "Thirteenth beta of Snapkit, a fast screenshot tool for macOS and Windows.",

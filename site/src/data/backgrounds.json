@@ -2,16 +2,16 @@
   "presets": [
     {
       "id": "ocean",
-      "name": "Ember",
+      "name": "Blossom",
       "background": {
         "type": "gradient",
-        "from": "#f83600",
-        "to": "#f9d423",
-        "angle": 135
+        "from": "#f093fb",
+        "to": "#f5576c",
+        "angle": 171
       },
-      "padding": 48,
-      "radius": 12,
-      "shadow": 0.35
+      "padding": 20,
+      "radius": 17,
+      "shadow": 0.05
     },
     {
       "id": "sunset",

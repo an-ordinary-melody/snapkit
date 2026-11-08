@@ -1,7 +1,7 @@
 ---
 // Download for macOS / Windows. The visitor's OS goes first (set by the script in index.astro).
 // Keep the installer URLs in the page HTML: the release job in .github/workflows/build.yml waits for
-// "Snapkit-<version>-mac-arm64.dmg" to appear here to confirm the site picked up a new release.
+// "Snapkit-<version>-mac.dmg" to appear here to confirm the site picked up a new release.
 import type { Latest } from '../lib/release'
 import OsIcon from './OsIcons.astro'
 
@@ -20,7 +20,7 @@ const { latest, note = true } = Astro.props
   {note && (
     <p class="dl-note">
       {latest.version && <a href={latest.page}>v{latest.version}</a>}
-      <span>·</span> Apple Silicon <span>·</span> Windows x64 <span>·</span> Free, MIT license
+      <span>·</span> macOS 14+ <span>·</span> Windows x64 <span>·</span> Free, MIT license
     </p>
   )}
 </div>

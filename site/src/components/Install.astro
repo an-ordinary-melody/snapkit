@@ -10,12 +10,12 @@ const CARDS = [
   {
     os: 'mac' as const,
     name: 'macOS',
-    note: 'Apple Silicon',
+    note: 'macOS 14 or newer',
     href: latest.mac,
     steps: [
       'Open the <b>.dmg</b> and drag Snapkit to <b>Applications</b>.',
       "Open Snapkit. It isn't signed with a paid Apple Developer ID yet, so macOS blocks the first launch: go to <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>.",
-      'Allow <b>Screen Recording</b> when asked, then quit and reopen Snapkit.'
+      'Allow <b>Screen Recording</b> when asked, then quit and reopen Snapkit. Later updates install from inside Snapkit and keep the permission.'
     ],
     alt: 'Or skip step 2 with Terminal: <code>xattr -cr /Applications/Snapkit.app</code>',
     keys: ['⌥', '⇧', 'Z']

@@ -13,3 +13,4 @@ branding/
 
 # Text-recognition helpers, built by scripts/build-ocr.mjs
 build/ocr/
+dist-mac/

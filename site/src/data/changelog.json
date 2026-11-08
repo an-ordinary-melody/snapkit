@@ -1,5 +1,17 @@
 [
   {
+    "title": "A native Mac app",
+    "from": "0.3.0-beta.1",
+    "upTo": "0.3.0-beta.1",
+    "items": [
+      "Snapkit for Mac is rewritten in Swift: same features, settings and history, much lighter",
+      "Runs on Apple Silicon and Intel Macs, macOS 14 or newer",
+      "Mac updates install from inside the app and keep Screen Recording permission",
+      "Text starting style: Light or Dark background",
+      "Steadier when saves, copies and text reads overlap"
+    ]
+  },
+  {
     "title": "New background defaults and a steadier capture mode",
     "from": "0.2.0-beta.14",
     "upTo": "0.2.0-beta.14",
