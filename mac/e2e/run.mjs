@@ -1054,6 +1054,37 @@ const SUITES = {
   // (a 50/50 mix of two bands comes out near their sRGB midpoint, not washed out lighter).
   async blur() {
     let s
+    // A new blur stays selected: the slider changes it (one undo step), a drag on it moves it, a
+    // drag elsewhere draws another (Electron annotate: "new blur selected").
+    await launch()
+    send('capture')
+    send('select', 100, 100, 900, 600)
+    send('tool', 'blur')
+    send('drag', 200, 200, 400, 350)
+    s = await state()
+    const first = s.shapeData.at(-1)
+    const selected = s.selected === first?.id && s.tool === 'blur'
+    send('blur', 20)
+    send('blur', 30)
+    s = await state()
+    const slid = s.shapeData.at(-1).strength === 30
+    send('key', 'z', 'cmd')
+    s = await state()
+    const oneStep = s.shapeData.length === 1 && s.shapeData[0].strength === first.strength
+    send('key', 'z', 'cmd', 'shift')
+    send('drag', 300, 270, 340, 300)
+    s = await state()
+    const moved = s.shapeData.length === 1 && s.shapeData[0].x === first.x + 40 && s.shapeData[0].y === first.y + 30
+    send('drag', 600, 400, 800, 550)
+    s = await state()
+    const another = s.shapeData.length === 2 && s.selected === s.shapeData[1].id
+    send('click', 850, 650)
+    s = await state()
+    check(selected && slid && oneStep && moved && another && s.selected === null, 'new blur selected; slider changes it (one undo step); drag on it moves it; drag elsewhere draws another; click away deselects',
+      JSON.stringify({ selected, slid, oneStep, moved, another, after: s.selected }))
+    send('key', 'esc')
+    send('key', 'esc')
+
     await launch()
     send('capture')
     send('select', 100, 40, 600, 300)
