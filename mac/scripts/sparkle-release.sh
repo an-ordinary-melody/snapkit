@@ -13,8 +13,13 @@ SPARKLE_VERSION=$(sed -n 's/.*sparkle-project\/Sparkle.*from: "\([0-9.]*\)".*/\1
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
-curl -fsSL "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz" -o "$WORK/sparkle.tar.xz"
-mkdir "$WORK/sparkle" && tar -xJf "$WORK/sparkle.tar.xz" -C "$WORK/sparkle"
+# Sparkle's tools: the copy SwiftPM fetched with the framework (same version), else its release.
+if [ -x .build/artifacts/sparkle/Sparkle/bin/sign_update ]; then
+  ln -s "$PWD/.build/artifacts/sparkle/Sparkle" "$WORK/sparkle"
+else
+  curl -fsSL --retry 4 --retry-all-errors "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz" -o "$WORK/sparkle.tar.xz"
+  mkdir "$WORK/sparkle" && tar -xJf "$WORK/sparkle.tar.xz" -C "$WORK/sparkle"
+fi
 
 INFO="$APP/Contents/Info.plist"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$INFO")

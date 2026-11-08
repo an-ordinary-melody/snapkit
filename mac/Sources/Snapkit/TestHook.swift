@@ -527,6 +527,8 @@ enum TestHook {
       o = o.setting("dockIcon", .bool(NSApp.activationPolicy() == .regular))
       if let m = app.settingsWindow.model.update { o = o.setting("updateStatus", .string("\(m.status)")) }
       o = o.setting("updateChecking", .bool(app.settingsWindow.model.checking))
+      o = o.setting("modalWindow", NSApp.modalWindow.map { .string($0.title) } ?? .null)
+      o = o.setting("visibleWindows", .array(NSApp.windows.filter(\.isVisible).map { .string($0.title) }))
       o = o.setting("menu", .array(app.testMenuTitles.map { .string($0) }))
       o = o.setting("settingsFrost", .string(app.settingsWindow.testFrost?.appearance?.name.rawValue ?? "none"))
       o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))

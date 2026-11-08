@@ -129,10 +129,29 @@ final class SparkleUpdates: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverD
     }
   }
 
-  /** "Check now" / "Check for Updates…": Sparkle's own window shows the result. */
-  func checkNow() {
+  /** Sparkle's own window for an update (Settings' Update button, the menu's Update available, a check that found one). */
+  func checkNow(tries: Int = 25) {
+    // Right after probe() Sparkle is still finishing that check and would ignore this one.
+    guard updater.canCheckForUpdates || tries == 0 else {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.checkNow(tries: tries - 1) }
+      return
+    }
     NSApp.activate(ignoringOtherApps: true)
     controller.checkForUpdates(nil)
+  }
+
+  /**
+   * Settings' Check now: asks the feed without Sparkle's windows and answers through onCheck, shown
+   * inline as in Electron. Sparkle's "You're up to date" box is app-modal and hides when another app
+   * is clicked, which left Settings taking no clicks.
+   */
+  func probe(tries: Int = 25) {
+    guard updater.canCheckForUpdates else {
+      if tries == 0 { return finish(UpdateCheck(status: .error, current: Updater.current, message: "Could not check: an update is in progress.")) }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.probe(tries: tries - 1) }
+      return
+    }
+    updater.checkForUpdateInformation()
   }
 
   var canCheck: Bool { updater.canCheckForUpdates }
@@ -142,6 +161,9 @@ final class SparkleUpdates: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverD
   func allowedChannels(for updater: SPUUpdater) -> Set<String> {
     Updater.current.contains("-") ? ["beta"] : []
   }
+
+  /** Sparkle's own comparator sees 0.3.0-beta.1, 0.3.0-beta.2 and 0.3.0 as the same version. */
+  func versionComparator(for updater: SPUUpdater) -> (any SUVersionComparison)? { SemverComparator() }
 
   func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
     finish(UpdateCheck(status: .available, current: Updater.current, version: item.displayVersionString, url: nil, page: item.releaseNotesURL?.absoluteString))
@@ -170,5 +192,13 @@ final class SparkleUpdates: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverD
 
   func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
     NSApp.activate(ignoringOtherApps: true)
+  }
+}
+
+/** Versions as in the GitHub check (beta.2 > beta.1, a release > its betas). */
+final class SemverComparator: NSObject, SUVersionComparison {
+  func compareVersion(_ a: String, toVersion b: String) -> ComparisonResult {
+    let c = Version.compare(a, b)
+    return c < 0 ? .orderedAscending : c > 0 ? .orderedDescending : .orderedSame
   }
 }
