@@ -1432,10 +1432,22 @@ const SUITES = {
       await wait(450)
       const f = (await state()).floating.at(-1)
       const [x, y, w, h] = f.tip?.frame ?? [-1, -1, 0, 0]
+      if (f.hovered !== (which === '1' ? 'edit' : which)) tips.push(`no hover tint on ${which}: ${f.hovered}`)
       tips.push(f.tip && x >= 4 && x + w <= f.frame[2] - 4 && y >= 4 && y + h <= f.frame[3] - 4 ? f.tip.text : `${which}: ${JSON.stringify(f.tip)} in ${f.frame[2]}x${f.frame[3]}`)
     }
     send('unhover')
-    check(JSON.stringify(tips) === '["close","edit","move"]', 'preview tooltips (toolbar style) show and stay inside a narrow preview', JSON.stringify(tips))
+    check(JSON.stringify(tips) === '["close","edit","move"]', 'preview tooltips (toolbar style) show and stay inside a narrow preview; the control gets the hover tint', JSON.stringify(tips))
+    // Copy on an icon-only preview: a green check for 1.5 s, then the Copy icon again (Electron Thumb.tsx).
+    send('thumb', 'copy')
+    s = await state()
+    const checked = s.floating.at(-1).copyCheck && s.floating.at(-1).labels[0] === 'Copied'
+    await wait(1000)
+    send('thumb', 'copy') // a new click starts the 1.5 s again
+    await wait(900)
+    const still = (await state()).floating.at(-1).copyCheck
+    await wait(900)
+    s = await state()
+    check(checked && still && !s.floating.at(-1).copyCheck && s.floating.at(-1).labels[0] === 'Copy', 'preview Copy shows a check; a new click restarts it; back to Copy after a moment', JSON.stringify({ checked, still, after: s.floating.at(-1).copyCheck }))
     send('closepins')
     send('capture')
     send('select', 200, 150, 400, 250)

@@ -541,6 +541,15 @@ private final class ThumbView: NSView {
   weak var owner: Floating?
   private var hover = false
   private var copied = false
+  private var copiedAt: Date?
+  private var copyWork: DispatchWorkItem?
+  private var popTimer: Timer?
+  /** The check's scale: 0.6 → 1 over 0.18 s, ease-out. */
+  private var checkScale: CGFloat {
+    guard let at = copiedAt else { return 1 }
+    let t = min(1, Date().timeIntervalSince(at) / 0.18)
+    return 0.6 + 0.4 * (1 - pow(1 - t, 3))
+  }
   private var textState: String?
   private var textWork: DispatchWorkItem?
   private var moveFrom: CGPoint?
@@ -611,6 +620,9 @@ private final class ThumbView: NSView {
 
   // Tooltips like the toolbar's (TooltipView), inside this small window (Thumb.tsx Tip).
   private var tipFor: String?
+  /** The control under the pointer (the toolbar's hover tint) and the button held down (a slight shrink). */
+  private var hoveredId: String?
+  private var pressedId: String?
   private var tipView: TooltipView?
   private var tipWork: DispatchWorkItem?
 
@@ -633,10 +645,12 @@ private final class ThumbView: NSView {
   /** Show the tooltip for the control at `p` (after the toolbar's short wait), or hide it. */
   private func updateTip(at p: CGPoint?) {
     let t = p.flatMap { tip(at: $0) }
-    guard t?.id != tipFor else { return }
+    if t?.id != hoveredId { hoveredId = t?.id; needsDisplay = true }
+    // Keyed by the text too, so Copy's tooltip turns to "Copied" (and back) as the pointer moves.
+    guard t.map({ "\($0.id):\($0.text)" }) != tipFor else { return }
     hideTip()
     guard let t else { return }
-    tipFor = t.id
+    tipFor = "\(t.id):\(t.text)"
     let work = DispatchWorkItem { [weak self] in
       guard let self, self.hover else { return }
       let v = TooltipView(text: t.text, hint: t.hint, sub: t.sub, theme: self.theme, maxWidth: self.bounds.width - 8)
@@ -667,7 +681,7 @@ private final class ThumbView: NSView {
   }
 
   /** Test hook: the tooltip showing (text, frame). */
-  var testTip: (text: String, frame: CGRect)? { tipView.map { _ in (tipFor ?? "", tipView!.frame) } }
+  var testTip: (text: String, frame: CGRect)? { tipView.map { _ in (String((tipFor ?? "").prefix { $0 != ":" }), tipView!.frame) } }
   func testHover(_ which: String) {
     hover = true
     let r: CGRect? = which == "pin" ? pinRect : which == "move" ? moveRect : which == "close" ? closeRect
@@ -685,7 +699,7 @@ private final class ThumbView: NSView {
   override func mouseEntered(with e: NSEvent) { hover = true; needsDisplay = true; updateTip(at: convert(e.locationInWindow, from: nil)) }
   /** Test hook: as if the pointer left (or came in). */
   func testUnhover(_ on: Bool = false) { hover = on; if !on { hideTip() }; needsDisplay = true }
-  override func mouseExited(with e: NSEvent) { hover = false; hideTip(); needsDisplay = true }
+  override func mouseExited(with e: NSEvent) { hover = false; hoveredId = nil; hideTip(); needsDisplay = true }
   override func mouseMoved(with e: NSEvent) { updateTip(at: convert(e.locationInWindow, from: nil)) }
 
   override func mouseDown(with e: NSEvent) {
@@ -700,6 +714,7 @@ private final class ThumbView: NSView {
     if pinRect.contains(p) { owner?.pinFromThumb(item); return }
     if moveRect.contains(p) { moveFrom = NSEvent.mouseLocation; return }
     for (i, r) in buttonRects().enumerated() where r.contains(p) {
+      pressedId = buttons[i].id
       press(buttons[i].id)
       return
     }
@@ -721,14 +736,25 @@ private final class ThumbView: NSView {
   override func mouseUp(with e: NSEvent) {
     moveFrom = nil
     downAt = nil
+    if pressedId != nil { pressedId = nil; needsDisplay = true }
   }
 
   func press(_ id: String) {
     switch id {
     case "copy":
       owner?.copy(item)
+      // A green check pops in for 1.5 s (a new click starts it again), in every layout (Thumb.tsx).
       copied = true
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.copied = false; self?.needsDisplay = true }
+      copiedAt = Date()
+      copyWork?.cancel()
+      let w = DispatchWorkItem { [weak self] in self?.copied = false; self?.needsDisplay = true }
+      copyWork = w
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: w)
+      popTimer?.invalidate()
+      popTimer = Timer.scheduledTimer(withTimeInterval: 1 / 60, repeats: true) { [weak self] t in
+        guard let self, let at = self.copiedAt, Date().timeIntervalSince(at) < 0.25 else { t.invalidate(); return }
+        self.needsDisplay = true
+      }
     case "edit": owner?.edit(item)
     case "text":
       textState = "Reading…"
@@ -749,6 +775,10 @@ private final class ThumbView: NSView {
 
   /** Test hook: Copy's state, Edit, and Text's status (or "Text"). */
   var labels: [String] { [copied ? "Copied" : "Copy", "Edit", textState ?? "Text"] }
+  /** Test hook: the Copy button shows the check. */
+  var showsCheck: Bool { copied }
+  /** Test hook: the control with the hover tint. */
+  var testHovered: String? { hoveredId }
   /** Test hook: every button inside the preview. */
   var buttonsFit: Bool { (buttonRects() + [pinRect, moveRect, closeRect]).allSatisfy { bounds.contains($0) } }
 
@@ -824,19 +854,32 @@ private final class ThumbView: NSView {
     if hover {
       NSColor.black.withAlphaComponent(0.42).setFill()
       bounds.fill()
-      for (i, r) in buttonRects().enumerated() {
+      for (i, full) in buttonRects().enumerated() {
         let b = buttons[i]
-        theme.drawPanel(r, radius: 15, strong: true, backdrop: glassUnder(r), in: ctx)
+        // Held down: a little smaller (.thumb-btn:active scale .95).
+        let r = pressedId == b.id ? full.insetBy(dx: full.width * 0.025, dy: full.height * 0.025) : full
+        theme.drawPanel(r, radius: r.height / 2, strong: true, backdrop: glassUnder(full), in: ctx)
+        if hoveredId == b.id {
+          theme.hover.setFill()
+          NSBezierPath(roundedRect: r, xRadius: r.height / 2, yRadius: r.height / 2).fill()
+        }
+        let check = b.id == "copy" && copied
+        let icon = check ? "check" : b.icon, size = check ? 14 * checkScale : 14
+        let color = check ? NSColor(hex: "#22c55e") : theme.foreground
         if let label = b.label {
-          Icons.draw(b.icon, in: CGRect(x: r.minX + 12, y: r.minY, width: 14, height: r.height), size: 14, color: theme.foreground, ctx: ctx)
+          Icons.draw(icon, in: CGRect(x: r.minX + 12, y: r.minY, width: 14, height: r.height), size: size, color: color, ctx: ctx)
           let s = NSAttributedString(string: label, attributes: [.font: buttonFont, .foregroundColor: theme.foreground])
           s.draw(at: CGPoint(x: r.minX + 32, y: r.midY - s.size().height / 2))
         } else {
-          Icons.draw(b.icon, in: r, size: 14, color: theme.foreground, ctx: ctx)
+          Icons.draw(icon, in: r, size: size, color: color, ctx: ctx)
         }
       }
       for (rect, icon) in [(pinRect, "pin"), (moveRect, "move"), (closeRect, "close")] {
         theme.drawPanel(rect, radius: rect.width / 2, strong: true, backdrop: glassUnder(rect), in: ctx)
+        if hoveredId == icon {
+          theme.hover.setFill()
+          NSBezierPath(ovalIn: rect).fill()
+        }
         Icons.draw(icon, in: rect, size: 13, color: theme.foreground, ctx: ctx)
       }
     }
@@ -868,6 +911,8 @@ extension Floating {
   func thumbLabels(_ item: Item) -> [String] { (item.panel.contentView as? ThumbView)?.labels ?? [] }
   func thumbButtonsFit(_ item: Item) -> Bool { (item.panel.contentView as? ThumbView)?.buttonsFit ?? true }
   func thumbTip(_ item: Item) -> (text: String, frame: CGRect)? { (item.panel.contentView as? ThumbView)?.testTip }
+  func thumbShowsCheck(_ item: Item) -> Bool { (item.panel.contentView as? ThumbView)?.showsCheck ?? false }
+  func thumbHovered(_ item: Item) -> String? { (item.panel.contentView as? ThumbView)?.testHovered }
   func thumbHover(_ item: Item, at which: String) {
     (item.panel.contentView as? ThumbView)?.testHover(which)
   }
