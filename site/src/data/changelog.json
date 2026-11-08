@@ -36,27 +36,20 @@
     ]
   },
   {
-    "title": "Compress, last area and a ruler",
-    "from": "0.2.0-beta.12",
+    "title": "Compress, last area, a ruler and a new look",
+    "from": "0.2.0-beta.2",
     "upTo": "0.2.0-beta.12",
     "items": [
+      "New snapping-hand icon, with Liquid Glass on macOS 26 (frosted glass before it)",
       "Compress images: smaller PNGs on copy and save, and pasting keeps the savings",
       "Capture last area: reopen or instantly copy the area you captured last",
-      "Ruler tool: measure in pixels",
-      "macOS: a Dock icon while Settings is open, and a frosted glass app icon"
-    ]
-  },
-  {
-    "title": "Polish and a new look",
-    "from": "0.2.0-beta.2",
-    "upTo": "0.2.0-beta.11",
-    "items": [
-      "New snapping-hand icon, with Liquid Glass on macOS 26",
       "Quick area capture: copied the moment you let go",
-      "Full-screen captures get your default background too",
+      "Ruler tool: measure in pixels",
       "Editor zoom: ⌘ + scroll or pinch, hold Space to pan",
+      "Full-screen captures get your default background too",
       "More to tune: step outline and shadow, dim color",
       "Shortcuts held by another app come back on their own",
+      "macOS: a Dock icon while Settings is open",
       "Smaller installers; on Windows, sharper text, instant capture mode and a preview that stays on top"
     ]
   },
