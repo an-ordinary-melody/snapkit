@@ -478,6 +478,8 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
   .thumb .thumb-icon { top: 50%; transform: translateY(-50%); }
   .thumb .thumb-move { left: auto; right: 36px; }
 }
+/* The preview window is small: its tooltips wrap to fit. */
+.thumb-tip { white-space: normal; max-width: calc(100vw - 8px); width: max-content; }
 .thumb-status {
   position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); max-width: calc(100% - 16px); padding: 3px 10px; border-radius: 11px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
