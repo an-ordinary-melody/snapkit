@@ -1438,6 +1438,14 @@ const SUITES = {
 
 const names = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(SUITES)
 const runMark = logMark()
+// An installed Snapkit holds its shortcuts exclusively (as Electron's), so the test app couldn't take
+// them: it's quit for the run and opened again after.
+const installed = spawnSync('pgrep', ['-f', '/Applications/Snapkit.app/Contents/MacOS/Snapkit']).status === 0
+if (installed) {
+  console.log('(quitting the installed Snapkit for the run; it opens again after)')
+  spawnSync('osascript', ['-e', 'quit app id "com.charios.snapkit"'])
+  await wait(1000)
+}
 try {
   for (const name of names) {
     console.log(name)
@@ -1450,6 +1458,7 @@ try {
 } finally {
   quit()
   rmSync(root, { recursive: true, force: true })
+  if (installed) spawnSync('open', ['/Applications/Snapkit.app'])
 }
 const failed = results.filter((r) => !r.ok).length
 console.log(failed ? `\n${failed} of ${results.length} checks failed` : `\nAll ${results.length} checks passed`)
