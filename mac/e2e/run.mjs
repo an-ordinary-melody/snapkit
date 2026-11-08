@@ -1037,10 +1037,9 @@ const SUITES = {
     s = await state()
     check(s.typing && s.typedText.normalize() === (telex ? 'hi thể' : 'hi there').normalize(), 'typing text: the keys land in the text box', `typing ${s.typing} | text ${JSON.stringify(s.typedText)} | key window ${s.keyWindow} | responder ${s.firstResponder}`)
     // A word still being composed (an input method's marked text) shows before it's committed.
-    run(ctl, ['real-type', ' viet'])
-    await wait(500)
+    send('mark', 'vi')
     s = await state()
-    check(s.typedText?.normalize().startsWith('hi th') && s.typedText.normalize().endsWith(' viet'), 'a word still being composed shows as it is typed', JSON.stringify(s.typedText))
+    check(s.markedText && s.typedText?.endsWith('vi') && s.typedText.length > 'vi'.length, 'a word still being composed shows as it is typed', `${JSON.stringify(s.typedText)} | marked ${s.markedText}`)
     send('key', 'esc')
     // In the background editor
     await launch()

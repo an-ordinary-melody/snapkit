@@ -334,6 +334,10 @@ enum TestHook {
         if let e = event(.leftMouseUp, p, in: v) { v.mouseUp(with: e) }
       }
       if !args.isEmpty { v.typeText(args.joined(separator: " ").replacingOccurrences(of: "\\n", with: "\n")) }
+    case "mark":
+      // mark <text>: an input method's word still being composed (marked text), as Telex or Pinyin send it
+      guard let tv = mainView?.textEditorView?.subviews.first as? NSTextView else { return }
+      tv.setMarkedText(args.joined(separator: " "), selectedRange: NSRange(location: args.joined(separator: " ").utf16.count, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
     case "key":
       guard let v = mainView, let name = args.first else { return }
       key(v.window?.firstResponder as? NSView ?? v, name, flags)
@@ -375,6 +379,7 @@ enum TestHook {
         if let t = v.editing {
           o = o.setting("textBox", .array([.number(t.x), .number(t.y)]))
           o = o.setting("typedText", .string(t.text))
+          o = o.setting("markedText", .bool(((v.textEditorView?.subviews.first as? NSTextView)?.hasMarkedText()) ?? false))
         }
         o = o.setting("keyWindow", .bool(v.window?.isKeyWindow ?? false))
         o = o.setting("firstResponder", .string(v.window?.firstResponder.map { String(describing: type(of: $0)) } ?? "none"))

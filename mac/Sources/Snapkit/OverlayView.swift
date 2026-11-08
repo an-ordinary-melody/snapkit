@@ -1614,6 +1614,7 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
     text.delegate = self
     text.string = shape.text
     text.onFinish = { [weak self] in self?.owner?.finishEditing(commit: true) }
+    text.onMarkedChange = { [weak self] in self?.changed() }
     addSubview(text)
     update(shape)
   }
@@ -1651,6 +1652,8 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
     text.typingAttributes = attrs
     text.textStorage?.setAttributes(attrs, range: NSRange(location: 0, length: (text.string as NSString).length))
     text.insertionPointColor = NSColor(hex: s.color)
+    // A word still being composed is drawn with the rest; the view only underlines it, as macOS does.
+    text.markedTextAttributes = [.foregroundColor: NSColor.clear, .underlineStyle: NSUnderlineStyle.single.rawValue, .underlineColor: NSColor(hex: s.color)]
     let pad = ShapeDrawing.pad(s) * k
     text.textContainerInset = CGSize(width: pad, height: pad)
     let box = ShapeDrawing.textBox(s)
@@ -1660,7 +1663,10 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
     frame = CGRect(x: t.origin.x + s.x * k - f, y: t.origin.y + s.y * k - f, width: w + f * 2, height: box.height * k + f * 2)
   }
 
-  func textDidChange(_ notification: Notification) {
+  func textDidChange(_ notification: Notification) { changed() }
+
+  private func changed() {
+    guard shape.text != text.string else { return }
     shape.text = text.string
     owner?.textChanged(shape)
     update(shape)
@@ -1695,6 +1701,19 @@ private final class TextEditorView: NSView, NSTextViewDelegate {
 /** The text view used while typing: Esc or ⌘Return finishes; every other key stays here. */
 private final class InvisibleTextView: NSTextView {
   var onFinish: () -> Void = {}
+  /**
+   * A word an input method is still composing (Vietnamese Telex, Pinyin, dead keys) is marked text,
+   * which posts no text-change notification: without this it would only show once committed (space).
+   */
+  var onMarkedChange: () -> Void = {}
+  override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+    super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+    onMarkedChange()
+  }
+  override func unmarkText() {
+    super.unmarkText()
+    onMarkedChange()
+  }
   override func keyDown(with e: NSEvent) {
     if e.keyCode == 53 || (e.keyCode == 36 && e.modifierFlags.contains(.command)) {
       onFinish()
