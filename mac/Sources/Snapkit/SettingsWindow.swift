@@ -81,12 +81,14 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   }
 
   private var backdrop: NSView?
-  /** The painted picture under the glass (GlassPainting). */
+  /** The picture under the glass (glass-light.jpg / glass-dark.jpg). */
   private var painting: NSView?
+  /** Test hook glass-image: another picture to try under the glass. */
+  var testImage: NSImage?
 
   /**
    * Liquid Glass: the whole window is glass (a light or dark frost keeps text readable) over Snapkit's
-   * own painted backdrop, so it looks the same on any desktop; SettingsRoot puts the sidebar on it and
+   * own picture (soft violet in light mode, teal in dark), so it looks the same on any desktop; SettingsRoot puts the sidebar on it and
    * the content on an inset sheet. Off: opaque.
    * `appearance`: the new one when called from a settings change (the model still holds the old one).
    */
@@ -118,7 +120,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     v.autoresizingMask = [.width, .height]
     wrap.addSubview(v, positioned: .below, relativeTo: host)
     backdrop = v
-    let paint = NSHostingView(rootView: GlassPainting(dark: dark))
+    let paint = NSView()
+    paint.wantsLayer = true
+    paint.layer?.contents = testImage ?? Bundle.main.image(forResource: dark ? "glass-dark" : "glass-light")
+    paint.layer?.contentsGravity = .resizeAspectFill
     paint.frame = wrap.bounds
     paint.autoresizingMask = [.width, .height]
     wrap.addSubview(paint, positioned: .below, relativeTo: v)
@@ -127,6 +132,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
   /** Test hook: the window's backdrop ("glass", "frost" before macOS 26, "none"). */
   var testBackdrop: String { backdrop == nil ? "none" : backdrop is NSVisualEffectView ? "frost" : "glass" }
+  /** Test hook: the picture under the glass is there. */
+  var testHasPicture: Bool { painting?.layer?.contents != nil }
 
   func windowWillClose(_ notification: Notification) {
     NSApp.setActivationPolicy(.accessory)
@@ -143,36 +150,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   func close() { window?.close() }
 }
 
-
-/**
- * The picture under the Liquid Glass Settings window: soft blurred colour fields (pink and coral top
- * left, lavender top right, green into lime below), deeper in dark mode. Snapkit's own, in the spirit
- * of the macOS wallpapers glass was designed over.
- */
-struct GlassPainting: View {
-  let dark: Bool
-  var body: some View {
-    GeometryReader { g in
-      let w = g.size.width, h = g.size.height
-      let c = { (light: String, dark: String) in Color(NSColor(hex: self.dark ? dark : light)) }
-      ZStack {
-        c("#f0d4ea", "#1c1530")
-        blob(c("#f48cce", "#9c2f68"), x: 0.12, y: 0.12, r: 0.55, w, h)
-        blob(c("#ff9068", "#b23f2a"), x: 0.30, y: 0.42, r: 0.45, w, h)
-        blob(c("#9eaaff", "#3438a8"), x: 0.92, y: 0.10, r: 0.60, w, h)
-        blob(c("#78cc86", "#2b6a34"), x: 0.10, y: 0.86, r: 0.55, w, h)
-        blob(c("#d9ef5f", "#6b7a19"), x: 0.62, y: 1.00, r: 0.60, w, h)
-      }
-      .blur(radius: min(w, h) * 0.09)
-    }
-    .ignoresSafeArea()
-  }
-
-  private func blob(_ color: Color, x: CGFloat, y: CGFloat, r: CGFloat, _ w: CGFloat, _ h: CGFloat) -> some View {
-    let d = max(w, h) * r
-    return Ellipse().fill(color).frame(width: d * 1.3, height: d).position(x: w * x, y: h * y)
-  }
-}
 
 struct SettingsRoot: View {
   @ObservedObject var model: SettingsModel

@@ -765,7 +765,7 @@ const SUITES = {
     // Liquid Glass: the whole window is glass (see-through), not just a sidebar pane; off: opaque.
     await set({ appearance: { mode: 'light', glass: true } })
     s = await state()
-    check(s.settingsBackdrop === 'glass' && !s.settingsOpaque, 'glass: the whole Settings window is Liquid Glass (see-through)', `${s.settingsBackdrop} opaque ${s.settingsOpaque}`)
+    check(s.settingsBackdrop === 'glass' && !s.settingsOpaque && s.settingsPicture, 'glass: the whole Settings window is Liquid Glass, over its own picture', `${s.settingsBackdrop} opaque ${s.settingsOpaque} picture ${s.settingsPicture}`)
     // Switched from the Settings window itself: the glass window follows the theme too.
     send('settings-set', JSON.stringify({ appearance: { mode: 'dark' } }))
     await wait(300)

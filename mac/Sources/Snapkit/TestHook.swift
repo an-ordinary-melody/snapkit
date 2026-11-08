@@ -220,6 +220,10 @@ enum TestHook {
           reply(.object([("cursors", .array(seen.map { .string($0) }))]))
         }
       }
+    case "glass-image":
+      // glass-image <path>: try a picture under the Liquid Glass Settings window
+      app.settingsWindow.testImage = args.first.flatMap { NSImage(contentsOfFile: $0) }
+      app.settingsWindow.applyBackdrop()
     case "window-image":
       // window-image <png>: the Settings window as on screen (an app may capture its own windows)
       guard let path = args.first, let w = app.settingsWindow.testWindow,
@@ -532,6 +536,7 @@ enum TestHook {
       o = o.setting("menu", .array(app.testMenuTitles.map { .string($0) }))
       o = o.setting("settingsFrost", .string(app.settingsWindow.testFrost?.appearance?.name.rawValue ?? "none"))
       o = o.setting("settingsBackdrop", .string(app.settingsWindow.testBackdrop))
+      o = o.setting("settingsPicture", .bool(app.settingsWindow.testHasPicture))
       o = o.setting("settingsOpaque", .bool(app.settingsWindow.testWindow?.isOpaque ?? true))
       o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))
       if let t = app.historyPanel.testView?.theme { o = o.setting("historyTheme", .object([("dark", .bool(t.dark)), ("background", .string(hexOf(t.background)))])) }
