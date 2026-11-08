@@ -85,7 +85,8 @@ struct SettingsTheme {
   var glass: Bool
   var fg: Color { Color(t.foreground) }
   var dim: Color { Color(t.foregroundDim) }
-  var faint: Color { Color(t.foregroundFaint) }
+  /** Descriptions; a little brighter on dark glass, where colour shows through. */
+  var faint: Color { glass && dark ? Color.white.opacity(0.6) : Color(t.foregroundFaint) }
   var field: Color { Color(t.field) }
   var hover: Color { Color(t.hover) }
   var activeBg: Color { Color(t.activeBackground) }
@@ -93,9 +94,13 @@ struct SettingsTheme {
   var ring: Color { Color(t.ring) }
   var switchOn: Color { Color(t.switchOn) }
   var track: Color { Color(t.track) }
-  // With Liquid Glass only the sidebar is frosted (like System Settings); the content stays solid.
+  // With Liquid Glass the window is a glass frame (the sidebar on it) and the content an inset sheet
+  // of this colour, slightly see-through (SettingsRoot).
   var main: Color { Color(gray ? NSColor(hex: "#3a3a3e") : dark ? NSColor(hex: "#232326") : .white) }
-  var card: Color { Color(gray ? NSColor(hex: "#46464b") : dark ? NSColor(hex: "#2c2c30") : NSColor(hex: "#f6f6f8")) }
+  var card: Color {
+    if glass { return Color(dark ? NSColor.white.withAlphaComponent(0.05) : NSColor.black.withAlphaComponent(0.035)) }
+    return Color(gray ? NSColor(hex: "#46464b") : dark ? NSColor(hex: "#2c2c30") : NSColor(hex: "#f6f6f8"))
+  }
   var cardEdge: Color { Color(dark ? NSColor.white.withAlphaComponent(gray ? 0.08 : 0.06) : NSColor.black.withAlphaComponent(0.08)) }
   var sidebar: Color { glass ? .clear : Color(gray ? NSColor(hex: "#323236") : dark ? NSColor(hex: "#1c1c1f") : NSColor(hex: "#ececef")) }
   static let danger = Color(NSColor(hex: "#e5484d"))
@@ -118,10 +123,11 @@ struct SGroup<Content: View>: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       if let title { Text(title).font(.system(size: 12, weight: .semibold)).foregroundColor(th.dim).padding(.leading, 4) }
+      let r: CGFloat = th.glass ? 14 : 10
       VStack(spacing: 0) { content() }
         .background(th.card)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(th.cardEdge, lineWidth: 0.5))
+        .clipShape(RoundedRectangle(cornerRadius: r, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: r, style: .continuous).stroke(th.glass && !th.dark ? Color.white.opacity(0.6) : th.cardEdge, lineWidth: 0.5))
       if let note { Text(note).font(.system(size: 11.5)).foregroundColor(th.faint).padding(.horizontal, 4).fixedSize(horizontal: false, vertical: true) }
     }
     .padding(.bottom, 20)

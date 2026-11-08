@@ -46,12 +46,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
       w.minSize = CGSize(width: 720, height: 480)
       w.isReleasedWhenClosed = false
       w.delegate = self
-      // Liquid Glass is the sidebar's floating pane (SettingsRoot), over the window's own background,
-      // as macOS 26 sidebars: nothing behind the window shows through.
+      // The SwiftUI content over a backdrop view (applyBackdrop): Liquid Glass for the whole window.
       let host = NSHostingView(rootView: SettingsRoot(model: model))
-      host.frame = w.contentRect(forFrameRect: w.frame)
+      let wrap = NSView(frame: w.contentRect(forFrameRect: w.frame))
+      host.frame = wrap.bounds
       host.autoresizingMask = [.width, .height]
-      w.contentView = host
+      wrap.addSubview(host)
+      w.contentView = wrap
       w.center()
       window = w
       self.frost = host
@@ -76,7 +77,58 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     window?.appearance = a
     frost?.appearance = a ?? NSApp.effectiveAppearance
     frost?.needsDisplay = true
+    applyBackdrop()
   }
+
+  private var backdrop: NSView?
+  /** Glass previews (TestHook backdrop): a desktop picture inside the window, under the glass. */
+  var testWallpaper: NSImage?
+  private var wallpaperView: NSView?
+
+  /**
+   * Liquid Glass: the whole window is glass (a light or dark frost keeps text readable over busy
+   * desktops); SettingsRoot puts the sidebar on it and the content on an inset sheet. Off: opaque.
+   * `appearance`: the new one when called from a settings change (the model still holds the old one).
+   */
+  func applyBackdrop(_ appearance: SnapkitCore.Settings.Appearance? = nil) {
+    guard let w = window, let wrap = w.contentView, let host = frost else { return }
+    let a = appearance ?? model.s.appearance
+    backdrop?.removeFromSuperview()
+    backdrop = nil
+    wallpaperView?.removeFromSuperview()
+    wallpaperView = nil
+    w.isOpaque = !a.glass
+    w.backgroundColor = a.glass ? .clear : .windowBackgroundColor
+    guard a.glass else { return }
+    let dark = a.mode == "system" ? NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua : a.mode != "light"
+    let v: NSView
+    if #available(macOS 26.0, *) {
+      let g = NSGlassEffectView()
+      g.style = .regular
+      g.tintColor = (dark ? NSColor.black : NSColor.white).withAlphaComponent(0.28)
+      v = g
+    } else {
+      let e = NSVisualEffectView()
+      e.material = .sidebar
+      e.blendingMode = testWallpaper == nil ? .behindWindow : .withinWindow
+      e.state = .active
+      v = e
+    }
+    v.frame = wrap.bounds
+    v.autoresizingMask = [.width, .height]
+    wrap.addSubview(v, positioned: .below, relativeTo: host)
+    backdrop = v
+    if let img = testWallpaper, let sc = w.screen ?? NSScreen.main {
+      let iv = NSImageView(frame: CGRect(x: sc.frame.minX - w.frame.minX, y: sc.frame.minY - w.frame.minY, width: sc.frame.width, height: sc.frame.height))
+      iv.image = img
+      iv.imageScaling = .scaleAxesIndependently
+      wrap.addSubview(iv, positioned: .below, relativeTo: v)
+      wallpaperView = iv
+    }
+  }
+
+  /** Test hook: the window's backdrop ("glass", "frost" before macOS 26, "none"). */
+  var testBackdrop: String { backdrop == nil ? "none" : backdrop is NSVisualEffectView ? "frost" : "glass" }
 
   func windowWillClose(_ notification: Notification) {
     NSApp.setActivationPolicy(.accessory)
@@ -96,17 +148,20 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
 struct SettingsRoot: View {
   @ObservedObject var model: SettingsModel
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   var body: some View {
     let th = SettingsTheme(model.s.appearance)
     Group {
       if th.glass {
-        // A floating glass sidebar inset from the window's edges, the content's background running
-        // under it (macOS 26 sidebars; WWDC25 "Build an AppKit app with the new design").
+        // The window is glass with the sidebar on it; the content sits on an inset sheet, slightly
+        // see-through (solid with Reduce Transparency), its corners concentric with the window's.
         HStack(spacing: 0) {
-          sidebar(th).frame(width: 210).glassPane(th, radius: 12).padding(8)
+          sidebar(th).frame(width: 210)
           content(th)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(th.main.opacity(reduceTransparency ? 1 : th.dark ? 0.6 : 0.72)))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(th.dark ? Color.white.opacity(0.08) : Color.white.opacity(0.7), lineWidth: 0.5))
+            .padding(.vertical, 8).padding(.trailing, 8)
         }
-        .background(th.main)
       } else {
         HStack(spacing: 0) {
           sidebar(th).frame(width: 210).background(th.sidebar)
@@ -121,22 +176,23 @@ struct SettingsRoot: View {
 
   private func sidebar(_ th: SettingsTheme) -> some View {
     VStack(alignment: .leading, spacing: 2) {
-      Spacer().frame(height: th.glass ? 46 : 52)
+      Spacer().frame(height: 52)
       ForEach(SettingsSections.all, id: \.id) { sec in
         let on = sec.id == model.section
         HStack(spacing: 9) {
-          IconView(id: sec.icon, size: 16, color: on ? th.t.activeForeground : th.t.foreground)
-          Text(sec.label).font(.system(size: 13)).foregroundColor(on ? th.activeFg : th.fg)
+          let lit = on && !th.glass
+          IconView(id: sec.icon, size: 16, color: lit ? th.t.activeForeground : th.t.foreground)
+          Text(sec.label).font(.system(size: 13, weight: on && th.glass ? .semibold : .regular)).foregroundColor(lit ? th.activeFg : th.fg)
           Spacer()
         }
         .padding(.horizontal, 10).frame(height: 30)
-        .background(RoundedRectangle(cornerRadius: 7).fill(on ? th.activeBg : Color.clear))
+        .background(RoundedRectangle(cornerRadius: th.glass ? 9 : 7, style: .continuous).fill(on ? (th.glass ? Color.primary.opacity(th.dark ? 0.14 : 0.09) : th.activeBg) : Color.clear))
         .contentShape(Rectangle())
         .onTapGesture { model.section = sec.id }
       }
       Spacer()
     }
-    .padding(.horizontal, th.glass ? 6 : 10).padding(.vertical, 8)
+    .padding(.horizontal, 10).padding(.vertical, 8)
   }
 
   private func content(_ th: SettingsTheme) -> some View {
@@ -154,18 +210,6 @@ struct SettingsRoot: View {
         VStack(alignment: .leading, spacing: 0) { SectionView(id: sec.id, model: model, th: th) }
           .padding(.horizontal, th.glass ? 16 : 24).padding(.top, 4).padding(.bottom, 32)
       }
-    }
-  }
-}
-
-private extension View {
-  /** Liquid Glass on macOS 26 and later; a frosted pane with a hairline edge before that. */
-  @ViewBuilder func glassPane(_ th: SettingsTheme, radius: CGFloat) -> some View {
-    if #available(macOS 26.0, *) {
-      glassEffect(.regular, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-    } else {
-      background(.regularMaterial, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(th.cardEdge, lineWidth: 0.5))
     }
   }
 }

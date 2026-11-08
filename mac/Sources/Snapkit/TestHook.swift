@@ -220,6 +220,12 @@ enum TestHook {
           reply(.object([("cursors", .array(seen.map { .string($0) }))]))
         }
       }
+    case "backdrop":
+      // backdrop <image>: glass previews: the picture under Settings' glass, placed as if it were the
+      // desktop (another app's window can't be put behind it from here)
+      guard let path = args.first, let img = NSImage(contentsOfFile: path) else { return }
+      app.settingsWindow.testWallpaper = img
+      app.settingsWindow.applyBackdrop()
     case "window-image":
       // window-image <png>: the Settings window as on screen (an app may capture its own windows)
       guard let path = args.first, let w = app.settingsWindow.testWindow,
@@ -531,6 +537,8 @@ enum TestHook {
       o = o.setting("visibleWindows", .array(NSApp.windows.filter(\.isVisible).map { .string($0.title) }))
       o = o.setting("menu", .array(app.testMenuTitles.map { .string($0) }))
       o = o.setting("settingsFrost", .string(app.settingsWindow.testFrost?.appearance?.name.rawValue ?? "none"))
+      o = o.setting("settingsBackdrop", .string(app.settingsWindow.testBackdrop))
+      o = o.setting("settingsOpaque", .bool(app.settingsWindow.testWindow?.isOpaque ?? true))
       o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))
       if let t = app.historyPanel.testView?.theme { o = o.setting("historyTheme", .object([("dark", .bool(t.dark)), ("background", .string(hexOf(t.background)))])) }
       o = o.setting("settingsSection", .string(app.settingsWindow.model.section))

@@ -762,16 +762,21 @@ const SUITES = {
     s = await state()
     check(s.settingsAppearance.includes('DarkAqua') && s.historyTheme?.dark, 'theme mode dark reaches Settings and the open history panel', `${s.settingsAppearance} ${JSON.stringify(s.historyTheme)}`)
     const darkBg = s.historyTheme?.background
-    // Switched from the Settings window itself with Liquid Glass on: the frosted sidebar follows too.
+    // Liquid Glass: the whole window is glass (see-through), not just a sidebar pane; off: opaque.
     await set({ appearance: { mode: 'light', glass: true } })
+    s = await state()
+    check(s.settingsBackdrop === 'glass' && !s.settingsOpaque, 'glass: the whole Settings window is Liquid Glass (see-through)', `${s.settingsBackdrop} opaque ${s.settingsOpaque}`)
+    // Switched from the Settings window itself: the glass window follows the theme too.
     send('settings-set', JSON.stringify({ appearance: { mode: 'dark' } }))
     await wait(300)
     let f = (await state()).settingsFrost
     send('settings-set', JSON.stringify({ appearance: { mode: 'light' } }))
     await wait(300)
     const f2 = (await state()).settingsFrost
-    check(/DarkAqua/.test(f) && /^NSAppearanceNameAqua$/.test(f2), 'glass: the frosted sidebar follows a theme switched in Settings', `${f} then ${f2}`)
+    check(/DarkAqua/.test(f) && /^NSAppearanceNameAqua$/.test(f2), 'glass: the glass window follows a theme switched in Settings', `${f} then ${f2}`)
     await set({ appearance: { mode: 'dark', glass: false } })
+    s = await state()
+    check(s.settingsBackdrop === 'none' && s.settingsOpaque, 'glass off: Settings is an opaque window again', `${s.settingsBackdrop} opaque ${s.settingsOpaque}`)
     await set({ appearance: { mode: 'gray' } })
     s = await state()
     check(s.historyTheme?.dark && s.historyTheme.background !== darkBg, 'Gray is a dark theme with lighter surfaces, in every open window', JSON.stringify(s.historyTheme))

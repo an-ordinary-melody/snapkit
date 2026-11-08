@@ -187,6 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     store.onChange { [weak self] s, prev in
       if s.appearance != prev.appearance {
         self?.settingsWindow.applyAppearance(s.appearance.mode)
+        self?.settingsWindow.applyBackdrop(s.appearance)
         self?.historyPanel.testView?.theme = Theme.from(s.appearance)
         self?.historyPanel.applyAppearance()
       }

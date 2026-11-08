@@ -367,8 +367,9 @@ Native-only suites from the 2026-11-08 parity audit (behaviour Electron has, not
 - In other suites: a taken shortcut is reported at startup and refused in Settings (parity);
   editor panning stops at the preview's edges (editorView); the clipboard has TIFF too (preview);
   history goes back to the newest after a change (historyPanel); a text read gives up after its
-  timeout (states); the glass Settings sidebar follows a theme switch (settings); Sparkle's
-  "Update available" menu item (sparkle-update.mjs).
+  timeout (states); with Liquid Glass the whole Settings window is glass and follows a theme
+  switch, opaque again with it off (settings); Sparkle's "Update available" menu item, betas
+  updating to newer betas, Check now answering in Settings with no modal box (sparkle-update.mjs).
 
 Not covered by a test: the Screen Recording grant continuing into the capture (needs the permission
 revoked), the pin's ⌥ cursor on key press, and which display a pin uses for an area spanning two
