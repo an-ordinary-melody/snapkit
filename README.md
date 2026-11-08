@@ -50,10 +50,14 @@ Every push to `main` also builds both installers (the **Actions** tab → latest
 
 **Icons:** the app and tray icons are generated from the logo SVGs in `branding/` (kept out of the repo) with `npx electron scripts/make-icons.cjs`: the hand from `Snapkit Black.svg` on the blue gradient becomes the app icon and the Windows tray icon, `Snapkit Mac Negative.svg` the macOS menu-bar icon. The script also writes `build/AppIcon.icon`, an Icon Composer document for the macOS 26 Liquid Glass icon; compile it with **Actions → Mac icon (Liquid Glass) → Run workflow** (needs Xcode 26) and commit the artifact's `Assets.car` and `AppIcon.icns` to `build/`.
 
-**Releasing:** run the full tests first (`npm test && npm run e2e`, which also clears the test backlog). Then set the version in `package.json` (`npm version 0.2.0-beta.2 --no-git-tag-version`),
-write `release-notes/v<version>.md`, commit, then tag and push (`git tag v0.2.0-beta.2 && git push origin v0.2.0-beta.2`).
-CI builds both installers and publishes the Release with those notes. To test on Windows, run **Actions → E2E (Windows) → Run workflow** (it runs the suites at 100% and 150% display scaling). A version with a dash
-(`-beta.1`) is published as a GitHub pre-release.
+**Versions:** releases count up the patch number: 0.3.3, 0.3.4, … (the 0.2 and early 0.3 betas, `0.2.0-beta.1` to `0.3.0-beta.2`, show on the site as 0.2.1–0.2.14, 0.3.1 and 0.3.2).
+Every release is a normal release: people on a version without a dash are never offered pre-releases, so a pre-release would reach nobody but people still on a beta.
+For a test channel later, use a dash on a newer version (`0.4.0-beta.1`): a version with a dash is published as a GitHub pre-release, goes to Sparkle's beta channel, and is offered only to people running a beta.
+
+**Releasing:** run the full tests first (`npm test && npm run e2e`, which also clears the test backlog). Then set the version in `package.json` (`npm version 0.3.3 --no-git-tag-version`),
+write `release-notes/v<version>.md`, and on a Mac run `scripts/release-mac.sh` (builds and signs the native app, writes the DMG and Sparkle zip to `dist-mac/` and the feed to `site/public/appcast.xml`).
+Commit, push, then create the release with the Mac files (`gh release create v0.3.3 --target main --notes-file release-notes/v0.3.3.md dist-mac/*`); its tag starts CI, which attaches the Windows installer and redeploys the site.
+To test on Windows, run **Actions → E2E (Windows) → Run workflow** (it runs the suites at 100% and 150% display scaling).
 
 **Updates:** Snapkit checks GitHub releases once a day (Settings → About; betas are offered only to people running a beta)
 and shows a notification and an "Update available" item in the menu-bar menu.
