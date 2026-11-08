@@ -441,3 +441,19 @@ func json(_ s: String) -> JSON { try! JSON.parse(s) }
   s.annotate.text.style = "plain"
   expect(Style.initial(s).textColor, s.annotate.palette[0], "plain text starts in the first quick colour")
 }
+
+// Floating preview size (shared/thumb.test.ts)
+@Test("floating preview size") func floatingPreviewSize() throws {
+  func s(_ w: Double, _ h: Double) -> String {
+    let t = ThumbSize.of(w, h)
+    return "\(Int(t.w))x\(Int(t.h))"
+  }
+  expect(s(1920, 1080), "240x135", "screen-like: follows the capture")
+  expect(s(800, 800), "160x160", "square")
+  expect(s(1200, 1600), "120x160", "portrait 3:4")
+  expect(s(1500, 500), "240x80", "3:1, the wide limit")
+  expect(s(600, 1200), "80x160", "1:2, the tall limit")
+  for (w, h) in [(2400.0, 60.0), (200, 1200), (310, 100), (100, 210)] {
+    expect(s(w, h), "240x135", "\(Int(w))x\(Int(h)): the standard 16:9 preview")
+  }
+}

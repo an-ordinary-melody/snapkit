@@ -127,11 +127,10 @@ final class Floating {
 
   // MARK: Floating previews
 
-  static let thumbMax = CGSize(width: 240, height: 160)
-
+  /** ThumbSize (shared/thumb.ts): the capture's shape, or a standard 16:9 one for strips and tall captures. */
   private func thumbSize(_ image: CGImage) -> CGSize {
-    let k = min(Floating.thumbMax.width / CGFloat(image.width), Floating.thumbMax.height / CGFloat(image.height), 1)
-    return CGSize(width: max(60, (CGFloat(image.width) * k).rounded()), height: max(40, (CGFloat(image.height) * k).rounded()))
+    let t = ThumbSize.of(Double(image.width), Double(image.height))
+    return CGSize(width: t.w, height: t.h)
   }
 
   /** After a copy: a small preview in the corner of the display it was captured on. */
@@ -542,6 +541,15 @@ private final class ThumbView: NSView {
   weak var owner: Floating?
   private var hover = false
   private var copied = false
+  private var copiedAt: Date?
+  private var copyWork: DispatchWorkItem?
+  private var popTimer: Timer?
+  /** The check's scale: 0.6 → 1 over 0.18 s, ease-out. */
+  private var checkScale: CGFloat {
+    guard let at = copiedAt else { return 1 }
+    let t = min(1, Date().timeIntervalSince(at) / 0.18)
+    return 0.6 + 0.4 * (1 - pow(1 - t, 3))
+  }
   private var textState: String?
   private var textWork: DispatchWorkItem?
   private var moveFrom: CGPoint?
@@ -584,7 +592,6 @@ private final class ThumbView: NSView {
     let l = showLabels
     return [("copy", "copy", l ? (copied ? "Copied" : "Copy") : nil), ("edit", "edit", l ? "Edit" : nil), ("text", "ocr", nil)]
   }
-  private var tips: [String] { [copied ? "Copied" : "Copy", "Edit", "Capture Text (OCR)"] }
 
   private let buttonFont = NSFont.systemFont(ofSize: 12.5, weight: .semibold)
   private let statusFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
@@ -611,31 +618,93 @@ private final class ThumbView: NSView {
     }
   }
 
-  /** Tooltips name the buttons (the icon-only ones especially). */
-  private func updateToolTips() {
-    removeAllToolTips()
-    for (r, tip) in zip(buttonRects(), tips) { addToolTip(r, owner: tip as NSString, userData: nil) }
-    addToolTip(pinRect, owner: "Pin to screen" as NSString, userData: nil)
-    addToolTip(closeRect, owner: "Close" as NSString, userData: nil)
+  // Tooltips like the toolbar's (TooltipView), inside this small window (Thumb.tsx Tip).
+  private var tipFor: String?
+  /** The control under the pointer (the toolbar's hover tint) and the button held down (a slight shrink). */
+  private var hoveredId: String?
+  private var pressedId: String?
+  private var tipView: TooltipView?
+  private var tipWork: DispatchWorkItem?
+
+  /** The control under `p` and its tooltip. */
+  private func tip(at p: CGPoint) -> (id: String, rect: CGRect, text: String, hint: String?, sub: String?)? {
+    guard hover else { return nil }
+    if closeRect.contains(p) { return ("close", closeRect, "Close", "Esc", nil) }
+    if pinRect.contains(p) { return ("pin", pinRect, "Pin to screen", nil, nil) }
+    if moveRect.contains(p) { return ("move", moveRect, "Drag to move", nil, "Drag the image into an app to drop it") }
+    for (i, r) in buttonRects().enumerated() where r.contains(p) {
+      switch buttons[i].id {
+      case "copy": return ("copy", r, copied ? "Copied" : "Copy", nil, nil)
+      case "edit": return ("edit", r, "Edit", nil, "Or double-click the image")
+      default: return ("text", r, "Capture Text (OCR)", nil, nil)
+      }
+    }
+    return nil
   }
 
-  override func setFrameSize(_ newSize: NSSize) {
-    super.setFrameSize(newSize)
-    updateToolTips()
+  /** Show the tooltip for the control at `p` (after the toolbar's short wait), or hide it. */
+  private func updateTip(at p: CGPoint?) {
+    let t = p.flatMap { tip(at: $0) }
+    if t?.id != hoveredId { hoveredId = t?.id; needsDisplay = true }
+    if p != nil { cursorName.cursor.set() }
+    // Keyed by the text too, so Copy's tooltip turns to "Copied" (and back) as the pointer moves.
+    guard t.map({ "\($0.id):\($0.text)" }) != tipFor else { return }
+    hideTip()
+    guard let t else { return }
+    tipFor = "\(t.id):\(t.text)"
+    let work = DispatchWorkItem { [weak self] in
+      guard let self, self.hover else { return }
+      let v = TooltipView(text: t.text, hint: t.hint, sub: t.sub, theme: self.theme, maxWidth: self.bounds.width - 8)
+      let gap: CGFloat = 6, edge: CGFloat = 4
+      let size = v.frame.size
+      let below = t.rect.maxY + gap + size.height <= self.bounds.height - edge
+      let y = below ? t.rect.maxY + gap : max(edge, t.rect.minY - gap - size.height)
+      let x = min(max(t.rect.midX - size.width / 2, edge), self.bounds.width - edge - size.width)
+      v.setFrameOrigin(CGPoint(x: x.rounded(), y: y.rounded()))
+      v.alphaValue = 0
+      self.addSubview(v)
+      self.tipView = v
+      NSAnimationContext.runAnimationGroup { c in
+        c.duration = 0.1
+        v.animator().alphaValue = 1
+      }
+    }
+    tipWork = work
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
   }
+
+  private func hideTip() {
+    tipWork?.cancel()
+    tipWork = nil
+    tipView?.removeFromSuperview()
+    tipView = nil
+    tipFor = nil
+  }
+
+  /** Test hook: the tooltip showing (text, frame). */
+  var testTip: (text: String, frame: CGRect)? { tipView.map { _ in (String((tipFor ?? "").prefix { $0 != ":" }), tipView!.frame) } }
+  func testHover(_ which: String) {
+    hover = true
+    let r: CGRect? = which == "pin" ? pinRect : which == "move" ? moveRect : which == "close" ? closeRect
+      : Int(which).flatMap { buttonRects().indices.contains($0) ? buttonRects()[$0] : nil }
+    updateTip(at: r.map { CGPoint(x: $0.midX, y: $0.midY) })
+  }
+
 
   override func updateTrackingAreas() {
     super.updateTrackingAreas()
     for t in trackingAreas { removeTrackingArea(t) }
-    addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect], owner: self))
   }
 
-  override func mouseEntered(with e: NSEvent) { hover = true; needsDisplay = true }
+  override func mouseEntered(with e: NSEvent) { hover = true; needsDisplay = true; updateTip(at: convert(e.locationInWindow, from: nil)) }
   /** Test hook: as if the pointer left (or came in). */
-  func testUnhover(_ on: Bool = false) { hover = on; needsDisplay = true }
-  override func mouseExited(with e: NSEvent) { hover = false; needsDisplay = true }
+  func testUnhover(_ on: Bool = false) { hover = on; if !on { hideTip() }; needsDisplay = true }
+  override func mouseExited(with e: NSEvent) { hover = false; hoveredId = nil; hideTip(); needsDisplay = true }
+  override func mouseMoved(with e: NSEvent) { updateTip(at: convert(e.locationInWindow, from: nil)) }
 
   override func mouseDown(with e: NSEvent) {
+    hideTip()
     window?.makeKey()
     window?.makeFirstResponder(self)
     let p = convert(e.locationInWindow, from: nil)
@@ -646,6 +715,7 @@ private final class ThumbView: NSView {
     if pinRect.contains(p) { owner?.pinFromThumb(item); return }
     if moveRect.contains(p) { moveFrom = NSEvent.mouseLocation; return }
     for (i, r) in buttonRects().enumerated() where r.contains(p) {
+      pressedId = buttons[i].id
       press(buttons[i].id)
       return
     }
@@ -667,14 +737,25 @@ private final class ThumbView: NSView {
   override func mouseUp(with e: NSEvent) {
     moveFrom = nil
     downAt = nil
+    if pressedId != nil { pressedId = nil; needsDisplay = true }
   }
 
   func press(_ id: String) {
     switch id {
     case "copy":
       owner?.copy(item)
+      // A green check pops in for 1.5 s (a new click starts it again), in every layout (Thumb.tsx).
       copied = true
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.copied = false; self?.needsDisplay = true }
+      copiedAt = Date()
+      copyWork?.cancel()
+      let w = DispatchWorkItem { [weak self] in self?.copied = false; self?.needsDisplay = true }
+      copyWork = w
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: w)
+      popTimer?.invalidate()
+      popTimer = Timer.scheduledTimer(withTimeInterval: 1 / 60, repeats: true) { [weak self] t in
+        guard let self, let at = self.copiedAt, Date().timeIntervalSince(at) < 0.25 else { t.invalidate(); return }
+        self.needsDisplay = true
+      }
     case "edit": owner?.edit(item)
     case "text":
       textState = "Reading…"
@@ -695,6 +776,24 @@ private final class ThumbView: NSView {
 
   /** Test hook: Copy's state, Edit, and Text's status (or "Text"). */
   var labels: [String] { [copied ? "Copied" : "Copy", "Edit", textState ?? "Text"] }
+  /** Test hook: the Copy button shows the check. */
+  var showsCheck: Bool { copied }
+  /**
+   * As Electron's: the move arrows on the move handle, a pointing hand on the other controls, and
+   * an open hand over the image (it drags out into other apps).
+   */
+  var cursorName: (name: String, cursor: NSCursor) {
+    switch hoveredId {
+    case "move"?: return ("move", Cursors.move)
+    case nil: return ("openHand", .openHand)
+    default: return ("pointingHand", .pointingHand)
+    }
+  }
+
+  override func cursorUpdate(with e: NSEvent) { updateTip(at: convert(e.locationInWindow, from: nil)); cursorName.cursor.set() }
+
+  /** Test hook: the control with the hover tint. */
+  var testHovered: String? { hoveredId }
   /** Test hook: every button inside the preview. */
   var buttonsFit: Bool { (buttonRects() + [pinRect, moveRect, closeRect]).allSatisfy { bounds.contains($0) } }
 
@@ -704,11 +803,46 @@ private final class ThumbView: NSView {
 
   var testButtonRects: [CGRect] { buttonRects() }
 
-  /** The preview's image as drawn (object-fit: cover). */
+  /** The preview's image as drawn: fitted inside (object-fit: contain). */
   private var imageRect: CGRect {
     let iw = CGFloat(item.image.width), ih = CGFloat(item.image.height)
-    let k = max(bounds.width / iw, bounds.height / ih)
+    let k = min(bounds.width / iw, bounds.height / ih)
     return CGRect(x: bounds.midX - iw * k / 2, y: bounds.midY - ih * k / 2, width: iw * k, height: ih * k)
+  }
+
+  /**
+   * Behind the fitted image (a strip or tall capture in the standard 16:9 preview): the same image
+   * covering the preview 12 pt past every edge, blurred (14 pt) and darkened (.thumb-backdrop).
+   */
+  private var backdropCache: (size: CGSize, image: CGImage)?
+  private func backdrop() -> CGImage? {
+    if let c = backdropCache, c.size == bounds.size { return c.image }
+    let scale = window?.backingScaleFactor ?? 2
+    let area = bounds.insetBy(dx: -12, dy: -12)
+    let iw = CGFloat(item.image.width), ih = CGFloat(item.image.height)
+    let k = max(area.width / iw, area.height / ih) * scale
+    let src = CIImage(cgImage: item.image).transformed(by: CGAffineTransform(scaleX: k, y: k))
+    let out = src.clampedToExtent()
+      .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 14 * scale])
+      .applyingFilter("CIColorMatrix", parameters: ["inputRVector": CIVector(x: 0.65, y: 0, z: 0, w: 0), "inputGVector": CIVector(x: 0, y: 0.65, z: 0, w: 0),
+                                                    "inputBVector": CIVector(x: 0, y: 0, z: 0.65, w: 0)])
+    let crop = CGRect(x: src.extent.midX - area.width * scale / 2, y: src.extent.midY - area.height * scale / 2, width: area.width * scale, height: area.height * scale)
+    guard let cg = ThumbView.ciContext.createCGImage(out, from: crop, format: .RGBA8, colorSpace: item.image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!) else { return nil }
+    backdropCache = (bounds.size, cg)
+    return cg
+  }
+  /** As CSS filters: on the stored values, not in linear light (which would darken it far less). */
+  private static let ciContext = CIContext(options: [.cacheIntermediates: false, .workingColorSpace: NSNull(), .outputColorSpace: NSNull()])
+
+  /** The picture: the blurred backdrop where the fitted image doesn't cover, then the image. */
+  private func drawPicture(_ ctx: CGContext) {
+    NSColor(hex: "#111111").setFill()
+    bounds.fill()
+    let r = imageRect
+    if r.width < bounds.width - 0.5 || r.height < bounds.height - 0.5, let b = backdrop() {
+      ShapeDrawing.drawImage(b, in: bounds.insetBy(dx: -12, dy: -12), ctx: ctx)
+    }
+    ShapeDrawing.drawImage(item.image, in: r, ctx: ctx)
   }
 
   /** Liquid Glass: the hovered preview (image and shade) under a button, blurred (cached per size). */
@@ -718,9 +852,7 @@ private final class ThumbView: NSView {
     let key = "\(r)|\(bounds.size)"
     if let c = glassCache[key] { return c }
     let img = Glass.backdrop(r, scale: window?.backingScaleFactor ?? 2) { ctx in
-      NSColor(hex: "#111111").setFill()
-      self.bounds.fill()
-      ShapeDrawing.drawImage(self.item.image, in: self.imageRect, ctx: ctx)
+      self.drawPicture(ctx)
       NSColor.black.withAlphaComponent(0.42).setFill()
       self.bounds.fill()
     }
@@ -731,29 +863,38 @@ private final class ThumbView: NSView {
 
   override func draw(_ dirtyRect: NSRect) {
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-    NSColor(hex: "#111111").setFill()
-    bounds.fill()
-    // object-fit: cover
-    let r = imageRect
-    ShapeDrawing.drawImage(item.image, in: r, ctx: ctx)
+    drawPicture(ctx)
     NSColor.white.withAlphaComponent(0.18).setStroke()
     NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10).stroke()
     if hover {
       NSColor.black.withAlphaComponent(0.42).setFill()
       bounds.fill()
-      for (i, r) in buttonRects().enumerated() {
+      for (i, full) in buttonRects().enumerated() {
         let b = buttons[i]
-        theme.drawPanel(r, radius: 15, strong: true, backdrop: glassUnder(r), in: ctx)
+        // Held down: a little smaller (.thumb-btn:active scale .95).
+        let r = pressedId == b.id ? full.insetBy(dx: full.width * 0.025, dy: full.height * 0.025) : full
+        theme.drawPanel(r, radius: r.height / 2, strong: true, backdrop: glassUnder(full), in: ctx)
+        if hoveredId == b.id {
+          theme.hover.setFill()
+          NSBezierPath(roundedRect: r, xRadius: r.height / 2, yRadius: r.height / 2).fill()
+        }
+        let check = b.id == "copy" && copied
+        let icon = check ? "check" : b.icon, size = check ? 14 * checkScale : 14
+        let color = check ? NSColor(hex: "#22c55e") : theme.foreground
         if let label = b.label {
-          Icons.draw(b.icon, in: CGRect(x: r.minX + 12, y: r.minY, width: 14, height: r.height), size: 14, color: theme.foreground, ctx: ctx)
+          Icons.draw(icon, in: CGRect(x: r.minX + 12, y: r.minY, width: 14, height: r.height), size: size, color: color, ctx: ctx)
           let s = NSAttributedString(string: label, attributes: [.font: buttonFont, .foregroundColor: theme.foreground])
           s.draw(at: CGPoint(x: r.minX + 32, y: r.midY - s.size().height / 2))
         } else {
-          Icons.draw(b.icon, in: r, size: 14, color: theme.foreground, ctx: ctx)
+          Icons.draw(icon, in: r, size: size, color: color, ctx: ctx)
         }
       }
       for (rect, icon) in [(pinRect, "pin"), (moveRect, "move"), (closeRect, "close")] {
         theme.drawPanel(rect, radius: rect.width / 2, strong: true, backdrop: glassUnder(rect), in: ctx)
+        if hoveredId == icon {
+          theme.hover.setFill()
+          NSBezierPath(ovalIn: rect).fill()
+        }
         Icons.draw(icon, in: rect, size: 13, color: theme.foreground, ctx: ctx)
       }
     }
@@ -784,6 +925,13 @@ extension PinView: NSDraggingSource {
 extension Floating {
   func thumbLabels(_ item: Item) -> [String] { (item.panel.contentView as? ThumbView)?.labels ?? [] }
   func thumbButtonsFit(_ item: Item) -> Bool { (item.panel.contentView as? ThumbView)?.buttonsFit ?? true }
+  func thumbTip(_ item: Item) -> (text: String, frame: CGRect)? { (item.panel.contentView as? ThumbView)?.testTip }
+  func thumbShowsCheck(_ item: Item) -> Bool { (item.panel.contentView as? ThumbView)?.showsCheck ?? false }
+  func thumbHovered(_ item: Item) -> String? { (item.panel.contentView as? ThumbView)?.testHovered }
+  func thumbCursor(_ item: Item) -> String { (item.panel.contentView as? ThumbView)?.cursorName.name ?? "" }
+  func thumbHover(_ item: Item, at which: String) {
+    (item.panel.contentView as? ThumbView)?.testHover(which)
+  }
   func thumbPress(_ item: Item, _ id: String) { (item.panel.contentView as? ThumbView)?.press(id) }
 }
 

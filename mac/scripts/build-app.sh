@@ -39,7 +39,11 @@ cp THIRD_PARTY_NOTICES.md "$APP/Contents/Resources/"
 # Sparkle.framework (updates), next to the binary it was linked against; ditto keeps its symlinks.
 mkdir -p "$APP/Contents/Frameworks"
 ditto "$(dirname "$BIN")/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+# Debug builds (com.charios.snapkit.dev) never update from the release feed: they get Sparkle keys only
+# when SPARKLE_FEED_URL is given (e2e/sparkle-update.mjs sets its own in Info.plist).
+GIVEN_FEED=${SPARKLE_FEED_URL:-}
 . scripts/sparkle.env
+[ "$MODE" = release ] || SPARKLE_FEED_URL=$GIVEN_FEED
 SPARKLE_KEYS=""
 if [ -n "$SPARKLE_PUBLIC_KEY" ] && [ -n "$SPARKLE_FEED_URL" ]; then
   SPARKLE_KEYS="<key>SUPublicEDKey</key><string>$SPARKLE_PUBLIC_KEY</string>

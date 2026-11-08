@@ -937,7 +937,12 @@ final class OverlayView: NSView {
       if sel != nil, textOnly { DispatchQueue.main.async { self.readText() } }
       else if sel != nil, settings.capture.quickCopy { DispatchQueue.main.async { self.delegate?.overlayCopy(self) } }
     case .draw:
-      if let d = draft, Annotations.isMeaningful(d) { history.commit(shapes + [d]) }
+      if let d = draft, Annotations.isMeaningful(d) {
+        history.commit(shapes + [d])
+        // A new blur stays selected, so its strength slider and Blur/Pixelate change it at once
+        // (AnnotationLayer.tsx); with the Blur tool still on, a drag on it moves it.
+        if case .blur = d { selectedId = d.id }
+      }
       draft = nil
     case let .shapeMove(id, _, _, moved, clickEdits):
       if !moved, clickEdits, case let .text(t)? = shapes.first(where: { $0.id == id }) { startEditing(t) }

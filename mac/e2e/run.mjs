@@ -1054,6 +1054,37 @@ const SUITES = {
   // (a 50/50 mix of two bands comes out near their sRGB midpoint, not washed out lighter).
   async blur() {
     let s
+    // A new blur stays selected: the slider changes it (one undo step), a drag on it moves it, a
+    // drag elsewhere draws another (Electron annotate: "new blur selected").
+    await launch()
+    send('capture')
+    send('select', 100, 100, 900, 600)
+    send('tool', 'blur')
+    send('drag', 200, 200, 400, 350)
+    s = await state()
+    const first = s.shapeData.at(-1)
+    const selected = s.selected === first?.id && s.tool === 'blur'
+    send('blur', 20)
+    send('blur', 30)
+    s = await state()
+    const slid = s.shapeData.at(-1).strength === 30
+    send('key', 'z', 'cmd')
+    s = await state()
+    const oneStep = s.shapeData.length === 1 && s.shapeData[0].strength === first.strength
+    send('key', 'z', 'cmd', 'shift')
+    send('drag', 300, 270, 340, 300)
+    s = await state()
+    const moved = s.shapeData.length === 1 && s.shapeData[0].x === first.x + 40 && s.shapeData[0].y === first.y + 30
+    send('drag', 600, 400, 800, 550)
+    s = await state()
+    const another = s.shapeData.length === 2 && s.selected === s.shapeData[1].id
+    send('click', 850, 650)
+    s = await state()
+    check(selected && slid && oneStep && moved && another && s.selected === null, 'new blur selected; slider changes it (one undo step); drag on it moves it; drag elsewhere draws another; click away deselects',
+      JSON.stringify({ selected, slid, oneStep, moved, another, after: s.selected }))
+    send('key', 'esc')
+    send('key', 'esc')
+
     await launch()
     send('capture')
     send('select', 100, 40, 600, 300)
@@ -1392,6 +1423,38 @@ const SUITES = {
       fits.push(f?.buttonsFit && `${Math.round(f.frame[2])}x${Math.round(f.frame[3])}`)
     }
     check(fits.every(Boolean), 'preview buttons fit: normal, tall, strip and narrow previews', JSON.stringify(fits))
+    // Past 1:2 or 3:1, the standard 16:9 preview (shared/thumb.ts); a 1:1.9 capture keeps its shape.
+    check(fits[1] === '240x135' && fits[2] === '240x135' && fits[3] === '85x160', 'a tall capture and a strip get the 240×135 preview; others keep their shape', JSON.stringify(fits.slice(1)))
+    // Tooltips like the toolbar's, kept 4 pt inside the (narrow) preview (Electron 587459c).
+    const tips = []
+    for (const which of ['close', '1', 'move']) {
+      send('thumb-hover', which)
+      await wait(450)
+      const f = (await state()).floating.at(-1)
+      const [x, y, w, h] = f.tip?.frame ?? [-1, -1, 0, 0]
+      if (f.hovered !== (which === '1' ? 'edit' : which)) tips.push(`no hover tint on ${which}: ${f.hovered}`)
+      tips.push(f.tip && x >= 4 && x + w <= f.frame[2] - 4 && y >= 4 && y + h <= f.frame[3] - 4 ? f.tip.text : `${which}: ${JSON.stringify(f.tip)} in ${f.frame[2]}x${f.frame[3]}`)
+    }
+    // Cursors as Electron's: pointing hand on buttons, move arrows on the handle, open hand on the image.
+    const cursors = []
+    for (const which of ['0', 'close', 'move', 'image']) {
+      send('thumb-hover', which)
+      cursors.push((await state()).floating.at(-1).cursor)
+    }
+    check(JSON.stringify(cursors) === '["pointingHand","pointingHand","move","openHand"]', 'preview cursors: pointing hand on buttons, move on the handle, open hand on the image', JSON.stringify(cursors))
+    send('unhover')
+    check(JSON.stringify(tips) === '["close","edit","move"]', 'preview tooltips (toolbar style) show and stay inside a narrow preview; the control gets the hover tint', JSON.stringify(tips))
+    // Copy on an icon-only preview: a green check for 1.5 s, then the Copy icon again (Electron Thumb.tsx).
+    send('thumb', 'copy')
+    s = await state()
+    const checked = s.floating.at(-1).copyCheck && s.floating.at(-1).labels[0] === 'Copied'
+    await wait(1000)
+    send('thumb', 'copy') // a new click starts the 1.5 s again
+    await wait(900)
+    const still = (await state()).floating.at(-1).copyCheck
+    await wait(900)
+    s = await state()
+    check(checked && still && !s.floating.at(-1).copyCheck && s.floating.at(-1).labels[0] === 'Copy', 'preview Copy shows a check; a new click restarts it; back to Copy after a moment', JSON.stringify({ checked, still, after: s.floating.at(-1).copyCheck }))
     send('closepins')
     send('capture')
     send('select', 200, 150, 400, 250)
