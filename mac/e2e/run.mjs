@@ -1152,6 +1152,21 @@ const SUITES = {
     check(copies === 1, 'the second copy quits', `${copies} running`)
   },
 
+  // A click on another app closes Settings; its own windows (History) don't.
+  async settingsOutside() {
+    await launch()
+    send('settings', 'general')
+    await wait(600)
+    send('history')
+    await wait(400)
+    let s = await state()
+    const kept = s.settingsOpen
+    send('history')
+    spawnSync('osascript', ['-e', 'tell application "Finder" to activate'])
+    s = await waitFor((x) => !x.settingsOpen, 3000)
+    check(kept && !s.settingsOpen, 'clicking another app closes Settings (Snapkit\'s own windows don\'t)', `with History ${kept} | after Finder ${s.settingsOpen}`)
+  },
+
   // Capture mode's cursors, as Electron's (AnnotationLayer containerCursor, the handles, shapes: move).
   async cursors() {
     await launch()

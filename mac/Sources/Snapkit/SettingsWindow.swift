@@ -15,6 +15,14 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
   init(model: SettingsModel) {
     self.model = model
+    super.init()
+    // A click on another app closes Settings, as a popover would. Snapkit's own dialogs (the
+    // folder picker, the colour panel) keep it open: those don't make Snapkit inactive.
+    NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+      guard let self, self.isOpen else { return }
+      log("[settings] another app was clicked: closing Settings")
+      self.close()
+    }
   }
 
   var isOpen: Bool { window?.isVisible ?? false }
