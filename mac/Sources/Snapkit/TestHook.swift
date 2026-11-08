@@ -539,6 +539,7 @@ enum TestHook {
       o = o.setting("settingsPicture", .bool(app.settingsWindow.testHasPicture))
       o = o.setting("settingsOpaque", .bool(app.settingsWindow.testWindow?.isOpaque ?? true))
       o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))
+      o = o.setting("historyGlass", .bool(app.historyPanel.testGlass))
       if let t = app.historyPanel.testView?.theme { o = o.setting("historyTheme", .object([("dark", .bool(t.dark)), ("background", .string(hexOf(t.background)))])) }
       o = o.setting("settingsSection", .string(app.settingsWindow.model.section))
       o = o.setting("hotkeysRegistered", .object(["capture", "lastArea", "fullscreen", "ocr", "history", "settings"].map { ($0, .bool(Hotkeys.shared.isRegistered($0))) }))

@@ -766,6 +766,7 @@ const SUITES = {
     await set({ appearance: { mode: 'light', glass: true } })
     s = await state()
     check(s.settingsBackdrop === 'glass' && !s.settingsOpaque && s.settingsPicture, 'glass: the whole Settings window is Liquid Glass, over its own picture', `${s.settingsBackdrop} opaque ${s.settingsOpaque} picture ${s.settingsPicture}`)
+    check(s.historyGlass, 'glass: the open history panel is glass over the same picture', String(s.historyGlass))
     // Switched from the Settings window itself: the glass window follows the theme too.
     send('settings-set', JSON.stringify({ appearance: { mode: 'dark' } }))
     await wait(300)
@@ -776,7 +777,7 @@ const SUITES = {
     check(/DarkAqua/.test(f) && /^NSAppearanceNameAqua$/.test(f2), 'glass: the glass window follows a theme switched in Settings', `${f} then ${f2}`)
     await set({ appearance: { mode: 'dark', glass: false } })
     s = await state()
-    check(s.settingsBackdrop === 'none' && s.settingsOpaque, 'glass off: Settings is an opaque window again', `${s.settingsBackdrop} opaque ${s.settingsOpaque}`)
+    check(s.settingsBackdrop === 'none' && s.settingsOpaque && !s.historyGlass, 'glass off: Settings is an opaque window again, History without the picture', `${s.settingsBackdrop} opaque ${s.settingsOpaque} history ${s.historyGlass}`)
     await set({ appearance: { mode: 'gray' } })
     s = await state()
     check(s.historyTheme?.dark && s.historyTheme.background !== darkBg, 'Gray is a dark theme with lighter surfaces, in every open window', JSON.stringify(s.historyTheme))

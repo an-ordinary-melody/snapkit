@@ -34,6 +34,8 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
 
   var isVisible: Bool { window?.isVisible ?? false }
   private var frost: NSVisualEffectView?
+  /** With Liquid Glass: the picture and glass under the view (GlassSurface), as Settings. */
+  private var glassLayers: (glass: NSView, picture: NSView)?
 
   /** The window's light/dark (Gray is dark), its frosted material included, which keeps the old one unless told. */
   func applyAppearance() {
@@ -42,6 +44,12 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
     window?.appearance = a
     frost?.appearance = a ?? NSApp.effectiveAppearance
     frost?.needsDisplay = true
+    glassLayers?.glass.removeFromSuperview()
+    glassLayers?.picture.removeFromSuperview()
+    glassLayers = nil
+    if settings.current.appearance.glass, let frost, let v = view {
+      glassLayers = GlassSurface.install(in: frost, below: v, mode: m)
+    }
   }
 
   private func create() {
@@ -76,9 +84,9 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
     w.isOpaque = false
     w.backgroundColor = .clear
     self.frost = frost
-    applyAppearance()
     window = w
     view = v
+    applyAppearance()
   }
 
   /** Open (centred on the screen with the pointer) or close. */
@@ -182,6 +190,8 @@ final class HistoryPanel: NSObject, NSWindowDelegate {
 
   /** Test hooks. */
   var testView: HistoryView? { view }
+  /** Test hook: Liquid Glass over its picture (GlassSurface). */
+  var testGlass: Bool { glassLayers?.picture.layer?.contents != nil }
   var frame: CGRect? { window?.frame }
 }
 

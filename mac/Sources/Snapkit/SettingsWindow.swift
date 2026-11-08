@@ -3,6 +3,46 @@ import SnapkitCore
 import SwiftUI
 
 /**
+ * Liquid Glass windows (Settings, History): the whole window is glass, a light or dark frost keeping
+ * text readable, over Snapkit's own picture (soft violet in light mode, teal in dark), so it looks the
+ * same on any desktop. Before macOS 26 a frosted material stands in for the glass.
+ */
+enum GlassSurface {
+  static func isDark(_ mode: String) -> Bool {
+    mode == "system" ? NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua : mode != "light"
+  }
+
+  /** Adds the picture and the glass over it, under `content`; both follow the container's size. */
+  static func install(in container: NSView, below content: NSView, mode: String, picture: NSImage? = nil) -> (glass: NSView, picture: NSView) {
+    let dark = isDark(mode)
+    let glass: NSView
+    if #available(macOS 26.0, *) {
+      let g = NSGlassEffectView()
+      g.style = .regular
+      g.tintColor = (dark ? NSColor.black : NSColor.white).withAlphaComponent(0.28)
+      glass = g
+    } else {
+      let e = NSVisualEffectView()
+      e.material = .sidebar
+      e.blendingMode = .withinWindow
+      e.state = .active
+      glass = e
+    }
+    let paint = NSView()
+    paint.wantsLayer = true
+    paint.layer?.contents = picture ?? Bundle.main.image(forResource: dark ? "glass-dark" : "glass-light")
+    paint.layer?.contentsGravity = .resizeAspectFill
+    for v in [glass, paint] {
+      v.frame = container.bounds
+      v.autoresizingMask = [.width, .height]
+    }
+    container.addSubview(glass, positioned: .below, relativeTo: content)
+    container.addSubview(paint, positioned: .below, relativeTo: glass)
+    return (glass, paint)
+  }
+}
+
+/**
  * The settings window (Settings.tsx and its sections): a sidebar of sections; every change is saved
  * and applied right away. While it's open Snapkit has a Dock icon, like a normal app.
  */
@@ -102,32 +142,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     w.isOpaque = !a.glass
     w.backgroundColor = a.glass ? .clear : .windowBackgroundColor
     guard a.glass else { return }
-    let dark = a.mode == "system" ? NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua : a.mode != "light"
-    let v: NSView
-    if #available(macOS 26.0, *) {
-      let g = NSGlassEffectView()
-      g.style = .regular
-      g.tintColor = (dark ? NSColor.black : NSColor.white).withAlphaComponent(0.28)
-      v = g
-    } else {
-      let e = NSVisualEffectView()
-      e.material = .sidebar
-      e.blendingMode = .withinWindow
-      e.state = .active
-      v = e
-    }
-    v.frame = wrap.bounds
-    v.autoresizingMask = [.width, .height]
-    wrap.addSubview(v, positioned: .below, relativeTo: host)
-    backdrop = v
-    let paint = NSView()
-    paint.wantsLayer = true
-    paint.layer?.contents = testImage ?? Bundle.main.image(forResource: dark ? "glass-dark" : "glass-light")
-    paint.layer?.contentsGravity = .resizeAspectFill
-    paint.frame = wrap.bounds
-    paint.autoresizingMask = [.width, .height]
-    wrap.addSubview(paint, positioned: .below, relativeTo: v)
-    painting = paint
+    let layers = GlassSurface.install(in: wrap, below: host, mode: a.mode, picture: testImage)
+    backdrop = layers.glass
+    painting = layers.picture
   }
 
   /** Test hook: the window's backdrop ("glass", "frost" before macOS 26, "none"). */
