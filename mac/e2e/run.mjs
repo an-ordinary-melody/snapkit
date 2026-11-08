@@ -676,9 +676,20 @@ const SUITES = {
     check(s.editorZoom === 1 && s.editorOpen, 'Ctrl/⌘ + 0 fits again, still in editor')
     const st = s.editorStage
     check(s.editorPreview[2] <= st[2] && s.editorPreview[1] + s.editorPreview[3] <= st[1] + st[3], 'the preview fits the editor')
+    check(!s.editorGlass, 'no Liquid Glass: the editor card is solid')
     send('key', 'esc')
     send('key', 'c', 'cmd')
     send('thumb', 'close')
+
+    // Liquid Glass: the card is frosted over the same picture as Settings and History.
+    await launch({ appearance: { glass: true, mode: 'dark' } })
+    send('capture')
+    send('select', 60, 60, 1300, 800)
+    send('tool', 'beautifyEdit')
+    s = await state()
+    check(s.editorOpen && s.editorGlass, 'glass: the editor card is frosted over its picture', JSON.stringify([s.editorOpen, s.editorGlass]))
+    send('key', 'esc')
+    send('key', 'esc')
   },
 
   async safety() {

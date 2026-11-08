@@ -34,6 +34,8 @@ final class BackgroundEditorView: NSView {
   static let sidebar: CGFloat = 300
   weak var owner: BackgroundEditorOwner?
   var theme: Theme { didSet { rebuildSidebar() } }
+  /** Test hook: with Liquid Glass the card is frosted over Snapkit's picture. */
+  var testGlass: Bool { theme.glass && GlassSurface.blurredPicture(dark: theme.dark) != nil }
 
   private var preview: CGImage?
   private var previewKey = ""
@@ -186,6 +188,15 @@ final class BackgroundEditorView: NSView {
     ctx.saveGState()
     ctx.addPath(CGPath(roundedRect: c, cornerWidth: 14, cornerHeight: 14, transform: nil))
     ctx.clip()
+    // Liquid Glass: the card is frosted glass over Snapkit's picture, as Settings and History.
+    if theme.glass, let pic = GlassSurface.blurredPicture(dark: theme.dark) {
+      let k = max(c.width / CGFloat(pic.width), c.height / CGFloat(pic.height))
+      let w = CGFloat(pic.width) * k, h = CGFloat(pic.height) * k
+      ctx.draw(pic, in: CGRect(x: c.midX - w / 2, y: c.midY - h / 2, width: w, height: h))
+      // A little more frost in dark mode, so the teal stays behind the controls.
+      theme.editorCard.withAlphaComponent(theme.dark ? 0.72 : 0.62).setFill()
+      c.fill()
+    }
     // Checkerboard stage.
     ctx.saveGState()
     ctx.clip(to: stage)

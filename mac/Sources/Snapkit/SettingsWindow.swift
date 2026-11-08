@@ -1,4 +1,5 @@
 import AppKit
+import CoreImage
 import SnapkitCore
 import SwiftUI
 
@@ -8,6 +9,26 @@ import SwiftUI
  * same on any desktop. Before macOS 26 a frosted material stands in for the glass.
  */
 enum GlassSurface {
+  private static var pictures: [Bool: NSImage] = [:]
+  /** glass-dark.jpg / glass-light.jpg, loaded once. */
+  static func picture(dark: Bool) -> NSImage? {
+    if let p = pictures[dark] { return p }
+    let p = Bundle.main.image(forResource: dark ? "glass-dark" : "glass-light")
+    pictures[dark] = p
+    return p
+  }
+
+  private static var blurred: [Bool: CGImage] = [:]
+  /** The picture softly blurred (drawn without glass over it, as in the editor card), made once. */
+  static func blurredPicture(dark: Bool) -> CGImage? {
+    if let b = blurred[dark] { return b }
+    guard let cg = picture(dark: dark)?.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+    let ci = CIImage(cgImage: cg).clampedToExtent().applyingGaussianBlur(sigma: 18).cropped(to: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+    let b = CIContext(options: [.workingColorSpace: NSNull(), .outputColorSpace: NSNull()]).createCGImage(ci, from: ci.extent)
+    blurred[dark] = b
+    return b
+  }
+
   static func isDark(_ mode: String) -> Bool {
     mode == "system" ? NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua : mode != "light"
   }
@@ -30,7 +51,7 @@ enum GlassSurface {
     }
     let paint = NSView()
     paint.wantsLayer = true
-    paint.layer?.contents = picture ?? Bundle.main.image(forResource: dark ? "glass-dark" : "glass-light")
+    paint.layer?.contents = picture ?? Self.picture(dark: dark)
     paint.layer?.contentsGravity = .resizeAspectFill
     for v in [glass, paint] {
       v.frame = container.bounds

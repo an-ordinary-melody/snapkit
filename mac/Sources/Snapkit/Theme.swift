@@ -100,8 +100,9 @@ struct Theme {
       t.editorBackdrop = .rgba(0, 0, 0, 0.55)
       t.checkA = NSColor(hex: "#26262a")
       t.checkB = NSColor(hex: "#2c2c31")
-      t.foregroundDim = NSColor(hex: "#a1a1aa")
-      t.foregroundFaint = NSColor(hex: "#8b8b93")
+      // On dark glass, colour shows through: white at partial strength reads clearly where flat grays look washed out.
+      t.foregroundDim = a.glass ? .rgba(255, 255, 255, 0.78) : NSColor(hex: "#a1a1aa")
+      t.foregroundFaint = a.glass ? .rgba(255, 255, 255, 0.62) : NSColor(hex: "#8b8b93")
     } else {
       t = Theme(
         dark: false,

@@ -466,6 +466,7 @@ enum TestHook {
         o = o.setting("beautify", v.beautifyJSON)
         if let ed = v.editorView {
           let r = ed.previewRect
+          o = o.setting("editorGlass", .bool(ed.testGlass))
           o = o.setting("editorPreview", .array([r.minX, r.minY, r.width, r.height].map { .number(Double($0)) }))
           let st = ed.stage
           o = o.setting("editorStage", .array([st.minX, st.minY, st.width, st.height].map { .number(Double($0)) }))
