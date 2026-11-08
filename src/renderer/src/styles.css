@@ -443,7 +443,8 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
 
 /* ---- Floating preview after copy ---- */
 .thumb { position: fixed; inset: 0; overflow: hidden; border-radius: 10px; background: #111; cursor: grab; }
-.thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.thumb-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.thumb-backdrop { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); object-fit: cover; filter: blur(14px) brightness(.65); pointer-events: none; }
 .thumb::after { content: ''; position: absolute; inset: 0; border-radius: 10px; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
 .thumb-actions, .thumb-icon { opacity: 0; transition: opacity .12s; }
 .thumb:hover .thumb-actions, .thumb:hover .thumb-icon { opacity: 1; }

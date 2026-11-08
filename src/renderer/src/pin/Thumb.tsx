@@ -80,8 +80,11 @@ export function Thumb() {
       onDoubleClick={(e) => !(e.target as HTMLElement).closest('button') && api.thumbEdit()}
       onContextMenu={(e) => e.preventDefault()}
     >
+      {/* A strip or tall capture sits in a standard 16:9 preview (shared/thumb.ts): a blurred copy fills the rest. */}
+      {src && <img className="thumb-backdrop" src={src} alt="" aria-hidden draggable={false} />}
       {src && (
         <img
+          className="thumb-image"
           src={src}
           alt="Last capture"
           draggable
