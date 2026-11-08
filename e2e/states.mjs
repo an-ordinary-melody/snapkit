@@ -194,6 +194,9 @@ try {
     await until(async () => !!win('thumb'))
     await wait(800)
     const thumb = win('thumb')
+    // The preview's buttons fit inside it (Windows fonts used to push Text off the edge).
+    const fits = await thumb.evaluate(() => [...document.querySelectorAll('.thumb-btn')].every((b) => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth }))
+    console.log(`preview buttons fit: ${fits}`)
     await thumb.dblclick('.thumb-btn >> nth=0'); await wait(800)
     console.log(`preview Copy double-clicked: editor opened ${await capturing()}`)
     await close()

@@ -452,11 +452,37 @@ input.slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 .5px rgba(0
   background: rgba(0,0,0,.42); pointer-events: none;
 }
 .thumb-btn {
-  pointer-events: auto; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 15px;
+  pointer-events: auto; flex-shrink: 0; height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 15px;
   background: var(--ui-bg-strong); color: var(--ui-fg); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
   backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur); box-shadow: 0 2px 8px rgba(0,0,0,.25), var(--ui-rim);
 }
 .thumb-btn:hover { filter: brightness(1.04); }
+.thumb-btn-icon { width: 30px; padding: 0; justify-content: center; }
+/* Too narrow for the labels (a tall capture): icons only, names in the tooltips. */
+.thumb { container-type: size; }
+@container (max-width: 209px) {
+  .thumb-label { display: none; }
+  .thumb-btn { width: 30px; padding: 0; justify-content: center; }
+  .thumb-actions { gap: 6px; }
+}
+/* Narrower still: the buttons stack, and the move handle goes to the bottom so the top icons don't overlap. */
+@container (max-width: 119px) {
+  .thumb-actions { flex-direction: column; gap: 3px; }
+  .thumb .thumb-move { top: auto; bottom: 6px; }
+}
+/* A short strip (a toolbar, a line of text): one row, pin | Copy Edit Text | move close, icons only. */
+@container (max-height: 99px) {
+  .thumb-label { display: none; }
+  .thumb-btn { width: 30px; padding: 0; justify-content: center; }
+  .thumb-actions { gap: 6px; padding: 0 66px 0 36px; }
+  .thumb .thumb-icon { top: 50%; transform: translateY(-50%); }
+  .thumb .thumb-move { left: auto; right: 36px; }
+}
+.thumb-status {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); max-width: calc(100% - 16px); padding: 3px 10px; border-radius: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+  background: var(--ui-bg-strong); color: var(--ui-fg); font-size: 12px; font-weight: 600; box-shadow: var(--ui-rim);
+}
 .thumb-icon {
   position: absolute; top: 6px; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%;
   background: var(--ui-bg-strong); color: var(--ui-fg); cursor: pointer; backdrop-filter: var(--ui-blur); -webkit-backdrop-filter: var(--ui-blur);

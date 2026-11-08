@@ -82,16 +82,18 @@ export function Thumb() {
         />
       )}
       <div className="thumb-actions">
-        <button className="thumb-btn" onClick={copy}>
-          <Copy size={14} /> {copied ? 'Copied' : 'Copy'}
+        {/* Labels show when they fit (styles.css); Text is an icon so all three fit a 240 px preview. */}
+        <button className="thumb-btn" title={copied ? 'Copied' : 'Copy'} onClick={copy}>
+          <Copy size={14} /> <span className="thumb-label">{copied ? 'Copied' : 'Copy'}</span>
         </button>
-        <button className="thumb-btn" onClick={() => api.thumbEdit()}>
-          <PencilLine size={14} /> Edit
+        <button className="thumb-btn" title="Edit" onClick={() => api.thumbEdit()}>
+          <PencilLine size={14} /> <span className="thumb-label">Edit</span>
         </button>
-        <button className="thumb-btn" title="Capture Text (OCR)" onClick={() => void copyText()}>
-          <OcrIcon size={14} /> {textState ?? 'Text'}
+        <button className="thumb-btn thumb-btn-icon" aria-label="Capture Text (OCR)" title="Capture Text (OCR)" onClick={() => void copyText()}>
+          <OcrIcon size={14} />
         </button>
       </div>
+      {textState && <div className="thumb-status">{textState}</div>}
       <button className="thumb-icon thumb-pin" aria-label="Pin to screen" title="Pin to screen" onClick={() => api.thumbPin()}>
         <Pin size={13} />
       </button>

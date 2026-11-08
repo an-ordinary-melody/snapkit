@@ -40,6 +40,7 @@ const SUITES = {
     [/area moved away: editor before true \| editor after a new area false \| nothing to undo true/, 'an area moved to another display left its drawings and editor behind'],
     [/color after background default changed: picked #\w+ \| kept true/, '"Remember last background" reset the color picked'],
     [/Esc during copy: .*consistent true/, 'Esc right after ⌘C still added the capture to history'],
+    [/preview buttons fit: true/, 'the floating preview buttons fit inside it'],
     [/preview Copy double-clicked: editor opened false/, 'double-clicking a preview button opened the editor'],
     [/pin saved twice quickly: files 1/, 'a pin saved twice at once wrote two files'],
     [/renderer errors: none/, 'no page errors']
