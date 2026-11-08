@@ -1435,6 +1435,13 @@ const SUITES = {
       if (f.hovered !== (which === '1' ? 'edit' : which)) tips.push(`no hover tint on ${which}: ${f.hovered}`)
       tips.push(f.tip && x >= 4 && x + w <= f.frame[2] - 4 && y >= 4 && y + h <= f.frame[3] - 4 ? f.tip.text : `${which}: ${JSON.stringify(f.tip)} in ${f.frame[2]}x${f.frame[3]}`)
     }
+    // Cursors as Electron's: pointing hand on buttons, move arrows on the handle, open hand on the image.
+    const cursors = []
+    for (const which of ['0', 'close', 'move', 'image']) {
+      send('thumb-hover', which)
+      cursors.push((await state()).floating.at(-1).cursor)
+    }
+    check(JSON.stringify(cursors) === '["pointingHand","pointingHand","move","openHand"]', 'preview cursors: pointing hand on buttons, move on the handle, open hand on the image', JSON.stringify(cursors))
     send('unhover')
     check(JSON.stringify(tips) === '["close","edit","move"]', 'preview tooltips (toolbar style) show and stay inside a narrow preview; the control gets the hover tint', JSON.stringify(tips))
     // Copy on an icon-only preview: a green check for 1.5 s, then the Copy icon again (Electron Thumb.tsx).

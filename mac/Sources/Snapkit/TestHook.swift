@@ -504,6 +504,7 @@ enum TestHook {
           j = j.setting("buttonsFit", .bool(Floating.shared.thumbButtonsFit(item)))
           j = j.setting("copyCheck", .bool(Floating.shared.thumbShowsCheck(item)))
           j = j.setting("hovered", Floating.shared.thumbHovered(item).map { .string($0) } ?? .null)
+          j = j.setting("cursor", .string(Floating.shared.thumbCursor(item)))
           if let t = Floating.shared.thumbTip(item) {
             j = j.setting("tip", .object([("text", .string(t.text)), ("frame", .array([t.frame.minX, t.frame.minY, t.frame.width, t.frame.height].map { .number(Double($0)) }))]))
           }

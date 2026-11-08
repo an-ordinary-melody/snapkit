@@ -646,6 +646,7 @@ private final class ThumbView: NSView {
   private func updateTip(at p: CGPoint?) {
     let t = p.flatMap { tip(at: $0) }
     if t?.id != hoveredId { hoveredId = t?.id; needsDisplay = true }
+    if p != nil { cursorName.cursor.set() }
     // Keyed by the text too, so Copy's tooltip turns to "Copied" (and back) as the pointer moves.
     guard t.map({ "\($0.id):\($0.text)" }) != tipFor else { return }
     hideTip()
@@ -693,7 +694,7 @@ private final class ThumbView: NSView {
   override func updateTrackingAreas() {
     super.updateTrackingAreas()
     for t in trackingAreas { removeTrackingArea(t) }
-    addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect], owner: self))
+    addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect], owner: self))
   }
 
   override func mouseEntered(with e: NSEvent) { hover = true; needsDisplay = true; updateTip(at: convert(e.locationInWindow, from: nil)) }
@@ -777,6 +778,20 @@ private final class ThumbView: NSView {
   var labels: [String] { [copied ? "Copied" : "Copy", "Edit", textState ?? "Text"] }
   /** Test hook: the Copy button shows the check. */
   var showsCheck: Bool { copied }
+  /**
+   * As Electron's: the move arrows on the move handle, a pointing hand on the other controls, and
+   * an open hand over the image (it drags out into other apps).
+   */
+  var cursorName: (name: String, cursor: NSCursor) {
+    switch hoveredId {
+    case "move"?: return ("move", Cursors.move)
+    case nil: return ("openHand", .openHand)
+    default: return ("pointingHand", .pointingHand)
+    }
+  }
+
+  override func cursorUpdate(with e: NSEvent) { updateTip(at: convert(e.locationInWindow, from: nil)); cursorName.cursor.set() }
+
   /** Test hook: the control with the hover tint. */
   var testHovered: String? { hoveredId }
   /** Test hook: every button inside the preview. */
@@ -913,6 +928,7 @@ extension Floating {
   func thumbTip(_ item: Item) -> (text: String, frame: CGRect)? { (item.panel.contentView as? ThumbView)?.testTip }
   func thumbShowsCheck(_ item: Item) -> Bool { (item.panel.contentView as? ThumbView)?.showsCheck ?? false }
   func thumbHovered(_ item: Item) -> String? { (item.panel.contentView as? ThumbView)?.testHovered }
+  func thumbCursor(_ item: Item) -> String { (item.panel.contentView as? ThumbView)?.cursorName.name ?? "" }
   func thumbHover(_ item: Item, at which: String) {
     (item.panel.contentView as? ThumbView)?.testHover(which)
   }
