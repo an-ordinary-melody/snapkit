@@ -38,7 +38,18 @@ final class BackgroundEditorView: NSView {
   private var preview: CGImage?
   private var previewKey = ""
   private var zoom: CGFloat = 1
-  private var pan: CGPoint = .zero
+  /** Kept in range like Electron's scroll container: a zoomed preview's edges never come inside the stage's. */
+  private var pan: CGPoint = .zero {
+    didSet {
+      guard let full, let owner else { return }
+      let k = fit * zoom / owner.imageScale
+      let w = full.width * k, h = full.height * k
+      let x = w <= stage.width ? 0 : min(0, max(stage.width - w, pan.x))
+      // Room above the preview and 24 pt below it scroll with it (.be-canvas).
+      let y = min(0, max(min(0, stage.height - room - h - 24), pan.y))
+      if x != pan.x || y != pan.y { pan = CGPoint(x: x, y: y) }
+    }
+  }
   private(set) var hand = false
   private var panFrom: CGPoint?
   /** Height of the docked bars, for the room above the preview. */

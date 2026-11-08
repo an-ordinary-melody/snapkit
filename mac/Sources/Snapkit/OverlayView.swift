@@ -922,6 +922,7 @@ final class OverlayView: NSView {
   }
 
   private func pointerUp(_ p: CGPoint, _ e: NSEvent) {
+    if case .draw? = drag { hoverReady = false }
     defer {
       drag = nil
       guides = []
@@ -979,7 +980,7 @@ final class OverlayView: NSView {
       if abs(c.x - p.x) <= 8 && abs(c.y - p.y) <= 8 { return Cursors.resizeName(h) }
     }
     guard sel.contains(p) else { return "crosshair" }
-    if editing == nil, shape(at: p) != nil { return "move" }
+    if editing == nil, hoverReady, shape(at: p) != nil { return "move" }
     return tool == "text" ? "ibeam" : tool == "step" ? "step" : tool != nil ? "crosshair" : "move"
   }
 
@@ -1011,7 +1012,16 @@ final class OverlayView: NSView {
     addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect], owner: self))
   }
 
-  override func mouseMoved(with e: NSEvent) { updateCursor() }
+  /**
+   * A drawing shows the move cursor only once the pointer moves onto it (as Konva's mouseenter): one
+   * just placed under the pointer, a step or an arrow's end, keeps the tool's cursor until it moves.
+   */
+  private var hoverReady = true
+
+  override func mouseMoved(with e: NSEvent) {
+    hoverReady = true
+    updateCursor()
+  }
   override func cursorUpdate(with e: NSEvent) { updateCursor() }
 
   // MARK: - Drawing tools
@@ -1025,6 +1035,7 @@ final class OverlayView: NSView {
     let id = Annotations.newId()
     switch tool {
     case "step":
+      hoverReady = false
       commit(shapes + [.step(.init(id: id, x: p.x, y: p.y, size: settings.annotate.stepSize, color: style.stepColor))])
       return
     case "text":
@@ -1173,7 +1184,8 @@ final class OverlayView: NSView {
       else { closeEditor() }
       return
     case 53: // Esc steps back one level: a menu or picker, the text found, a selected shape, then capture mode.
-      if ocrPanel != nil || ocr != nil, !textOnly {
+      // The text found goes first; while it's still being read, Esc closes capture mode (Overlay.tsx).
+      if ocrPanel != nil || isShowingText {
         clearOcr()
         refreshToolbars()
       } else if hasPopover {
@@ -1309,7 +1321,10 @@ final class OverlayView: NSView {
   private var readId = 0
 
   func readText() {
-    guard let sel, image != nil, ocr == nil || textOnly else { return }
+    // A new read replaces one still running or shown (readId drops the older result).
+    guard let sel, image != nil else { return }
+    ocrPanel?.removeFromSuperview()
+    ocrPanel = nil
     finishEditing(commit: true)
     selectedId = nil
     tool = nil
@@ -1351,20 +1366,25 @@ final class OverlayView: NSView {
     let panel = OcrPanelView(lines: lines, ms: ms, theme: theme)
     panel.backdrop = { [weak self] v in self?.glassBackdrop(for: v) }
     panel.setFrameOrigin(OcrPanelView.place(sel: sel, screen: bounds.size))
+    // As Electron's: closing the panel only closes it (Capture text stays open for another area).
     panel.onClose = { [weak self] in
       guard let self else { return }
-      if self.textOnly { self.delegate?.overlayCancel(self) } else {
-        self.clearOcr()
-        self.refreshToolbars()
-      }
+      self.clearOcr()
+      self.refreshToolbars()
+      self.chrome.needsDisplay = true
     }
     panel.onCopy = { [weak self] text in
-      guard let self else { return }
+      guard let self, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
       self.delegate?.overlayCopyText(self, text, closeAfter: 0)
     }
     addSubview(panel)
     ocrPanel = panel
     DispatchQueue.main.async { self.window?.makeFirstResponder(panel.text) }
+  }
+
+  private var isShowingText: Bool {
+    if case .result? = ocr { return true }
+    return false
   }
 
   private func clearOcr() {

@@ -19,9 +19,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     Paths.prepare()
     log("\(Paths.appName) \(version) started (macOS \(ProcessInfo.processInfo.operatingSystemVersionString), data: \(Paths.dataDir.path))")
     if otherInstanceRunning() {
-      log("another \(Paths.appName) is already running: quitting")
+      // As Electron's second-instance: the running one captures, or does what the arguments say.
+      log("another \(Paths.appName) is already running: passing it \(Array(CommandLine.arguments.dropFirst())) and quitting")
+      DistributedNotificationCenter.default().postNotificationName(AppDelegate.openAgain, object: nil,
+                                                                   userInfo: ["args": Array(CommandLine.arguments.dropFirst())], deliverImmediately: true)
       NSApp.terminate(nil)
       return
+    }
+    DistributedNotificationCenter.default().addObserver(forName: AppDelegate.openAgain, object: nil, queue: .main) { [weak self] n in
+      self?.openedAgain((n.userInfo?["args"] as? [String]) ?? [])
     }
     if Paths.isDev, NSRunningApplication.runningApplications(withBundleIdentifier: Paths.releaseBundleId).isEmpty == false {
       log("note: the Electron Snapkit is running too; both react to the same hotkeys")
@@ -41,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
       self?.grabber.refresh()
     }
 
-    registerHotkeys()
+    registerHotkeys(startup: true)
     store.onChange { [weak self] s, prev in
       if s.hotkeys != prev.hotkeys { self?.registerHotkeys() }
     }
@@ -53,6 +59,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
   }
 
   /** A click on the Dock icon (only there while Settings is open) brings Settings forward. */
+  /** Snapkit was started again while running (another copy, or `open -n`); per bundle id. */
+  static var openAgain: Notification.Name { Notification.Name("\(Bundle.main.bundleIdentifier ?? "snapkit").open-again") }
+
+  /** Opening Snapkit again captures; --history, --fullscreen, --last-area and --text do those instead (index.ts). */
+  func openedAgain(_ args: [String]) {
+    log("opened again \(args)")
+    if args.contains("--history") { historyPanel.toggle() }
+    else if args.contains("--fullscreen") { capture.captureFullScreen() }
+    else if args.contains("--last-area") { capture.captureLastArea() }
+    else if args.contains("--text") { capture.toggle(textOnly: true) }
+    else if !capture.active { capture.start() }
+  }
+
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
     if settingsWindow.isOpen { settingsWindow.show() }
     return true
@@ -143,8 +162,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
       sparkle = sp
       model.usesSparkle = true
       var pending: ((UpdateCheck) -> Void)?
-      sp.onCheck = { r in
+      sp.onCheck = { [weak self] r in
         model.update = r
+        self?.updater.latest = r
         pending?(r)
         pending = nil
       }
@@ -194,15 +214,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     if !acc.isEmpty, let clash = others.first(where: { $0.value == acc }) {
       return "\(Accelerator.display(acc)) is already used for \(clash.key == "lastArea" ? "Capture last area" : clash.key == "ocr" ? "Capture text" : clash.key.capitalized)."
     }
+    // Registered first: one another app or the system holds is refused, and the old one stays.
+    if !acc.isEmpty, let (_, key, action) = hotkeyActions.first(where: { $0.0 == name }), !Hotkeys.shared.set(name, acc, action: action) {
+      _ = Hotkeys.shared.set(name, h[keyPath: key], action: action)
+      return "\(Accelerator.display(acc)) is taken by another app or the system."
+    }
     store.update(.object([("hotkeys", .object([(name, .string(acc))]))]))
     return nil
   }
 
-  func registerHotkeys() {
+  /** `startup`: a capture shortcut another app holds is reported (Snapkit takes it once it's free). */
+  func registerHotkeys(startup: Bool = false) {
     let h = store.current.hotkeys
     for (name, key, action) in hotkeyActions {
       if !Hotkeys.shared.set(name, h[keyPath: key], action: action), name == "capture" {
         log("[hotkeys] the capture hotkey \(Accelerator.display(h.capture)) can't be used yet")
+        if startup {
+          Notifier.post(title: "\(Accelerator.display(h.capture)) is used by another app",
+                        body: "Snapkit takes it once it's free. Meanwhile, use the menu bar or pick another in Settings.")
+        }
       }
     }
   }
@@ -224,6 +254,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
   }
 
   /** Rebuilt each time it opens, so it shows the current hotkeys. */
+  #if DEBUG
+  /** The menu bar menu's items as it would open now (tests). */
+  var testMenuTitles: [String] {
+    let m = NSMenu()
+    menuNeedsUpdate(m)
+    return m.items.map(\.title).filter { !$0.isEmpty }
+  }
+  #endif
+
   func menuNeedsUpdate(_ menu: NSMenu) {
     menu.removeAllItems()
     let s = store.current
@@ -252,7 +291,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, Histor
     menu.addItem(.separator())
     let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     if let u = updater.latest, u.status == .available, let v = u.version {
-      menu.addItem(ClosureMenuItem(title: "Update available: \(v)…") { if let s = u.url, let url = URL(string: s) { NSWorkspace.shared.open(url) } })
+      // With Sparkle: its window downloads and installs it; otherwise the release page.
+      menu.addItem(ClosureMenuItem(title: "Update available: \(v)…") { [weak self] in
+        if let sp = self?.sparkle { sp.checkNow() } else if let s = u.url, let url = URL(string: s) { NSWorkspace.shared.open(url) }
+      })
     } else {
       let about = NSMenuItem(title: "\(Paths.appName) \(version)", action: nil, keyEquivalent: "")
       about.isEnabled = false

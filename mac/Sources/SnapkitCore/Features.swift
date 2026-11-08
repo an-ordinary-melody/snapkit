@@ -55,7 +55,7 @@ public enum Features {
     Feature(
       id: "ellipse", label: "Ellipse", kind: .tool, hint: "E", drawing: true,
       variants: [FeatureVariant(id: "ellipse", label: "Ellipse"), FeatureVariant(id: "ellipse-filled", label: "Filled ellipse")],
-      groupLabel: "Ellipses", variantsHint: "Right-click for more shapes", defaultEnabled: false, inGroup: true
+      groupLabel: "Ellipses", variantsHint: "Right-click for more shapes", defaultEnabled: false, inGroup: true, native: true
     ),
     Feature(id: "highlighter", label: "Highlighter", kind: .tool, hint: "H", drawing: true, tipNote: "Hold Shift for a straight line", defaultEnabled: true, native: true),
     Feature(id: "text", label: "Text", kind: .tool, hint: "T", drawing: true, defaultEnabled: true, native: true),

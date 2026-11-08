@@ -101,13 +101,16 @@ try {
       found = (readFileSync(log, 'utf8').slice(mark).match(/\[updates\] Sparkle: .*/) ?? [''])[0]
     }
     await wait(4000) // download and signature check
+    rmSync(state, { force: true })
+    run(ctl, ['state', '--wait', '500'])
+    const menu = existsSync(state) ? JSON.parse(readFileSync(state, 'utf8')).menu ?? [] : []
     run(ctl, ['quit', '--wait', '500'])
     let v = ''
     for (let i = 0; i < 20 && v !== until; i++) {
       await wait(500)
       try { v = version(app) } catch { v = '' }
     }
-    return { usesSparkle, found, v }
+    return { usesSparkle, found, v, menu }
   }
 
   // A download whose signature doesn't match (signed with another key) is refused.
@@ -129,6 +132,7 @@ try {
   await launch()
   r = await updateAndQuit('1.0.1')
   check(/available 1\.0\.1/.test(r.found), 'Sparkle finds 1.0.1 in the appcast', r.found || 'nothing logged')
+  check(r.menu.some((t) => /^Update available: 1\.0\.1/.test(t)), 'the menu bar menu shows "Update available: 1.0.1…"', JSON.stringify(r.menu))
   const v = r.v
   check(v === '1.0.1', 'quitting installs it: the app on disk is now 1.0.1', v)
   run('codesign', ['--verify', '--deep', '--strict', app])

@@ -94,11 +94,29 @@ enum Output {
     return CGImageDestinationFinalize(dest) ? data as Data : nil
   }
 
-  /** The exact PNG bytes on the clipboard; macOS converts for apps that ask for another type. */
+  /**
+   * The exact PNG bytes on the clipboard, plus TIFF for apps that only take that (as Electron's
+   * clipboard.writeImage); the TIFF is made only if an app asks for it.
+   */
   static func copy(_ png: Data) {
     let pb = pasteboard
     pb.clearContents()
-    pb.setData(png, forType: .png)
+    let item = NSPasteboardItem()
+    item.setData(png, forType: .png)
+    let tiff = TIFFProvider(png)
+    lastTIFF = tiff // kept until the next copy, in case the item doesn't keep it
+    item.setDataProvider(tiff, forTypes: [.tiff])
+    pb.writeObjects([item])
+  }
+
+  private static var lastTIFF: TIFFProvider?
+
+  private final class TIFFProvider: NSObject, NSPasteboardItemDataProvider {
+    let png: Data
+    init(_ png: Data) { self.png = png }
+    func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType) {
+      if type == .tiff, let tiff = NSBitmapImageRep(data: png)?.tiffRepresentation { item.setData(tiff, forType: .tiff) }
+    }
   }
 
   /** The general pasteboard; tests name a private one (`-SnapkitTestPasteboard`) so they never touch the user's clipboard. */

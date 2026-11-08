@@ -383,6 +383,7 @@ const SUITES = {
     send('thumb', 'copy')
     s = await state()
     check(JSON.stringify(s.clipboardSize) === '[800,600]' && s.floating[0].labels[0] === 'Copied', 'copy again from the preview')
+    check(JSON.stringify(s.clipboardTiffSize) === '[800,600]', 'the clipboard has TIFF too, for apps that only take that', JSON.stringify(s.clipboardTiffSize))
     send('thumb', 'text')
     s = await waitFor((s) => s.floating[0]?.labels[2] !== 'Reading…')
     check(/Copied|No text/.test(s.floating[0].labels[2]), 'the preview reads its text', s.floating[0].labels[2])
@@ -565,6 +566,14 @@ const SUITES = {
     send('hist-dragfile')
     const drag = JSON.parse(readFileSync(stateFile, 'utf8'))
     check(/^Snapkit .*\.png$/.test(drag.dragFile) && drag.bytes > 1000, 'drag a capture out of history (Snapkit <date>.png)', drag.dragFile)
+    // Starred from the keyboard on the third card: the selection goes back to the newest (History.tsx setSel(0)).
+    send('hist-key', 'right')
+    send('hist-key', 'right')
+    const third = (await state()).historySelected
+    send('hist-key', 'f')
+    s = await state()
+    check(third === 2 && s.historySelected === 0, 'history: after a change, the newest is selected again', `${third} -> ${s.historySelected}`)
+    send('hist', 'unstar', 2)
     send('hist', 'star', 0)
     send('hist-clear', 'menu')
     send('hist-clear', 'all')
@@ -637,23 +646,31 @@ const SUITES = {
   async editorView() {
     await launch()
     send('capture')
-    send('select', 300, 200, 400, 300)
+    send('select', 60, 60, 1300, 800)
     send('tool', 'arrow')
     send('drag', 350, 250, 500, 350)
     send('tool', 'beautifyEdit')
     let s = await state()
     const before = s.editorPreview
     const ax = before[0] + before[2] * 0.25, ay = before[1] + before[3] * 0.25
-    send('editor', 'zoom', 2, ax, ay)
+    // Zoomed well past the stage (as Electron's six ⌘-scroll steps), so it scrolls both ways.
+    send('editor', 'zoom', 4, ax, ay)
     s = await state()
     const after = s.editorPreview
     const u = (ax - after[0]) / after[2], v = (ay - after[1]) / after[3]
-    check(s.editorZoom === 2 && Math.abs(u - 0.25) < 0.01 && Math.abs(v - 0.25) < 0.01, 'editor zoom in: the point stays under the pointer', JSON.stringify([u, v]))
+    check(s.editorZoom > 2 && Math.abs(u - 0.25) < 0.01 && Math.abs(v - 0.25) < 0.01, 'editor zoom in: the point stays under the pointer', JSON.stringify([u, v]))
     send('editor', 'space', 'down')
     send('editor', 'drag', 600, 500, 650, 520)
     send('editor', 'space', 'up')
     s = await state()
-    check(s.editorPreview[0] - after[0] === 50 && s.shapes.length === 1, 'Space hand pans, draws nothing', JSON.stringify([s.editorPreview[0] - after[0], s.shapes]))
+    check(s.editorPreview[0] - after[0] === 50 && s.editorPreview[1] - after[1] === 20 && s.shapes.length === 1, 'Space hand pans, draws nothing', JSON.stringify([s.editorPreview[0] - after[0], s.editorPreview[1] - after[1], s.shapes]))
+    // Panned far: the zoomed preview stops at the stage's edges (Electron: a scroll container).
+    send('editor', 'space', 'down')
+    send('editor', 'drag', 600, 500, 3000, 2500)
+    send('editor', 'space', 'up')
+    s = await state()
+    const [px, py, pw] = s.editorPreview, sg = s.editorStage
+    check(Math.abs(px - sg[0]) <= 1 && pw > sg[2] && py + s.editorPreview[3] >= sg[1] + sg[2] * 0 && py <= sg[1] + 200, 'panning stops at the preview\'s edges', JSON.stringify([s.editorPreview, sg]))
     send('key', '0', 'cmd')
     s = await state()
     check(s.editorZoom === 1 && s.editorOpen, 'Ctrl/⌘ + 0 fits again, still in editor')
@@ -1016,10 +1033,123 @@ const SUITES = {
     await launch({ hotkeys: { capture: 'Alt+Shift+Z' } })
     s = await state()
     const whileHeld = s.captureHotkeyRegistered
+    check(held !== 'holding' || s.notifications.some((n) => /is used by another app/.test(n)), 'A capture shortcut taken at startup: a notification says so', JSON.stringify(s.notifications))
+    // Picked in Settings while another app holds it: refused, and the old shortcut stays.
+    send('set-hotkey', 'capture', 'CommandOrControl+Alt+Shift+F11')
+    await wait(300)
+    send('set-hotkey', 'capture', 'Alt+Shift+Z')
+    await wait(300)
+    const reply = readFileSync(stateFile, 'utf8')
+    s = await state()
+    const kept = JSON.parse(readFileSync(join(profile, 'settings.json'), 'utf8')).hotkeys?.capture
+    check(held !== 'holding' || (/is taken by another app/.test(reply) && kept === 'CommandOrControl+Alt+Shift+F11' && s.hotkeysRegistered.capture), 'A shortcut another app holds, picked in Settings: refused, the old one kept', `${reply.slice(0, 120)} | saved ${kept} | registered ${s.hotkeysRegistered.capture}`)
+    send('set-hotkey', 'capture', 'Alt+Shift+Z')
     await new Promise((r) => holder.on('exit', r))
     await wait(6000)
     s = await state()
-    check(held === 'holding' && s.captureHotkeyRegistered, 'Takes a shortcut back once the app holding it quits', `holder: ${held} | while held: ${whileHeld} | after: ${s.captureHotkeyRegistered}`)
+    check(held === 'holding' && !whileHeld && s.captureHotkeyRegistered, 'Takes a shortcut back once the app holding it quits', `holder: ${held} | while held: ${whileHeld} | after: ${s.captureHotkeyRegistered}`)
+  },
+
+  // Blur and pixelate change the pixels (Electron: e2e/annotate.mjs), opaque and averaged as stored
+  // (a 50/50 mix of two bands comes out near their sRGB midpoint, not washed out lighter).
+  async blur() {
+    let s
+    await launch()
+    send('capture')
+    send('select', 100, 40, 600, 300)
+    const png = process.env.SHOT || join(root, 'blur.png')
+    const shoot = async () => {
+      rmSync(png, { force: true })
+      send('snapshot', png)
+      for (let i = 0; i < 50 && !existsSync(png); i++) await wait(100)
+      await wait(200)
+    }
+    const at = (...pts) => run(ctl, ['pixel', png, ...pts.flat().map(String)]).trim().split('\n')
+    // A band edge right of the test screen's text: the first colour change down x = 560.
+    await shoot()
+    const ys = Array.from({ length: 120 }, (_, i) => 50 + i * 2)
+    const col = at(...ys.map((y) => [560, y]))
+    const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+    const near = (h, ref, tol) => rgb(h).every((v, i) => Math.abs(v - ref[i]) <= tol)
+    const k = col.findIndex((c) => !near(c, rgb(col[0]), 20))
+    const edge = ys[k]
+    const pts = [[560, edge - 30], [560, edge + 30], [560, edge]]
+    const [a, b] = at(...pts)
+    const mid = rgb(a).map((v, i) => (v + rgb(b)[i]) / 2)
+    send('tool', 'blur')
+    send('drag', 440, edge - 50, 680, edge + 80)
+    send('click', 600, edge + 40) // select it (drawing doesn't, as in Electron)
+    send('blur', 40)
+    await shoot()
+    const [, , blurred] = at(...pts)
+    check(k > 0 && (await state()).shapeData.at(-1).strength === 40 && !near(blurred, rgb(a), 20) && !near(blurred, rgb(b), 20) && near(blurred, mid, 30), 'blur mixes the two bands at their edge (sRGB midpoint)', `${a} | ${b} | edge ${blurred}`)
+    send('blur', 0)
+    await shoot()
+    const [a0, b0] = at(...pts)
+    check(near(a0, rgb(a), 2) && near(b0, rgb(b), 2), 'blur strength 0: the area as it is', `${a0} ${b0}`)
+    send('blur', 40)
+    send('style', 'blurMode:pixelate')
+    s = await state()
+    await shoot()
+    const row = at(...Array.from({ length: 30 }, (_, i) => [450 + i * 7, edge]))
+    const flat = row.every((h) => near(h, rgb(a), 45) || near(h, rgb(b), 45) || near(h, mid, 45))
+    check(s.shapeData.at(-1).mode === 'pixelate' && new Set(row).size <= 6 && flat, 'pixelate: opaque blocks of the averaged colours', `${s.shapeData.at(-1).mode} | ${[...new Set(row)].join(' ')}`)
+
+    // Over black text on white: the mean brightness stays (a linear-light average washes text out lighter).
+    const grid = []
+    for (let x = 140; x <= 400; x += 1.5) for (let y = edge + 20; y <= edge + 140; y += 1.5) grid.push([x, y])
+    const mean = () => { const c = at(...grid).map(rgb); return c.reduce((t, v) => t + v[0] + v[1] + v[2], 0) / (c.length * 3) }
+    await launch()
+    send('capture')
+    send('select', 100, 40, 600, 300)
+    await shoot()
+    const plain = mean()
+    send('tool', 'blur')
+    send('drag', 130, edge + 10, 410, edge + 150)
+    await shoot()
+    const blurredMean = mean()
+    send('key', 'z', 'cmd')
+    send('style', 'blurMode:pixelate')
+    send('drag', 130, edge + 10, 410, edge + 150)
+    await shoot()
+    const pixMean = mean()
+    check(plain < 245 && Math.abs(blurredMean - plain) < 6 && Math.abs(pixMean - plain) < 6, 'blur and pixelate over text keep its mean brightness (not washed out)', `plain ${plain.toFixed(1)} | blur ${blurredMean.toFixed(1)} | pixelate ${pixMean.toFixed(1)}`)
+    send('key', 'esc')
+    send('key', 'esc')
+  },
+
+  // The Ellipse tool on its own (off by default, as Line): turned on, it's in the toolbar, E picks it.
+  async ellipse() {
+    await launch({ features: { ellipse: true } })
+    send('capture')
+    send('select', 300, 200, 400, 300)
+    let s = await state()
+    send('key', 'e')
+    const tool = (await state()).tool
+    send('drag', 350, 250, 450, 330)
+    send('variant', 'ellipse', 'ellipse-filled')
+    send('drag', 500, 250, 600, 330)
+    s = await state()
+    const [a, b] = s.shapeData.slice(-2)
+    check(s.toolbar.includes('ellipse') && tool === 'ellipse' && a?.type === 'ellipse' && !a.filled && b?.type === 'ellipse' && b.filled, 'Ellipse tool: in the toolbar, E, outline and filled', `${JSON.stringify(s.toolbar)} | ${tool} | ${JSON.stringify([a, b])}`)
+    send('key', 'esc')
+    send('key', 'esc')
+  },
+
+  // Opening Snapkit again while it runs (index.ts second-instance): captures, or --history etc.
+  async openAgain() {
+    await launch()
+    spawnSync('open', ['-n', app, '--args', '--history'])
+    let s = await waitFor((x) => x.historyVisible, 6000)
+    check(s.historyVisible && !s.capturing, 'opened again with --history: the history panel', `history ${s.historyVisible}`)
+    send('history')
+    spawnSync('open', ['-n', app])
+    s = await waitFor((x) => x.capturing, 6000)
+    check(s.capturing, 'opened again: a capture starts', `capturing ${s.capturing}`)
+    send('key', 'esc')
+    await wait(500)
+    const copies = spawnSync('pgrep', ['-f', 'Snapkit Dev.app/Contents/MacOS/Snapkit']).stdout.toString().trim().split('\n').filter(Boolean).length
+    check(copies === 1, 'the second copy quits', `${copies} running`)
   },
 
   // Capture mode's cursors, as Electron's (AnnotationLayer containerCursor, the handles, shapes: move).
@@ -1038,8 +1168,16 @@ const SUITES = {
     send('tool', 'line') // through the middle, where the check looks
     send('drag', 420, 350, 580, 350)
     send('tool', 'arrow')
+    send('pointer-moved')
     c = (await state()).cursors
     check(c?.inside === 'move', 'over a drawing: move, whatever the tool', JSON.stringify(c))
+    send('key', 'z', 'cmd')
+    send('tool', 'step')
+    send('click', 500, 350)
+    const placed = (await state()).cursors?.inside
+    send('pointer-moved')
+    const moved = (await state()).cursors?.inside
+    check(placed === 'step' && moved === 'move', 'a step just placed keeps the pin until the pointer moves (then: move)', `${placed} then ${moved}`)
     send('key', 'esc')
     send('key', 'esc')
   },
@@ -1130,13 +1268,24 @@ const SUITES = {
     send('key', 'r')
     const tool = (await state()).tool
     check(s.capturing && !s.note && !s.clipboardText && tool === 'rect', 'late read: no note, no copy, tools still work', `note ${s.note} | clipboard ${s.clipboardText} | tool ${tool}`)
-    // Esc during a read in the same capture drops it too.
+    // A read that never answers gives up (helper.ts: 120 s; 1 s here).
+    send('read-timeout', 1)
+    send('read-delays', 3000)
+    send('key', 'x')
+    await wait(1600)
+    s = await state()
+    check(s.capturing && /Couldn't read the text: no answer/.test(s.note ?? ''), 'a text read with no answer gives up with a message', s.note)
+    send('read-timeout', 120)
+    await wait(1600)
+    // Esc while it's still reading closes capture mode (Overlay.tsx), and the read lands nowhere.
     send('read-delays', 800)
     send('key', 'x')
     send('key', 'esc')
     await wait(1300)
     s = await state()
-    check(s.capturing && !s.note && !s.clipboardText, 'Esc during a read drops its result', `note ${s.note} | clipboard ${s.clipboardText}`)
+    check(!s.capturing && !s.clipboardText, 'Esc during a read closes capture mode and drops its result', `capturing ${s.capturing} | clipboard ${s.clipboardText}`)
+    send('capture')
+    send('select', 110, 120, 580, 60)
     send('key', 'esc')
     send('key', 'esc')
 
@@ -1209,6 +1358,24 @@ const SUITES = {
 
     // 7. Double-clicking a preview's Copy button copies; only a double-click on the image edits.
     send('setting', '{"pin":{"afterCopy":true}}')
+    send('capture')
+    send('select', 200, 150, 400, 250)
+    send('key', 'c', 'cmd')
+    await wait(400)
+    // The preview's buttons fit inside it, at every shape (Electron 2718f13).
+    s = await state()
+    const fits = [s.floating.at(-1)?.buttonsFit]
+    for (const [x, y, w, h] of [[300, 100, 90, 700], [100, 300, 1100, 50], [300, 100, 160, 300]]) {
+      send('capture')
+      send('select', x, y, w, h)
+      send('key', 'c', 'cmd')
+      await wait(400)
+      const f = (await state()).floating.at(-1)
+      if (process.env.SHOT) { send('hover'); send('snapshot-view', 'thumb', `${process.env.SHOT}-${w}x${h}.png`) }
+      fits.push(f?.buttonsFit && `${Math.round(f.frame[2])}x${Math.round(f.frame[3])}`)
+    }
+    check(fits.every(Boolean), 'preview buttons fit: normal, tall, strip and narrow previews', JSON.stringify(fits))
+    send('closepins')
     send('capture')
     send('select', 200, 150, 400, 250)
     send('key', 'c', 'cmd')

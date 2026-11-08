@@ -18,6 +18,9 @@ final class SliderView: NSView {
   var onChange: (Double) -> Void = { _ in }
   var onEnd: () -> Void = {}
   private var held = false
+  #if DEBUG
+  var testHeld: Bool { get { held } set { held = newValue; needsDisplay = true } }
+  #endif
 
   init(min: Double, max: Double, step: Double = 1, value: Double, theme: Theme) {
     self.min = min
@@ -52,16 +55,45 @@ final class SliderView: NSView {
     let k = held ? 1.35 : 1
     let kw = knob.width * k, kh = knob.height * k
     let kr = CGRect(x: travel.minX + travel.width * pct - kw / 2, y: bounds.midY - kh / 2, width: kw, height: kh)
+    let pill = NSBezierPath(roundedRect: kr, xRadius: kh / 2, yRadius: kh / 2)
     let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.3)
-    shadow.shadowBlurRadius = 4
-    shadow.shadowOffset = NSSize(width: 0, height: -1)
-    NSGraphicsContext.saveGraphicsState()
-    shadow.set()
-    NSColor.white.setFill()
-    NSBezierPath(roundedRect: kr, xRadius: kh / 2, yRadius: kh / 2).fill()
-    NSGraphicsContext.restoreGraphicsState()
-    NSColor.black.withAlphaComponent(0.28).setStroke()
+    let glassy = held && theme.glass
+    shadow.shadowColor = NSColor.black.withAlphaComponent(glassy ? 0.22 : 0.3)
+    shadow.shadowBlurRadius = glassy ? 8 : 4
+    shadow.shadowOffset = NSSize(width: 0, height: glassy ? -2 : -1)
+    if glassy {
+      // Held with Liquid Glass on: a clear glass pill the track shows through, bright at the rim
+      // (styles.css input.slider:active::-webkit-slider-thumb).
+      // The shadow only outside the pill, so the glass stays clear.
+      NSGraphicsContext.saveGraphicsState()
+      let outside = NSBezierPath(rect: bounds.insetBy(dx: -20, dy: -20))
+      outside.append(pill)
+      outside.windingRule = .evenOdd
+      outside.addClip()
+      shadow.set()
+      NSColor.white.setFill()
+      pill.fill()
+      NSGraphicsContext.restoreGraphicsState()
+      NSGradient(starting: NSColor.white.withAlphaComponent(0.55), ending: NSColor.white.withAlphaComponent(0.18))!.draw(in: pill, angle: isFlipped ? 90 : -90)
+      NSGraphicsContext.saveGraphicsState()
+      pill.addClip()
+      let top = NSBezierPath(roundedRect: kr.offsetBy(dx: 0, dy: isFlipped ? 1 : -1), xRadius: kh / 2, yRadius: kh / 2)
+      top.lineWidth = 2
+      NSColor.white.withAlphaComponent(0.95).setStroke()
+      top.stroke()
+      NSGraphicsContext.restoreGraphicsState()
+      let ring = NSBezierPath(roundedRect: kr.insetBy(dx: 0.25, dy: 0.25), xRadius: kh / 2, yRadius: kh / 2)
+      ring.lineWidth = 0.5
+      NSColor.white.withAlphaComponent(0.8).setStroke()
+      ring.stroke()
+    } else {
+      NSGraphicsContext.saveGraphicsState()
+      shadow.set()
+      NSColor.white.setFill()
+      pill.fill()
+      NSGraphicsContext.restoreGraphicsState()
+    }
+    NSColor.black.withAlphaComponent(glassy ? 0.22 : 0.28).setStroke()
     let edge = NSBezierPath(roundedRect: kr.insetBy(dx: -0.25, dy: -0.25), xRadius: kh / 2, yRadius: kh / 2)
     edge.lineWidth = 0.5
     edge.stroke()

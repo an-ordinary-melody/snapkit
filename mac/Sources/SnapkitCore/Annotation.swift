@@ -66,6 +66,21 @@ public enum Shape: Equatable {
     public var x, y, w, h: Double
     public var mode: String
     public var strength: Double
+
+    private enum CodingKeys: String, CodingKey { case id, type, x, y, w, h, mode, strength }
+
+    /** Older blurs may lack `mode` or `strength`: blur at 12, as Electron's BlurNode reads them. */
+    public init(from d: Decoder) throws {
+      let c = try d.container(keyedBy: CodingKeys.self)
+      id = try c.decode(String.self, forKey: .id)
+      type = try c.decodeIfPresent(String.self, forKey: .type) ?? "blur"
+      x = try c.decode(Double.self, forKey: .x)
+      y = try c.decode(Double.self, forKey: .y)
+      w = try c.decode(Double.self, forKey: .w)
+      h = try c.decode(Double.self, forKey: .h)
+      mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? "blur"
+      strength = try c.decodeIfPresent(Double.self, forKey: .strength) ?? 12
+    }
   }
 
   public struct Step: Equatable, Codable {

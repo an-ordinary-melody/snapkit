@@ -75,7 +75,9 @@ final class Hotkeys {
     if e.accelerator.modifiers.contains(.option) { mods |= UInt32(optionKey) }
     if e.accelerator.modifiers.contains(.control) { mods |= UInt32(controlKey) }
     var ref: EventHotKeyRef?
-    let status = RegisterEventHotKey(e.accelerator.keyCode, mods, EventHotKeyID(signature: OSType(0x534E_4B54), id: id), GetApplicationEventTarget(), 0, &ref)
+    // Exclusive, as Chromium's (Electron's globalShortcut): one another app holds is refused, so it's
+    // reported and retried instead of being shared silently.
+    let status = RegisterEventHotKey(e.accelerator.keyCode, mods, EventHotKeyID(signature: OSType(0x534E_4B54), id: id), GetApplicationEventTarget(), OptionBits(kEventHotKeyExclusive), &ref)
     guard status == noErr, let ref else {
       log("[hotkeys] \(name) (\(Accelerator.display(Accelerator.string(key: e.accelerator.key, modifiers: e.accelerator.modifiers)))) is taken (\(status)); retrying")
       scheduleRetry()

@@ -166,8 +166,7 @@ struct SToggle: View {
   var body: some View {
     ZStack(alignment: value ? .trailing : .leading) {
       Capsule().fill(value ? th.switchOn : th.track).frame(width: 34, height: 20)
-      Capsule().fill(th.glass && held ? AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.95), .white.opacity(0.6)], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.white))
-        .frame(width: held ? 22 : 16, height: 16).padding(2)
+      knob.frame(width: held ? 22 : 16, height: 16).padding(2)
     }
     .frame(width: 34, height: 20)
     .opacity(disabled ? 0.5 : 1)
@@ -180,6 +179,21 @@ struct SToggle: View {
       })
     .animation(.easeOut(duration: 0.15), value: value)
     .animation(.easeOut(duration: 0.12), value: held)
+  }
+
+  /** White; held with Liquid Glass on, a clear glass pill the track shows through (styles.css .switch:active span). */
+  @ViewBuilder private var knob: some View {
+    if th.glass && held {
+      Capsule()
+        .fill(LinearGradient(colors: [.white.opacity(0.6), .white.opacity(0.22)], startPoint: .top, endPoint: .bottom))
+        .overlay(Capsule().strokeBorder(Color.white.opacity(0.85), lineWidth: 0.5))
+        .overlay(Capsule().strokeBorder(LinearGradient(colors: [.white.opacity(0.95), .clear, .white.opacity(0.5)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+        .background(Capsule().stroke(Color.black.opacity(0.2), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+    } else {
+      Capsule().fill(Color.white)
+        .shadow(color: .black.opacity(held ? 0.25 : 0), radius: 3, y: 2)
+    }
   }
 }
 

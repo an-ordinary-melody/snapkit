@@ -96,13 +96,23 @@ final class Floating {
   /** A top-left-origin rect (global points) as an AppKit frame. */
   static func appKitFrame(_ r: CGRect) -> CGRect { CGRect(x: r.minX, y: primaryHeight - r.maxY, width: r.width, height: r.height) }
 
+  /** The display holding most of `r` (top-left global points), as screen.getDisplayMatching in pin.ts. */
+  static func screen(for r: CGRect) -> NSScreen {
+    let best = NSScreen.screens.max { a, b in
+      let ia = topLeftRect(a.frame).intersection(r), ib = topLeftRect(b.frame).intersection(r)
+      return (ia.isNull ? 0 : ia.width * ia.height) < (ib.isNull ? 0 : ib.width * ib.height)
+    }
+    if let best, !topLeftRect(best.frame).intersection(r).isNull { return best }
+    return NSScreen.main ?? NSScreen.screens[0]
+  }
+
   static func topLeftRect(_ f: CGRect) -> CGRect { CGRect(x: f.minX, y: primaryHeight - f.maxY, width: f.width, height: f.height) }
 
   // MARK: Pins
 
   /** Pin a screenshot; `at` is where it was captured (global points, top-left). It opens there at 100%. */
   func pin(png: Data, image: CGImage, at: CGRect) {
-    let screen = NSScreen.screens.first { Floating.topLeftRect($0.frame).intersects(at) } ?? NSScreen.main ?? NSScreen.screens[0]
+    let screen = Floating.screen(for: at)
     let scale = screen.backingScaleFactor
     // Background/padding can make the image larger than the selection: keep it centred on it.
     let w = max(16, (CGFloat(image.width) / scale).rounded()), h = max(16, (CGFloat(image.height) / scale).rounded())
@@ -126,7 +136,7 @@ final class Floating {
 
   /** After a copy: a small preview in the corner of the display it was captured on. */
   func preview(png: Data, image: CGImage, doc: CaptureDoc?, rect: CGRect, session: Int?) {
-    let screen = NSScreen.screens.first { Floating.topLeftRect($0.frame).intersects(rect) } ?? NSScreen.main ?? NSScreen.screens[0]
+    let screen = Floating.screen(for: rect)
     let size = thumbSize(image)
     let panel = FloatingPanel(frame: CGRect(origin: screen.visibleFrame.origin, size: size))
     let item = Item(kind: .thumb, panel: panel, png: png, image: image, base: size, file: tempFile(png))
@@ -367,6 +377,12 @@ private final class PinView: NSView {
   override func mouseMoved(with e: NSEvent) {
     (e.modifierFlags.contains(.option) ? NSCursor.dragCopy : NSCursor.openHand).set()
   }
+  /** ⌥ pressed or let go over the pin: the cursor follows at once, not on the next move (Pin.tsx setAlt). */
+  override func flagsChanged(with e: NSEvent) {
+    super.flagsChanged(with: e)
+    guard hover else { return }
+    (e.modifierFlags.contains(.option) ? NSCursor.dragCopy : NSCursor.openHand).set()
+  }
 
   private func layoutSlider() {
     slider.isHidden = !showBar
@@ -527,6 +543,7 @@ private final class ThumbView: NSView {
   private var hover = false
   private var copied = false
   private var textState: String?
+  private var textWork: DispatchWorkItem?
   private var moveFrom: CGPoint?
   private var downAt: CGPoint?
   private var theme: Theme
@@ -546,24 +563,65 @@ private final class ThumbView: NSView {
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
   override var acceptsFirstResponder: Bool { true }
 
-  private var pinRect: CGRect { CGRect(x: 6, y: 6, width: 24, height: 24) }
-  private var moveRect: CGRect { CGRect(x: bounds.midX - 12, y: 6, width: 24, height: 24) }
-  private var closeRect: CGRect { CGRect(x: bounds.maxX - 30, y: 6, width: 24, height: 24) }
+  // Sizes as styles.css "Floating preview after copy" (container queries on the preview's size):
+  // labels on Copy and Edit only from 210 pt wide; under 120 pt wide the buttons stack and the move
+  // handle goes to the bottom; under 100 pt tall (a strip) everything is one row.
+  private var showLabels: Bool { bounds.width >= 210 && bounds.height >= 100 }
+  private var stacked: Bool { bounds.width < 120 }
+  private var strip: Bool { bounds.height < 100 }
+  private var iconY: CGFloat { strip ? (bounds.midY - 12).rounded() : 6 }
 
-  private var buttons: [(id: String, icon: String, label: String)] {
-    [("copy", "copy", copied ? "Copied" : "Copy"), ("edit", "edit", "Edit"), ("text", "ocr", textState ?? "Text")]
+  private var pinRect: CGRect { CGRect(x: 6, y: iconY, width: 24, height: 24) }
+  private var moveRect: CGRect {
+    if strip { return CGRect(x: bounds.maxX - 36 - 24, y: iconY, width: 24, height: 24) }
+    if stacked { return CGRect(x: bounds.midX - 12, y: bounds.maxY - 30, width: 24, height: 24) }
+    return CGRect(x: bounds.midX - 12, y: 6, width: 24, height: 24)
   }
+  private var closeRect: CGRect { CGRect(x: bounds.maxX - 30, y: iconY, width: 24, height: 24) }
+
+  /** Copy, Edit and Text; Text is always an icon (its result shows in the status pill). */
+  private var buttons: [(id: String, icon: String, label: String?)] {
+    let l = showLabels
+    return [("copy", "copy", l ? (copied ? "Copied" : "Copy") : nil), ("edit", "edit", l ? "Edit" : nil), ("text", "ocr", nil)]
+  }
+  private var tips: [String] { [copied ? "Copied" : "Copy", "Edit", "Capture Text (OCR)"] }
 
   private let buttonFont = NSFont.systemFont(ofSize: 12.5, weight: .semibold)
+  private let statusFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
 
+  /** The buttons' frames; they never shrink. */
   private func buttonRects() -> [CGRect] {
-    let widths = buttons.map { 12 + 14 + 6 + NSAttributedString(string: $0.label, attributes: [.font: buttonFont]).size().width + 12 }
-    let total = widths.reduce(0, +) + CGFloat(widths.count - 1) * 8
-    var x = bounds.midX - total / 2
-    return widths.map { w in
-      defer { x += w + 8 }
-      return CGRect(x: x, y: bounds.midY - 15, width: w, height: 30)
+    let widths = buttons.map { b in b.label.map { 12 + 14 + 6 + NSAttributedString(string: $0, attributes: [.font: buttonFont]).size().width + 12 } ?? 30 }
+    if stacked {
+      let total = CGFloat(widths.count) * 30 + CGFloat(widths.count - 1) * 3
+      var y = bounds.midY - total / 2
+      return widths.map { w in
+        defer { y += 33 }
+        return CGRect(x: (bounds.midX - w / 2).rounded(), y: y.rounded(), width: w, height: 30)
+      }
     }
+    let gap: CGFloat = showLabels ? 8 : 6
+    let total = widths.reduce(0, +) + CGFloat(widths.count - 1) * gap
+    // A strip keeps clear of the pin (left) and the move and close icons (right).
+    let mid = strip ? 36 + (bounds.width - 36 - 66) / 2 : bounds.midX
+    var x = mid - total / 2
+    return widths.map { w in
+      defer { x += w + gap }
+      return CGRect(x: x.rounded(), y: (bounds.midY - 15).rounded(), width: w, height: 30)
+    }
+  }
+
+  /** Tooltips name the buttons (the icon-only ones especially). */
+  private func updateToolTips() {
+    removeAllToolTips()
+    for (r, tip) in zip(buttonRects(), tips) { addToolTip(r, owner: tip as NSString, userData: nil) }
+    addToolTip(pinRect, owner: "Pin to screen" as NSString, userData: nil)
+    addToolTip(closeRect, owner: "Close" as NSString, userData: nil)
+  }
+
+  override func setFrameSize(_ newSize: NSSize) {
+    super.setFrameSize(newSize)
+    updateToolTips()
   }
 
   override func updateTrackingAreas() {
@@ -620,10 +678,13 @@ private final class ThumbView: NSView {
     case "edit": owner?.edit(item)
     case "text":
       textState = "Reading…"
+      textWork?.cancel()
       owner?.copyText(item) { [weak self] n in
         self?.textState = n > 0 ? "Copied \(n) line\(n == 1 ? "" : "s")" : n == 0 ? "No text" : "Couldn't read"
         self?.needsDisplay = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.textState = nil; self?.needsDisplay = true }
+        let w = DispatchWorkItem { [weak self] in self?.textState = nil; self?.needsDisplay = true }
+        self?.textWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: w)
       }
     case "pin": owner?.pinFromThumb(item)
     case "close": owner?.close(item)
@@ -632,8 +693,10 @@ private final class ThumbView: NSView {
     needsDisplay = true
   }
 
-  /** Test hook: what the hover buttons say. */
-  var labels: [String] { buttons.map(\.label) }
+  /** Test hook: Copy's state, Edit, and Text's status (or "Text"). */
+  var labels: [String] { [copied ? "Copied" : "Copy", "Edit", textState ?? "Text"] }
+  /** Test hook: every button inside the preview. */
+  var buttonsFit: Bool { (buttonRects() + [pinRect, moveRect, closeRect]).allSatisfy { bounds.contains($0) } }
 
   override func keyDown(with e: NSEvent) {
     if e.keyCode == 53 { owner?.close(item) } else { super.keyDown(with: e) }
@@ -675,19 +738,36 @@ private final class ThumbView: NSView {
     ShapeDrawing.drawImage(item.image, in: r, ctx: ctx)
     NSColor.white.withAlphaComponent(0.18).setStroke()
     NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10).stroke()
-    guard hover else { return }
-    NSColor.black.withAlphaComponent(0.42).setFill()
-    bounds.fill()
-    for (i, r) in buttonRects().enumerated() {
-      let b = buttons[i]
-      theme.drawPanel(r, radius: 15, strong: true, backdrop: glassUnder(r), in: ctx)
-      Icons.draw(b.icon, in: CGRect(x: r.minX + 12, y: r.minY, width: 14, height: r.height), size: 14, color: theme.foreground, ctx: ctx)
-      let s = NSAttributedString(string: b.label, attributes: [.font: buttonFont, .foregroundColor: theme.foreground])
-      s.draw(at: CGPoint(x: r.minX + 32, y: r.midY - s.size().height / 2))
+    if hover {
+      NSColor.black.withAlphaComponent(0.42).setFill()
+      bounds.fill()
+      for (i, r) in buttonRects().enumerated() {
+        let b = buttons[i]
+        theme.drawPanel(r, radius: 15, strong: true, backdrop: glassUnder(r), in: ctx)
+        if let label = b.label {
+          Icons.draw(b.icon, in: CGRect(x: r.minX + 12, y: r.minY, width: 14, height: r.height), size: 14, color: theme.foreground, ctx: ctx)
+          let s = NSAttributedString(string: label, attributes: [.font: buttonFont, .foregroundColor: theme.foreground])
+          s.draw(at: CGPoint(x: r.minX + 32, y: r.midY - s.size().height / 2))
+        } else {
+          Icons.draw(b.icon, in: r, size: 14, color: theme.foreground, ctx: ctx)
+        }
+      }
+      for (rect, icon) in [(pinRect, "pin"), (moveRect, "move"), (closeRect, "close")] {
+        theme.drawPanel(rect, radius: rect.width / 2, strong: true, backdrop: glassUnder(rect), in: ctx)
+        Icons.draw(icon, in: rect, size: 13, color: theme.foreground, ctx: ctx)
+      }
     }
-    for (rect, icon) in [(pinRect, "pin"), (moveRect, "move"), (closeRect, "close")] {
-      theme.drawPanel(rect, radius: rect.width / 2, strong: true, backdrop: glassUnder(rect), in: ctx)
-      Icons.draw(icon, in: rect, size: 13, color: theme.foreground, ctx: ctx)
+    // Text's result, bottom centre for 1.5 s, hovered or not (.thumb-status).
+    if let status = textState {
+      let a: [NSAttributedString.Key: Any] = [.font: statusFont, .foregroundColor: theme.foreground]
+      let size = NSAttributedString(string: status, attributes: a).size()
+      let w = min(size.width + 20, bounds.width - 16), h = ceil(size.height) + 6
+      let r = CGRect(x: (bounds.midX - w / 2).rounded(), y: bounds.maxY - 8 - h, width: w, height: h)
+      theme.drawPanel(r, radius: 11, strong: true, backdrop: glassUnder(r), in: ctx)
+      let para = NSMutableParagraphStyle()
+      para.lineBreakMode = .byTruncatingTail
+      para.alignment = .center
+      NSAttributedString(string: status, attributes: a.merging([.paragraphStyle: para]) { $1 }).draw(in: CGRect(x: r.minX + 10, y: r.minY + 3, width: w - 20, height: size.height))
     }
   }
 }
@@ -703,6 +783,7 @@ extension PinView: NSDraggingSource {
 /** Test hooks. */
 extension Floating {
   func thumbLabels(_ item: Item) -> [String] { (item.panel.contentView as? ThumbView)?.labels ?? [] }
+  func thumbButtonsFit(_ item: Item) -> Bool { (item.panel.contentView as? ThumbView)?.buttonsFit ?? true }
   func thumbPress(_ item: Item, _ id: String) { (item.panel.contentView as? ThumbView)?.press(id) }
 }
 

@@ -21,7 +21,8 @@ struct UpdateCheck {
  */
 final class Updater {
   let store: SettingsStore
-  private(set) var latest: UpdateCheck?
+  /** The last check's result (the menu shows "Update available"); Sparkle's checks set it too. */
+  var latest: UpdateCheck?
   var onCheck: (UpdateCheck) -> Void = { _ in }
 
   init(store: SettingsStore) {

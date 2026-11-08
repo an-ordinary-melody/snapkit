@@ -400,52 +400,72 @@ enum ShapeDrawing {
 
 /**
  * Pixelated or blurred copy of part of the frozen screenshot (obscure.ts), at full image resolution.
- * `strength` is the block size / blur radius in points (0: the area as it is).
+ * `strength` is the block size / blur radius in points (0: the area as it is). As a browser canvas,
+ * pixels are averaged as stored (no linear-light conversion, which would wash dark text out to near
+ * white) and the result is opaque and in the screenshot's own colour space.
  */
 enum BlurRenderer {
-  private static let context = CIContext(options: [.cacheIntermediates: false])
-  private static var cache: [String: CGImage] = [:]
-  private static var cacheSource: ObjectIdentifier?
+  private static let context = CIContext(options: [.cacheIntermediates: false, .workingColorSpace: NSNull(), .outputColorSpace: NSNull()])
+  /** Results per screenshot; a source no longer alive (weak) never serves its tiles to a new one. */
+  private final class Entry {
+    weak var source: CGImage?
+    var tiles: [String: CGImage] = [:]
+    init(_ s: CGImage) { source = s }
+  }
+  private static var cache: [ObjectIdentifier: Entry] = [:]
 
   static func obscure(_ src: CGImage, rect r: LRect, scale: CGFloat, mode: String, strength: Double) -> CGImage? {
     let key = "\(r.x),\(r.y),\(r.w),\(r.h),\(scale),\(mode),\(strength)"
-    if cacheSource != ObjectIdentifier(src) {
-      cache = [:]
-      cacheSource = ObjectIdentifier(src)
-    }
-    if let c = cache[key] { return c }
+    let id = ObjectIdentifier(src)
+    cache = cache.filter { $0.value.source != nil }
+    let entry: Entry
+    if let e = cache[id], e.source === src { entry = e } else { entry = Entry(src); cache[id] = entry }
+    if let c = entry.tiles[key] { return c }
     let sx = jsRound(r.x * scale), sy = jsRound(r.y * scale)
     let sw = max(1, jsRound(r.w * scale)), sh = max(1, jsRound(r.h * scale))
     let amount = jsRound(strength * scale)
-    // Core Image has a bottom-left origin.
-    let ci = CIImage(cgImage: src)
-    let H = CGFloat(src.height)
-    let area = CGRect(x: sx, y: H - sy - sh, width: sw, height: sh)
-    var out: CIImage
+    let space = src.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+    let out: CGImage?
     if amount <= 0 {
-      out = ci.cropped(to: area)
+      out = draw(Int(sw), Int(sh), space) { $0.draw(src, in: CGRect(x: -sx, y: sy + sh - CGFloat(src.height), width: CGFloat(src.width), height: CGFloat(src.height))) }
     } else if mode == "pixelate" {
-      // Average each block (shrink with area sampling), then scale back up without smoothing.
+      // Shrink by halving steps so each block averages all its pixels, then scale back up without smoothing.
       let block = max(2, amount)
-      let tw = max(1, ceil(sw / block)), th = max(1, ceil(sh / block))
-      let shrunk = ci.cropped(to: area).transformed(by: CGAffineTransform(translationX: -area.minX, y: -area.minY))
-        .applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: th / sh, kCIInputAspectRatioKey: (tw / sw) / (th / sh)])
-      guard let small = context.createCGImage(shrunk, from: CGRect(x: 0, y: 0, width: tw, height: th)) else { return nil }
-      let grid = CIImage(cgImage: small).samplingNearest()
-        .transformed(by: CGAffineTransform(scaleX: block, y: block))
-      // The block grid starts at the area's top-left (CI origin is bottom-left).
-      out = grid.transformed(by: CGAffineTransform(translationX: 0, y: sh - th * block)).cropped(to: CGRect(x: 0, y: 0, width: sw, height: sh))
-      guard let cg = context.createCGImage(out, from: CGRect(x: 0, y: 0, width: sw, height: sh)) else { return nil }
-      cache[key] = cg
-      return cg
+      let tw = Int(max(1, ceil(sw / block))), th = Int(max(1, ceil(sh / block)))
+      var cur = src.cropping(to: CGRect(x: sx, y: sy, width: sw, height: sh).intersection(CGRect(x: 0, y: 0, width: src.width, height: src.height)))
+      while let c = cur, c.width > tw || c.height > th {
+        let nw = max(tw, Int(ceil(Double(c.width) / 2))), nh = max(th, Int(ceil(Double(c.height) / 2)))
+        cur = draw(nw, nh, space) { ctx in
+          ctx.interpolationQuality = .high
+          ctx.draw(c, in: CGRect(x: 0, y: 0, width: nw, height: nh))
+        }
+      }
+      guard let small = cur else { return nil }
+      out = draw(Int(sw), Int(sh), space) { ctx in
+        ctx.interpolationQuality = .none
+        // The block grid starts at the area's top-left (Core Graphics has a bottom-left origin).
+        let gw = CGFloat(tw) * block, gh = CGFloat(th) * block
+        ctx.draw(small, in: CGRect(x: 0, y: sh - gh, width: gw, height: gh))
+      }
     } else {
-      // A margin around the area so the blur doesn't fade to transparent at its edges.
+      // The screenshot's edges carry on outward, so the blur doesn't fade to transparent at them.
       let radius = max(1, jsRound(strength * 0.8 * scale))
-      out = ci.clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: radius]).cropped(to: area)
+      let H = CGFloat(src.height)
+      let area = CGRect(x: sx, y: H - sy - sh, width: sw, height: sh)
+      let blurred = CIImage(cgImage: src).clampedToExtent().applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: radius]).cropped(to: area)
+      out = context.createCGImage(blurred, from: area, format: .RGBA8, colorSpace: space)
     }
-    guard let cg = context.createCGImage(out, from: area) else { return nil }
-    if cache.count > 64 { cache = [:] }
-    cache[key] = cg
-    return cg
+    guard let out else { return nil }
+    if entry.tiles.count > 64 { entry.tiles = [:] }
+    entry.tiles[key] = out
+    return out
+  }
+
+  /** An opaque `w`×`h` image in `space`, drawn by `body`. */
+  private static func draw(_ w: Int, _ h: Int, _ space: CGColorSpace, _ body: (CGContext) -> Void) -> CGImage? {
+    guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                              bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) else { return nil }
+    body(ctx)
+    return ctx.makeImage()
   }
 }

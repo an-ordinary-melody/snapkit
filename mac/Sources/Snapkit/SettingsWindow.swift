@@ -842,10 +842,11 @@ struct AboutSection: View {
     .frame(maxWidth: .infinity).padding(.top, 24).padding(.bottom, 20)
     SGroup(title: "Advanced", th: th) {
       SRow(label: "Capture engine", desc: "Auto picks the fastest one that works.", first: true, th: th) {
-        SSelect(value: s.capture.engine, options: [("auto", "Auto"), ("screencapturekit", "ScreenCaptureKit"), ("coregraphics", "CoreGraphics")], th: th) { model.set(["capture", "engine"], str($0)) }
+        // An Electron engine id (desktop-capturer, node-screenshots) left in settings.json runs as Auto here.
+        SSelect(value: ["screencapturekit", "coregraphics"].contains(s.capture.engine) ? s.capture.engine : "auto", options: [("auto", "Auto"), ("screencapturekit", "ScreenCaptureKit"), ("coregraphics", "CoreGraphics")], th: th) { model.set(["capture", "engine"], str($0)) }
       }
       SRow(label: "Text recognition", desc: "Auto uses the one built into your system.", th: th) {
-        SSelect(value: s.ocr.engine, options: [("auto", "Auto"), ("vision", "Apple Vision")], th: th) { model.set(["ocr", "engine"], str($0)) }
+        SSelect(value: s.ocr.engine == "vision" ? "vision" : "auto", options: [("auto", "Auto"), ("vision", "Apple Vision")], th: th) { model.set(["ocr", "engine"], str($0)) }
       }
     }
     SGroup(title: nil, th: th) {

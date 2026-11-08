@@ -66,7 +66,7 @@ if args[0] == "diff", args.count == 4,
 // app would, holds it, then quits.
 if args[0] == "hold-hotkey", args.count == 2 {
   var ref: EventHotKeyRef?
-  let status = RegisterEventHotKey(UInt32(kVK_ANSI_Z), UInt32(optionKey | shiftKey), EventHotKeyID(signature: 0x484F4C44, id: 1), GetApplicationEventTarget(), 0, &ref)
+  let status = RegisterEventHotKey(UInt32(kVK_ANSI_Z), UInt32(optionKey | shiftKey), EventHotKeyID(signature: 0x484F4C44, id: 1), GetApplicationEventTarget(), OptionBits(kEventHotKeyExclusive), &ref)
   print(status == noErr ? "holding" : "failed \(status)")
   fflush(stdout)
   RunLoop.main.run(until: Date().addingTimeInterval(Double(args[1]) ?? 5))

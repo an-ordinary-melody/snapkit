@@ -328,7 +328,7 @@ Bad states Electron fixed in 1a00d6f (docs/state-machines.md). Native already pa
 
 | Electron check | Native check |
 |---|---|
-| A text read finishing after capture mode closed froze the next capture | states › late read: no note, no copy, tools still work; states › Esc during a read drops its result |
+| A text read finishing after capture mode closed froze the next capture | states › late read: no note, no copy, tools still work; states › Esc during a read closes capture mode and drops its result |
 | Two text reads at once: only the newest one is copied | states › two reads: only the second area is copied |
 | Capture text has no drawing and doesn't copy the image | states › capture text: no drawing, ⌘C and Enter copy no image |
 | An area moved to another display left its drawings and editor behind | states › area moved away: editor, drawings and tool go with it; states › a new area there: nothing to undo, no editor |
@@ -354,6 +354,25 @@ Native only: states › capture window replaced during the grab: that screen is 
 Native-only checks (no Electron equivalent): capture window keyboard focus without
 activating, arrow-key nudge/resize of the selection, undo/redo, the Electron-format
 `last-area.json`, pin zoom and opacity.
+
+Native-only suites from the 2026-11-08 parity audit (behaviour Electron has, not covered by its e2e):
+- `blur`: blur and pixelate change the pixels; strength 0 leaves them; averaged as stored (the
+  mean brightness over text stays, where linear-light averaging washed it out); pixelate is opaque.
+- `cursors`: capture-mode cursors as AnnotationLayer/Overlay.tsx (crosshair, move, resize arrows,
+  I-beam, pin); a step or line just placed keeps the tool's cursor until the pointer moves.
+- `ellipse`: the standalone Ellipse tool (E, outline and filled).
+- `openAgain`: opening Snapkit again captures; `--history` opens the panel; the second copy quits.
+- `realKeys`: keys typed through the system (input methods included, e.g. Vietnamese Telex) reach
+  capture mode, the text box and the editors; a word still being composed shows as it's typed.
+- In other suites: a taken shortcut is reported at startup and refused in Settings (parity);
+  editor panning stops at the preview's edges (editorView); the clipboard has TIFF too (preview);
+  history goes back to the newest after a change (historyPanel); a text read gives up after its
+  timeout (states); the glass Settings sidebar follows a theme switch (settings); Sparkle's
+  "Update available" menu item (sparkle-update.mjs).
+
+Not covered by a test: the Screen Recording grant continuing into the capture (needs the permission
+revoked), the pin's ⌥ cursor on key press, and which display a pin uses for an area spanning two
+(one display here).
 
 ## 3. Shared fixtures
 

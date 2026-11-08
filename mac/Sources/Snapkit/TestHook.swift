@@ -247,6 +247,10 @@ enum TestHook {
                                       windowNumber: v.window!.windowNumber, context: nil, eventNumber: 0, clickCount: n, pressure: 1) { v.mouseDown(with: e) }
         if let e = event(.leftMouseUp, p, in: v, flags: flags) { v.mouseUp(with: e) }
       }
+    case "pointer-moved":
+      // pointer-moved: the pointer moved over capture mode
+      guard let v = mainView, let e = event(.mouseMoved, .zero, in: v) else { return }
+      v.mouseMoved(with: e)
     case "rightclick":
       guard let v = mainView, nums.count >= 2, let e = event(.rightMouseDown, CGPoint(x: nums[0], y: nums[1]), in: v) else { return }
       v.rightMouseDown(with: e)
@@ -291,6 +295,9 @@ enum TestHook {
       // slow-grab <ms>: the next grab lands that much later, and its capture window is replaced meanwhile
       ScreenGrabber.testDelay = (nums.first ?? 600) / 1000
       CaptureController.testNotPresented = true
+    case "read-timeout":
+      // read-timeout <s>: how long a text read may take before it gives up
+      if let n = nums.first { TextRecognition.timeout = n }
     case "area-taken":
       // As if the area was started on another display
       mainView?.clearSelection()
@@ -337,6 +344,21 @@ enum TestHook {
         if let e = event(.leftMouseUp, p, in: v) { v.mouseUp(with: e) }
       }
       if !args.isEmpty { v.typeText(args.joined(separator: " ").replacingOccurrences(of: "\\n", with: "\n")) }
+    case "knob-image":
+      // knob-image <png>: a held slider knob with Liquid Glass on, over a coloured strip
+      guard let path = args.first else { return }
+      let host = NSView(frame: CGRect(x: 0, y: 0, width: 200, height: 40))
+      host.wantsLayer = true
+      host.layer?.backgroundColor = NSColor.systemPink.cgColor
+      var th = Theme.from(SettingsRules.defaults.appearance)
+      th.glass = true
+      let sl = SliderView(min: 0, max: 1, step: 0.01, value: 0.5, theme: th)
+      sl.frame = CGRect(x: 20, y: 5, width: 160, height: 30)
+      sl.testHeld = true
+      host.addSubview(sl)
+      guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+      host.cacheDisplay(in: host.bounds, to: rep)
+      try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
     case "cursor-image":
       // cursor-image <name> <png>: that capture-mode cursor's image
       guard args.count == 2, let tiff = Cursors.named(args[0]).image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return }
@@ -441,6 +463,7 @@ enum TestHook {
         j = j.setting("image", .array([.number(Double(item.image.width)), .number(Double(item.image.height))]))
         j = j.setting("shapes", .number(Double(item.doc?.shapes.count ?? 0)))
         j = j.setting("historyId", item.doc?.historyId.map { .string($0) } ?? .null)
+        if item.kind == .thumb { j = j.setting("buttonsFit", .bool(Floating.shared.thumbButtonsFit(item))) }
         j = j.setting("labels", .array(item.kind == .thumb ? Floating.shared.thumbLabels(item).map { .string($0) } : []))
         j = j.setting("visible", .bool(item.panel.isVisible))
         if let s = item.panel.screen { j = j.setting("visibleFrame", .array([s.visibleFrame.maxX, Floating.primaryHeight - s.visibleFrame.minY].map { .number(Double($0)) })) }
@@ -459,6 +482,7 @@ enum TestHook {
       o = o.setting("dockIcon", .bool(NSApp.activationPolicy() == .regular))
       if let m = app.settingsWindow.model.update { o = o.setting("updateStatus", .string("\(m.status)")) }
       o = o.setting("updateChecking", .bool(app.settingsWindow.model.checking))
+      o = o.setting("menu", .array(app.testMenuTitles.map { .string($0) }))
       o = o.setting("settingsFrost", .string(app.settingsWindow.testFrost?.appearance?.name.rawValue ?? "none"))
       o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))
       if let t = app.historyPanel.testView?.theme { o = o.setting("historyTheme", .object([("dark", .bool(t.dark)), ("background", .string(hexOf(t.background)))])) }
@@ -473,6 +497,9 @@ enum TestHook {
       o = o.setting("historyColumns", .number(Double(app.historyPanel.testView?.columns ?? 0)))
       let pb = Output.pasteboard.data(forType: .png)
       o = o.setting("clipboardPngBytes", .number(Double(pb?.count ?? 0)))
+      if pb != nil, let tiff = Output.pasteboard.data(forType: .tiff), let rep = NSBitmapImageRep(data: tiff) {
+        o = o.setting("clipboardTiffSize", .array([.number(Double(rep.pixelsWide)), .number(Double(rep.pixelsHigh))]))
+      }
       if let pb, pb.count > 25 { o = o.setting("clipboardColorType", .number(Double(pb[25]))) }
       if let pb, let rep = NSBitmapImageRep(data: pb) {
         o = o.setting("clipboardSize", .array([.number(Double(rep.pixelsWide)), .number(Double(rep.pixelsHigh))]))

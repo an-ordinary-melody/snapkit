@@ -80,10 +80,8 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
 
   func start(preset: (CGDirectDisplayID, LRect)? = nil, textOnly: Bool = false) {
     guard !active else { return }
-    guard hasPermission else {
-      Permissions.ask()
-      return
-    }
+    // Granted in macOS's own prompt just now: the capture goes ahead (ensureScreenPermission).
+    guard hasPermission || Permissions.ask() else { return }
     let t0 = Date()
     begin()
     let settings = store.current
@@ -266,7 +264,7 @@ final class CaptureController: OverlayViewDelegate, FloatingDelegate {
   /** Capture `rect` (points on `screen`) or, with nil, the whole display, without capture mode. */
   func captureRect(_ screen: NSScreen, _ rect: LRect?) {
     guard !active else { return }
-    guard hasPermission else { return Permissions.ask() }
+    guard hasPermission || Permissions.ask() else { return }
     let t0 = Date()
     let kind = rect == nil ? "fullscreen" : "last area"
     let id = nextFullscreenId
@@ -473,24 +471,27 @@ enum Permissions {
   /** The explanation is up: further capture presses do nothing (no stacked dialogs). */
   private static var asking = false
 
-  static func ask() {
-    guard !asking else { return }
+  /** True when it's OK to capture (granted in macOS's own prompt the first time). */
+  @discardableResult
+  static func ask() -> Bool {
+    guard !asking else { return false }
     asking = true
     defer { asking = false }
     // The first time, this shows macOS's own prompt and lists Snapkit in System Settings.
-    let asked = CGRequestScreenCaptureAccess()
-    if asked { return }
+    if CGRequestScreenCaptureAccess() { return true }
     log("[permissions] no Screen Recording permission")
     NSApp.activate(ignoringOtherApps: true)
     let alert = NSAlert()
     alert.messageText = "Snapkit needs Screen Recording permission"
-    alert.informativeText = "Turn on \(Paths.appName) in System Settings → Privacy & Security → Screen & System Audio Recording, then capture again. macOS may ask you to reopen Snapkit."
+    alert.informativeText = "Turn on \(Paths.appName) in System Settings → Privacy & Security → Screen & System Audio Recording, then reopen it.\n\n" +
+      "Already on (e.g. after an update)? Remove it with “–” and add it again."
     alert.addButton(withTitle: "Open System Settings")
     alert.addButton(withTitle: "Cancel")
     if alert.runModal() == .alertFirstButtonReturn,
        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
       NSWorkspace.shared.open(url)
     }
+    return false
   }
 }
 

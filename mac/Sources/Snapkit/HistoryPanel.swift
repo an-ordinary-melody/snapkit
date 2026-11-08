@@ -219,8 +219,9 @@ final class HistoryView: NSView, NSDraggingSource {
 
   var entries: [HistoryEntry] { panel?.store.entries ?? [] }
 
+  /** History changed (or opened again): start at the newest, as Electron's setSel(0). */
   func reload() {
-    if selected >= entries.count { selected = max(0, entries.count - 1) }
+    selected = 0
     layoutGrid()
     needsDisplay = true
     grid.needsDisplay = true

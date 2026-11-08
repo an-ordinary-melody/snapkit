@@ -39,14 +39,30 @@ enum TextRecognition {
   static var testDelays: [Double] = []
   #endif
 
-  static func recognize(_ image: CGImage, done: @escaping (Result<[Line], Error>, Int) -> Void) {
+  /** The first run on a Mac can take most of a minute while macOS prepares its text models (helper.ts). */
+  static var timeout: TimeInterval = 120
+
+  static func recognize(_ image: CGImage, done finish: @escaping (Result<[Line], Error>, Int) -> Void) {
     let t0 = Date()
     var delay = 0.0
     #if DEBUG
     if !testDelays.isEmpty { delay = testDelays.removeFirst() }
     #endif
+    // Answered once: the result, or a timeout if Vision never answers (the request is cancelled).
+    var answered = false
+    let request = VNRecognizeTextRequest()
+    let done = { (r: Result<[Line], Error>, ms: Int) in
+      guard !answered else { return }
+      answered = true
+      finish(r, ms)
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
+      guard !answered else { return }
+      request.cancel()
+      log("[ocr] vision: no answer after \(Int(timeout)) s")
+      done(.failure(NSError(domain: "Snapkit", code: 1, userInfo: [NSLocalizedDescriptionKey: "no answer after \(Int(timeout)) s"])), ms(t0))
+    }
     DispatchQueue.global(qos: .userInitiated).async {
-      let request = VNRecognizeTextRequest()
       request.recognitionLevel = .accurate
       request.usesLanguageCorrection = true
       // Keep the languages this Mac can read.
