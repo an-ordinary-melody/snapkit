@@ -127,11 +127,10 @@ final class Floating {
 
   // MARK: Floating previews
 
-  static let thumbMax = CGSize(width: 240, height: 160)
-
+  /** ThumbSize (shared/thumb.ts): the capture's shape, or a standard 16:9 one for strips and tall captures. */
   private func thumbSize(_ image: CGImage) -> CGSize {
-    let k = min(Floating.thumbMax.width / CGFloat(image.width), Floating.thumbMax.height / CGFloat(image.height), 1)
-    return CGSize(width: max(60, (CGFloat(image.width) * k).rounded()), height: max(40, (CGFloat(image.height) * k).rounded()))
+    let t = ThumbSize.of(Double(image.width), Double(image.height))
+    return CGSize(width: t.w, height: t.h)
   }
 
   /** After a copy: a small preview in the corner of the display it was captured on. */
@@ -759,11 +758,46 @@ private final class ThumbView: NSView {
 
   var testButtonRects: [CGRect] { buttonRects() }
 
-  /** The preview's image as drawn (object-fit: cover). */
+  /** The preview's image as drawn: fitted inside (object-fit: contain). */
   private var imageRect: CGRect {
     let iw = CGFloat(item.image.width), ih = CGFloat(item.image.height)
-    let k = max(bounds.width / iw, bounds.height / ih)
+    let k = min(bounds.width / iw, bounds.height / ih)
     return CGRect(x: bounds.midX - iw * k / 2, y: bounds.midY - ih * k / 2, width: iw * k, height: ih * k)
+  }
+
+  /**
+   * Behind the fitted image (a strip or tall capture in the standard 16:9 preview): the same image
+   * covering the preview 12 pt past every edge, blurred (14 pt) and darkened (.thumb-backdrop).
+   */
+  private var backdropCache: (size: CGSize, image: CGImage)?
+  private func backdrop() -> CGImage? {
+    if let c = backdropCache, c.size == bounds.size { return c.image }
+    let scale = window?.backingScaleFactor ?? 2
+    let area = bounds.insetBy(dx: -12, dy: -12)
+    let iw = CGFloat(item.image.width), ih = CGFloat(item.image.height)
+    let k = max(area.width / iw, area.height / ih) * scale
+    let src = CIImage(cgImage: item.image).transformed(by: CGAffineTransform(scaleX: k, y: k))
+    let out = src.clampedToExtent()
+      .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: 14 * scale])
+      .applyingFilter("CIColorMatrix", parameters: ["inputRVector": CIVector(x: 0.65, y: 0, z: 0, w: 0), "inputGVector": CIVector(x: 0, y: 0.65, z: 0, w: 0),
+                                                    "inputBVector": CIVector(x: 0, y: 0, z: 0.65, w: 0)])
+    let crop = CGRect(x: src.extent.midX - area.width * scale / 2, y: src.extent.midY - area.height * scale / 2, width: area.width * scale, height: area.height * scale)
+    guard let cg = ThumbView.ciContext.createCGImage(out, from: crop, format: .RGBA8, colorSpace: item.image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!) else { return nil }
+    backdropCache = (bounds.size, cg)
+    return cg
+  }
+  /** As CSS filters: on the stored values, not in linear light (which would darken it far less). */
+  private static let ciContext = CIContext(options: [.cacheIntermediates: false, .workingColorSpace: NSNull(), .outputColorSpace: NSNull()])
+
+  /** The picture: the blurred backdrop where the fitted image doesn't cover, then the image. */
+  private func drawPicture(_ ctx: CGContext) {
+    NSColor(hex: "#111111").setFill()
+    bounds.fill()
+    let r = imageRect
+    if r.width < bounds.width - 0.5 || r.height < bounds.height - 0.5, let b = backdrop() {
+      ShapeDrawing.drawImage(b, in: bounds.insetBy(dx: -12, dy: -12), ctx: ctx)
+    }
+    ShapeDrawing.drawImage(item.image, in: r, ctx: ctx)
   }
 
   /** Liquid Glass: the hovered preview (image and shade) under a button, blurred (cached per size). */
@@ -773,9 +807,7 @@ private final class ThumbView: NSView {
     let key = "\(r)|\(bounds.size)"
     if let c = glassCache[key] { return c }
     let img = Glass.backdrop(r, scale: window?.backingScaleFactor ?? 2) { ctx in
-      NSColor(hex: "#111111").setFill()
-      self.bounds.fill()
-      ShapeDrawing.drawImage(self.item.image, in: self.imageRect, ctx: ctx)
+      self.drawPicture(ctx)
       NSColor.black.withAlphaComponent(0.42).setFill()
       self.bounds.fill()
     }
@@ -786,11 +818,7 @@ private final class ThumbView: NSView {
 
   override func draw(_ dirtyRect: NSRect) {
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-    NSColor(hex: "#111111").setFill()
-    bounds.fill()
-    // object-fit: cover
-    let r = imageRect
-    ShapeDrawing.drawImage(item.image, in: r, ctx: ctx)
+    drawPicture(ctx)
     NSColor.white.withAlphaComponent(0.18).setStroke()
     NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10).stroke()
     if hover {

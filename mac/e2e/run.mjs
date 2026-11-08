@@ -1423,6 +1423,8 @@ const SUITES = {
       fits.push(f?.buttonsFit && `${Math.round(f.frame[2])}x${Math.round(f.frame[3])}`)
     }
     check(fits.every(Boolean), 'preview buttons fit: normal, tall, strip and narrow previews', JSON.stringify(fits))
+    // Past 1:2 or 3:1, the standard 16:9 preview (shared/thumb.ts); a 1:1.9 capture keeps its shape.
+    check(fits[1] === '240x135' && fits[2] === '240x135' && fits[3] === '85x160', 'a tall capture and a strip get the 240×135 preview; others keep their shape', JSON.stringify(fits.slice(1)))
     // Tooltips like the toolbar's, kept 4 pt inside the (narrow) preview (Electron 587459c).
     const tips = []
     for (const which of ['close', '1', 'move']) {
