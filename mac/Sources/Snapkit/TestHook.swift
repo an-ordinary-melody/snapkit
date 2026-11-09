@@ -538,6 +538,10 @@ enum TestHook {
       o = o.setting("settingsFrost", .string(app.settingsWindow.testFrost?.appearance?.name.rawValue ?? "none"))
       o = o.setting("settingsBackdrop", .string(app.settingsWindow.testBackdrop))
       o = o.setting("settingsPicture", .bool(app.settingsWindow.testHasPicture))
+      // The sliders in Settings: the system's own (NSSlider) or drawn.
+      func sliders(_ v: NSView?) -> [SliderView] { guard let v else { return [] }; return (v as? SliderView).map { [$0] } ?? v.subviews.flatMap(sliders) }
+      let sl = sliders(app.settingsWindow.testWindow?.contentView)
+      o = o.setting("settingsSliders", .string(sl.isEmpty ? "none" : sl.allSatisfy(\.usesNative) ? "native" : sl.contains(where: \.usesNative) ? "mixed" : "drawn"))
       o = o.setting("settingsOpaque", .bool(app.settingsWindow.testWindow?.isOpaque ?? true))
       o = o.setting("settingsAppearance", .string(app.settingsWindow.testWindow?.appearance?.name.rawValue ?? "system"))
       o = o.setting("historyGlass", .bool(app.historyPanel.testGlass))

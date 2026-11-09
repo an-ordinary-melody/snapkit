@@ -778,6 +778,11 @@ const SUITES = {
     s = await state()
     check(s.settingsBackdrop === 'glass' && !s.settingsOpaque && s.settingsPicture, 'glass: the whole Settings window is Liquid Glass, over its own picture', `${s.settingsBackdrop} opaque ${s.settingsOpaque} picture ${s.settingsPicture}`)
     check(s.historyGlass, 'glass: the open history panel is glass over the same picture', String(s.historyGlass))
+    check(s.settingsSliders === 'native', 'glass: Settings sliders are the system slider (glass knob while held)', s.settingsSliders)
+    // macOS gives system controls the macOS 26 look (the glass knob) only to apps built with that SDK.
+    const sdk = run('otool', ['-l', join(app, 'Contents/MacOS/Snapkit')]).match(/LC_BUILD_VERSION[\s\S]*?sdk (\S+)/)?.[1]
+    const sdkUsed = run('xcrun', ['--sdk', 'macosx', '--show-sdk-version']).trim()
+    check(sdk === sdkUsed, 'the app records the SDK it was built with (system controls get the current look)', `${sdk} vs ${sdkUsed}`)
     // Switched from the Settings window itself: the glass window follows the theme too.
     send('settings-set', JSON.stringify({ appearance: { mode: 'dark' } }))
     await wait(300)
@@ -788,6 +793,7 @@ const SUITES = {
     check(/DarkAqua/.test(f) && /^NSAppearanceNameAqua$/.test(f2), 'glass: the glass window follows a theme switched in Settings', `${f} then ${f2}`)
     await set({ appearance: { mode: 'dark', glass: false } })
     s = await state()
+    check(s.settingsSliders === 'drawn', 'glass off: Settings sliders are drawn again', s.settingsSliders)
     check(s.settingsBackdrop === 'none' && s.settingsOpaque && !s.historyGlass, 'glass off: Settings is an opaque window again, History without the picture', `${s.settingsBackdrop} opaque ${s.settingsOpaque} history ${s.historyGlass}`)
     await set({ appearance: { mode: 'gray' } })
     s = await state()

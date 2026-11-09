@@ -169,9 +169,21 @@ struct SToggle: View {
   let th: SettingsTheme
   var disabled = false
   let onChange: (Bool) -> Void
-  /** Held down: the knob stretches (and turns to glass with Liquid Glass on), like .switch:active. */
+  /** Drawn: held down, the knob stretches (and turns to glass with Liquid Glass before macOS 26), like .switch:active. */
   @State private var held = false
   var body: some View {
+    if #available(macOS 26.0, *), th.glass {
+      // Liquid Glass: the system switch, whose knob turns to glass while held.
+      Toggle("", isOn: Binding(get: { value }, set: { onChange($0) }))
+        .toggleStyle(.switch)
+        .labelsHidden()
+        .disabled(disabled)
+    } else {
+      drawn
+    }
+  }
+
+  private var drawn: some View {
     ZStack(alignment: value ? .trailing : .leading) {
       Capsule().fill(value ? th.switchOn : th.track).frame(width: 34, height: 20)
       knob.frame(width: held ? 22 : 16, height: 16).padding(2)

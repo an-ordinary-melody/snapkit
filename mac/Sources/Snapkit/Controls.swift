@@ -9,15 +9,21 @@ final class SliderView: NSView {
   var min: Double
   var max: Double
   var step: Double
-  var value: Double { didSet { needsDisplay = true } }
-  var theme: Theme { didSet { needsDisplay = true } }
-  var rainbow = false
+  var value: Double { didSet { needsDisplay = true; native?.doubleValue = value } }
+  var theme: Theme { didSet { needsDisplay = true; syncNative() } }
+  var rainbow = false { didSet { syncNative() } }
   /** The track runs the full width and the knob stays inside it, as a browser range input (settings.css). */
   var fullTrack = false
   /** `continuous`: part of a drag (one undo step). */
   var onChange: (Double) -> Void = { _ in }
   var onEnd: () -> Void = {}
   private var held = false
+  /**
+   * With Liquid Glass (macOS 26 and later) the system's own slider, whose knob turns into a glass
+   * lens while held; the colour picker's hue track stays drawn here.
+   */
+  private var native: NSSlider?
+  var usesNative: Bool { native != nil }
   #if DEBUG
   var testHeld: Bool { get { held } set { held = newValue; needsDisplay = true } }
   #endif
@@ -29,9 +35,47 @@ final class SliderView: NSView {
     self.value = value
     self.theme = theme
     super.init(frame: .zero)
+    syncNative()
   }
 
   required init?(coder: NSCoder) { fatalError() }
+
+  private func syncNative() {
+    var want = false
+    if #available(macOS 26.0, *) { want = theme.glass && !rainbow }
+    if want, native == nil {
+      let n = FirstMouseSlider(value: value, minValue: min, maxValue: max, target: self, action: #selector(nativeMoved(_:)))
+      n.isContinuous = true
+      addSubview(n)
+      native = n
+      needsLayout = true
+    } else if !want, let n = native {
+      n.removeFromSuperview()
+      native = nil
+    }
+    native?.minValue = min
+    native?.maxValue = max
+    native?.doubleValue = value
+    needsDisplay = true
+  }
+
+  override func layout() {
+    super.layout()
+    guard let n = native else { return }
+    n.controlSize = bounds.height < 22 ? .small : .regular
+    let h = Swift.min(bounds.height, n.intrinsicContentSize.height)
+    n.frame = CGRect(x: 0, y: (bounds.height - h) / 2, width: bounds.width, height: h)
+  }
+
+  @objc private func nativeMoved(_ n: NSSlider) {
+    var v = (n.doubleValue / step).rounded() * step
+    v = Swift.min(max, Swift.max(min, v))
+    if v != value {
+      value = v
+      onChange(v)
+    }
+    if NSApp.currentEvent?.type == .leftMouseUp { onEnd() }
+  }
   override var isFlipped: Bool { true }
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
@@ -39,6 +83,7 @@ final class SliderView: NSView {
   private var inset: CGFloat { rainbow ? 7 : 12 }
 
   override func draw(_ dirtyRect: NSRect) {
+    if native != nil { return }
     let pct = max > min ? (value - min) / (max - min) : 0
     let trackH: CGFloat = rainbow ? 8 : 3
     let travel = CGRect(x: inset, y: bounds.midY - trackH / 2, width: bounds.width - inset * 2, height: trackH)
@@ -120,6 +165,11 @@ final class SliderView: NSView {
     needsDisplay = true
     onEnd()
   }
+}
+
+/** Takes the first click in Snapkit's non-activating panels, as the drawn slider does. */
+private final class FirstMouseSlider: NSSlider {
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 /** The style bar's text size field (8–200, applied as you type). */

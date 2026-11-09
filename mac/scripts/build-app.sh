@@ -32,6 +32,12 @@ APP="build/$NAME.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Snapkit"
+# SwiftPM's build system records the deployment target (14.0) as the SDK the app was built with, so
+# macOS draws its controls the pre-macOS 26 way (no Liquid Glass knob on sliders and switches). Record
+# the SDK actually used; the minimum macOS stays as built.
+MINOS=$(otool -l "$BIN" | awk '/LC_BUILD_VERSION/{f=1} f&&/minos/{print $2; exit}')
+SDKV=$(xcrun --sdk macosx --show-sdk-version)
+vtool -set-build-version macos "$MINOS" "$SDKV" -replace -output "$APP/Contents/MacOS/Snapkit" "$APP/Contents/MacOS/Snapkit"
 cp ../resources/trayTemplate.png ../resources/trayTemplate@2x.png "$APP/Contents/Resources/"
 cp ../build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 # The pictures under the Liquid Glass Settings window (made with InstantGradient, whose exports are ours to use).
