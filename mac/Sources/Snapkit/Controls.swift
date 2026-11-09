@@ -62,7 +62,8 @@ final class SliderView: NSView {
   override func layout() {
     super.layout()
     guard let n = native else { return }
-    n.controlSize = bounds.height < 22 ? .small : .regular
+    // Regular whenever it fits (16 pt): its larger glass knob bends the track visibly, as in System Settings.
+    n.controlSize = bounds.height < 16 ? .small : .regular
     let h = Swift.min(bounds.height, n.intrinsicContentSize.height)
     n.frame = CGRect(x: 0, y: (bounds.height - h) / 2, width: bounds.width, height: h)
   }

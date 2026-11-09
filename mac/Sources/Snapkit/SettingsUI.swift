@@ -176,6 +176,7 @@ struct SToggle: View {
       // Liquid Glass: the system switch, whose knob turns to glass while held.
       Toggle("", isOn: Binding(get: { value }, set: { onChange($0) }))
         .toggleStyle(.switch)
+        .controlSize(.small)  // 44×20, near the drawn 34×20; regular (54×24) is too big in these rows
         .labelsHidden()
         .disabled(disabled)
     } else {
