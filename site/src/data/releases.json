@@ -1,7 +1,26 @@
 [
   {
-    "version": "0.3.3",
+    "version": "0.3.4",
     "date": null,
+    "intro": "Liquid Glass all the way through on Mac.",
+    "items": [
+      {
+        "text": "**Liquid Glass: Settings, History and the editor are fully glass (Mac).** With the Liquid Glass theme, each window is one sheet of glass over soft violet (light) or teal (dark) backgrounds, so it looks the same on any desktop.",
+        "sub": []
+      },
+      {
+        "text": "**Sliders and switches use the native macOS glass knob** in glass Settings.",
+        "sub": []
+      },
+      {
+        "text": "**Native macOS 26 controls.** The Mac app is now built so macOS draws its standard controls in the macOS 26 style.",
+        "sub": []
+      }
+    ]
+  },
+  {
+    "version": "0.3.3",
+    "date": "2026-11-08",
     "intro": "Mac update checks that don't get in the way, and simpler version numbers.",
     "items": [
       {

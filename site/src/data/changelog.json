@@ -2,12 +2,13 @@
   {
     "title": "A native Mac app",
     "from": "0.3.0-beta.1",
-    "upTo": "0.3.3",
+    "upTo": "0.3.4",
     "items": [
       "Snapkit for Mac is rewritten in Swift: same features, settings and history, much lighter",
       "Runs on Apple Silicon and Intel Macs, macOS 14 or newer",
       "Mac updates install from inside the app and keep Screen Recording permission",
       "Text starting style: Light or Dark background",
+      "Liquid Glass: Settings, History and the editor are fully glass, over soft violet (light) and teal (dark) backgrounds, with the native glass knob on sliders and switches",
       "Floating preview: Copy shows a check, buttons react to hover, tooltips like the toolbar's, a standard 16:9 size for very wide or tall captures",
       "A new blur stays selected, so its slider works right away",
       "Steadier when saves, copies and text reads overlap",

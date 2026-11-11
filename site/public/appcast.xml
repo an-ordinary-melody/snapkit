@@ -3,14 +3,14 @@
   <channel>
     <title>Snapkit</title>
     <item>
-      <title>0.3.3</title>
-      <pubDate>Sun, 08 Nov 2026 09:33:07 +0000</pubDate>
-      <sparkle:version>0.3.3</sparkle:version>
-      <sparkle:shortVersionString>0.3.3</sparkle:shortVersionString>
+      <title>0.3.4</title>
+      <pubDate>Wed, 11 Nov 2026 05:02:05 +0000</pubDate>
+      <sparkle:version>0.3.4</sparkle:version>
+      <sparkle:shortVersionString>0.3.4</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
 
-      <sparkle:releaseNotesLink>https://github.com/an-ordinary-melody/snapkit/releases/tag/v0.3.3</sparkle:releaseNotesLink>
-      <enclosure url="https://github.com/an-ordinary-melody/snapkit/releases/download/v0.3.3/Snapkit-0.3.3.zip" type="application/octet-stream" sparkle:edSignature="274R3XwQu282ItV6L7O5/7RdxMu1JntA5L5jIMv2nK5Iv8tl5/2ZaSfX3zBd6D23VsW+mEhmqs8veh9N1nFgBg==" length="3494275"/>
+      <sparkle:releaseNotesLink>https://github.com/an-ordinary-melody/snapkit/releases/tag/v0.3.4</sparkle:releaseNotesLink>
+      <enclosure url="https://github.com/an-ordinary-melody/snapkit/releases/download/v0.3.4/Snapkit-0.3.4.zip" type="application/octet-stream" sparkle:edSignature="6hJIhD6eLC0KxF1rYAygEjVUThZ667gt/jbOMwohiqI1ZcJBw8TjCVNWMyGHxDCdiC88ZjYohVGkEwrnCPZrDQ==" length="3935933"/>
     </item>
   </channel>
 </rss>
